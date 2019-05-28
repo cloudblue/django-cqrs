@@ -39,3 +39,10 @@ class AutoFieldsModel(MasterMixin, models.Model):
 
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
+
+
+class SimplestModel(MasterMixin, models.Model):
+    CQRS_ID = 'pk'
+
+    id = models.IntegerField(primary_key=True)
+    name = models.CharField(max_length=200, null=True)

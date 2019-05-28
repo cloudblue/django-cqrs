@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 from django.db import models
+from dj_cqrs.transport import current_transport
 
 
 class MasterSignals(object):
@@ -14,8 +15,13 @@ class MasterSignals(object):
         instance_data = kwargs['instance'].model_to_cqrs_dict()
         signal = 'post_save'
 
-        payload = {'signal': signal, 'instance': instance_data, 'cqrs_id': sender.CQRD_ID}
+        payload = {'signal': signal, 'instance': instance_data, 'cqrs_id': sender.CQRS_ID}
+        current_transport.publish(payload)
 
     @classmethod
     def post_delete(cls, sender, **kwargs):
-        print(1)
+        instance_data = {'id': kwargs['instance'].pk}
+        signal = 'post_delete'
+
+        payload = {'signal': signal, 'instance': instance_data, 'cqrs_id': sender.CQRS_ID}
+        current_transport.publish(payload)

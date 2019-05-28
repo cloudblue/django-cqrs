@@ -51,3 +51,9 @@ USE_I18N = True
 USE_L10N = True
 
 USE_TZ = True
+
+CQRS = {
+    'transport': {
+        'class': 'tests.dj.transport.TransportStub',
+    },
+}
