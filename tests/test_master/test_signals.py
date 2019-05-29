@@ -3,7 +3,8 @@ from __future__ import unicode_literals
 import pytest
 from django.db.models.signals import post_delete, post_save
 
-from dj_cqrs.signals import SignalType, post_bulk_create, post_update
+from dj_cqrs.signals import post_bulk_create, post_update
+from dj_cqrs.constants import SignalType
 from tests.dj.transport import publish_signal
 from tests.dj_master import models
 
@@ -18,10 +19,10 @@ def test_signals_are_registered(model, signal):
 def test_post_save_create():
     def assert_handler(sender, **kwargs):
         payload = kwargs['payload']
-        assert payload == {
+        assert payload.to_dict() == {
             'cqrs_id': models.SimplestModel.CQRS_ID,
-            'signal': SignalType.SAVE,
-            'instance': {'id': 1, 'name': None},
+            'signal_type': SignalType.SAVE,
+            'instance_data': {'id': 1, 'name': None},
         }
 
     publish_signal.connect(assert_handler)
@@ -34,10 +35,10 @@ def test_post_save_update():
 
     def assert_handler(sender, **kwargs):
         payload = kwargs['payload']
-        assert payload == {
+        assert payload.to_dict() == {
             'cqrs_id': models.SimplestModel.CQRS_ID,
-            'signal': SignalType.SAVE,
-            'instance': {'id': 1, 'name': 'new'},
+            'signal_type': SignalType.SAVE,
+            'instance_data': {'id': 1, 'name': 'new'},
         }
 
     publish_signal.connect(assert_handler)
@@ -51,10 +52,10 @@ def test_post_save_delete():
 
     def assert_handler(sender, **kwargs):
         payload = kwargs['payload']
-        assert payload == {
+        assert payload.to_dict() == {
             'cqrs_id': models.SimplestModel.CQRS_ID,
-            'signal': SignalType.DELETE,
-            'instance': {'id': 1},
+            'signal_type': SignalType.DELETE,
+            'instance_data': {'id': 1},
         }
 
     publish_signal.connect(assert_handler)
@@ -70,14 +71,7 @@ def test_post_bulk_create():
         assert sender == models.AutoFieldsModel
         assert len(kwargs['instances']) == 3
 
-    def assert_instance_handler(sender, **kwargs):
-        payload = kwargs['payload']
-        assert payload['cqrs_id'] == models.AutoFieldsModel.CQRS_ID
-        assert payload['signal'] == SignalType.SAVE
-        assert payload['instance']['id'] in {1, 2, 3}
-
     post_bulk_create.connect(assert_bulk_create)
-    post_save.connect(assert_instance_handler)
     models.AutoFieldsModel.call_post_bulk_create(created_models)
 
 
@@ -90,14 +84,7 @@ def test_post_update():
         assert sender == models.SimplestModel
         assert len(kwargs['instances']) == 2
 
-    def assert_instance_handler(sender, **kwargs):
-        payload = kwargs['payload']
-        assert payload['cqrs_id'] == models.SimplestModel.CQRS_ID
-        assert payload['signal'] == SignalType.SAVE
-        assert payload['instance']['id'] in {1, 2}
-
     post_update.connect(assert_update)
-    post_save.connect(assert_instance_handler)
     models.SimplestModel.cqrs.update(
         queryset=models.SimplestModel.objects.filter(id__in={1, 2}),
         name='new',

@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 from importlib import import_module
+
 from django.conf import settings
 
 
@@ -15,13 +16,17 @@ class BaseTransport(object):
             },
         }
     """
+    consumers = {}
 
     @staticmethod
     def produce(payload):
+        """ Send data from master model to replicas.
+        :param dj_cqrs.dataclasses.TransportPayload payload:
+        """
         raise NotImplementedError
 
     @staticmethod
-    def consume(payload):
+    def consume(*args, **kwargs):
         raise NotImplementedError
 
 

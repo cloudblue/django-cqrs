@@ -1,10 +1,11 @@
 from __future__ import unicode_literals
 
 from django.dispatch import Signal
+
 from dj_cqrs.transport import BaseTransport
 
 
-publish_signal = consume_signal = Signal(providing_args=['payload'])
+publish_signal = Signal(providing_args=['payload'])
 
 
 class TransportStub(BaseTransport):
@@ -15,4 +16,5 @@ class TransportStub(BaseTransport):
 
     @staticmethod
     def consume(payload):
-        consume_signal.send(None, payload=payload)
+        from dj_cqrs.controller import consumer
+        consumer.consume(payload)

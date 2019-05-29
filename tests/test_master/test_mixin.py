@@ -4,7 +4,7 @@ import pytest
 from uuid import uuid4
 from django.utils.timezone import now
 
-from dj_cqrs.mixins import _MasterMeta
+from dj_cqrs.mixins import _check_cqrs_id
 from tests.dj.transport import publish_signal
 from tests.dj_master import models
 
@@ -55,7 +55,7 @@ def test_no_cqrs_id():
     with pytest.raises(AssertionError) as e:
         class Cls(object):
             CQRS_ID = None
-        _MasterMeta.check_cqrs_id(Cls, 'cls')
+        _check_cqrs_id(Cls, 'cls', 'MasterMixin')
     assert str(e.value) == 'CQRS_ID must be set for every model, that uses CQRS.'
 
 
@@ -77,7 +77,7 @@ def test_cqrs_sync_not_saved():
 
     def assert_handler(sender, **kwargs):
         payload = kwargs['payload']
-        assert payload['instance']['char_field'] == 'old'
+        assert payload.instance_data['char_field'] == 'old'
 
     publish_signal.connect(assert_handler)
     assert m.cqrs_sync()
@@ -91,7 +91,7 @@ def test_cqrs_sync():
 
     def assert_handler(sender, **kwargs):
         payload = kwargs['payload']
-        assert payload['instance']['char_field'] == 'new'
+        assert payload.instance_data['char_field'] == 'new'
 
     publish_signal.connect(assert_handler)
     assert m.cqrs_sync()

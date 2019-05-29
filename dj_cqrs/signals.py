@@ -3,12 +3,8 @@ from __future__ import unicode_literals
 from django.db import models
 from django.dispatch import Signal
 
-from dj_cqrs.transport import current_transport
-
-
-class SignalType(object):
-    DELETE = 'DELETE'
-    SAVE = 'SAVE'
+from dj_cqrs.controller import producer
+from dj_cqrs.constants import SignalType
 
 
 post_bulk_create = Signal(providing_args=['instances'])
@@ -34,10 +30,9 @@ class MasterSignals(object):
         :param dj_cqrs.mixins.MasterMixin sender: Class or instance inherited from CQRS MasterMixin.
         """
         instance_data = kwargs['instance'].model_to_cqrs_dict()
-        signal = SignalType.SAVE
+        signal_type = SignalType.SAVE
 
-        payload = {'signal': signal, 'instance': instance_data, 'cqrs_id': sender.CQRS_ID}
-        current_transport.produce(payload)
+        producer.produce(signal_type, sender.CQRS_ID, instance_data)
 
     @classmethod
     def post_delete(cls, sender, **kwargs):
@@ -45,10 +40,9 @@ class MasterSignals(object):
         :param dj_cqrs.mixins.MasterMixin sender: Class or instance inherited from CQRS MasterMixin.
         """
         instance_data = {'id': kwargs['instance'].pk}
-        signal = SignalType.DELETE
+        signal_type = SignalType.DELETE
 
-        payload = {'signal': signal, 'instance': instance_data, 'cqrs_id': sender.CQRS_ID}
-        current_transport.produce(payload)
+        producer.produce(signal_type, sender.CQRS_ID, instance_data)
 
     @classmethod
     def post_bulk_create(cls, sender, **kwargs):

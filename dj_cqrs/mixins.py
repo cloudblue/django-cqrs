@@ -5,21 +5,22 @@ from itertools import chain
 import six
 from django.db.models import Manager, Model, base
 
-from .signals import MasterSignals, post_bulk_create, post_update
+from dj_cqrs.signals import MasterSignals, post_bulk_create, post_update
+from dj_cqrs.factories import ReplicaFactory
+
+
+def _check_cqrs_id(model_cls, model_name, mixin_name):
+    if model_name != mixin_name:
+        assert model_cls.CQRS_ID, 'CQRS_ID must be set for every model, that uses CQRS.'
 
 
 class _MasterMeta(base.ModelBase):
     def __new__(mcs, *args):
         model_cls = super(_MasterMeta, mcs).__new__(mcs, *args)
-        _MasterMeta.check_cqrs_id(model_cls, args[0])
+        _check_cqrs_id(model_cls, args[0], 'MasterMixin')
 
         MasterSignals.register_model(model_cls)
         return model_cls
-
-    @staticmethod
-    def check_cqrs_id(model_cls, model_name):
-        if model_name != 'MasterMixin':
-            assert model_cls.CQRS_ID, 'CQRS_ID must be set for every model, that uses CQRS.'
 
 
 class _MasterManager(Manager):
@@ -101,3 +102,24 @@ class MasterMixin(six.with_metaclass(_MasterMeta, Model)):
             model.cqrs.update(qs, k2=v2)
         """
         post_update.send(cls, instances=instances)
+
+
+class _ReplicaMeta(base.ModelBase):
+    def __new__(mcs, *args):
+        model_cls = super(_ReplicaMeta, mcs).__new__(mcs, *args)
+        _check_cqrs_id(model_cls, args[0], 'ReplicaMixin')
+
+        ReplicaFactory.register_model(model_cls)
+        return model_cls
+
+
+class ReplicaMixin(six.with_metaclass(_ReplicaMeta, Model)):
+    """
+    Mixin for the replica CQRS model, that will receive data updates from master.
+
+    CQRS_ID - Unique CQRS identifier for all microservices.
+    """
+    CQRS_ID = None
+
+    class Meta:
+        abstract = True
