@@ -5,6 +5,7 @@ from uuid import uuid4
 from django.utils.timezone import now
 
 from dj_cqrs.mixins import _MasterMeta
+from tests.dj.transport import publish_signal
 from tests.dj_master import models
 
 
@@ -56,3 +57,41 @@ def test_no_cqrs_id():
             CQRS_ID = None
         _MasterMeta.check_cqrs_id(Cls, 'cls')
     assert str(e.value) == 'CQRS_ID must be set for every model, that uses CQRS.'
+
+
+def test_cqrs_sync_not_created():
+    m = models.BasicFieldsModel()
+    assert not m.cqrs_sync()
+
+
+@pytest.mark.django_db
+def test_cqrs_sync_cant_refresh_model():
+    m = models.SimplestModel.objects.create()
+    assert not m.cqrs_sync()
+
+
+@pytest.mark.django_db
+def test_cqrs_sync_not_saved():
+    m = models.ChosenFieldsModel.objects.create(char_field='old')
+    m.name = 'new'
+
+    def assert_handler(sender, **kwargs):
+        payload = kwargs['payload']
+        assert payload['instance']['char_field'] == 'old'
+
+    publish_signal.connect(assert_handler)
+    assert m.cqrs_sync()
+
+
+@pytest.mark.django_db
+def test_cqrs_sync():
+    m = models.ChosenFieldsModel.objects.create(char_field='old')
+    m.char_field = 'new'
+    m.save(update_fields=['char_field'])
+
+    def assert_handler(sender, **kwargs):
+        payload = kwargs['payload']
+        assert payload['instance']['char_field'] == 'new'
+
+    publish_signal.connect(assert_handler)
+    assert m.cqrs_sync()

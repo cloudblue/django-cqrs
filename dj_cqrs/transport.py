@@ -5,10 +5,19 @@ from django.conf import settings
 
 
 class BaseTransport(object):
-    current = None
+    """
+    CQRS pattern can be implemented over any transport (AMQP, HTTP, etc.)
+    All transports need to inherit from this base class.
+    Transport must be set in Django settings:
+        CQRS = {
+            'transport': {
+                'class': 'tests.dj.transport.TransportStub',
+            },
+        }
+    """
 
     @staticmethod
-    def publish(payload):
+    def produce(payload):
         raise NotImplementedError
 
     @staticmethod

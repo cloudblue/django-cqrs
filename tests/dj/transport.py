@@ -9,7 +9,7 @@ publish_signal = consume_signal = Signal(providing_args=['payload'])
 
 class TransportStub(BaseTransport):
     @staticmethod
-    def publish(payload):
+    def produce(payload):
         publish_signal.send(None, payload=payload)
         TransportStub.consume(payload)
 
