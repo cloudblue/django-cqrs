@@ -57,13 +57,13 @@ class MasterMixin(six.with_metaclass(_MasterMeta, Model)):
         opts = self._meta
 
         if isinstance(self.CQRS_FIELDS, six.string_types) and self.CQRS_FIELDS == '__all__':
-            exclude_set = None
+            included_fields = None
         else:
-            exclude_set = self.CQRS_FIELDS
+            included_fields = self.CQRS_FIELDS
 
         data = {}
         for f in chain(opts.concrete_fields, opts.private_fields):
-            if exclude_set and (f.name not in exclude_set):
+            if included_fields and (f.name not in included_fields):
                 continue
 
             data[f.name] = f.value_from_object(self)
@@ -73,6 +73,7 @@ class MasterMixin(six.with_metaclass(_MasterMeta, Model)):
         """ Manual instance synchronization. """
         if self._state.adding:
             return False
+
         try:
             self.refresh_from_db()
         except self._meta.model.DoesNotExist:
