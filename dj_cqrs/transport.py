@@ -27,7 +27,8 @@ class BaseTransport(object):
 
 def _load_transport_class(cls_string):
     split_str = cls_string.split('.')
-    return getattr(import_module('.'.join(split_str[:-1])), split_str[-1])
+    module_path, cls_name = '.'.join(split_str[:-1]), split_str[-1]
+    return getattr(import_module(module_path), cls_name)
 
 
 transport_cls_location = getattr(settings, 'CQRS', {}) \
