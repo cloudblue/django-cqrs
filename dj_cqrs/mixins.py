@@ -23,14 +23,14 @@ class _MasterMeta(base.ModelBase):
 
 
 class _MasterManager(Manager):
-    def update(self, queryset, *args, **kwargs):
+    def update(self, queryset, **kwargs):
         """ Custom update method to support sending update signals.
 
-        :param queryset: Django Queryset (f.e. filter)
+        :param django.db.models.QuerySet queryset: Django Queryset (f.e. filter)
         :param args: Update args
         :param kwargs: Update kwargs
         """
-        queryset.update(*args, **kwargs)
+        queryset.update(**kwargs)
         queryset.model.call_post_update(list(queryset.all()))
 
 

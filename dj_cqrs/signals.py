@@ -19,6 +19,9 @@ class MasterSignals(object):
     """ Signals registry and handlers for CQRS master models. """
     @classmethod
     def register_model(cls, model_cls):
+        """
+        :param dj_cqrs.mixins.MasterMixin model_cls: Class inherited from CQRS MasterMixin.
+        """
         models.signals.post_save.connect(cls.post_save, sender=model_cls)
         models.signals.post_delete.connect(cls.post_delete, sender=model_cls)
 
@@ -27,6 +30,9 @@ class MasterSignals(object):
 
     @classmethod
     def post_save(cls, sender, **kwargs):
+        """
+        :param dj_cqrs.mixins.MasterMixin sender: Class or instance inherited from CQRS MasterMixin.
+        """
         instance_data = kwargs['instance'].model_to_cqrs_dict()
         signal = SignalType.SAVE
 
@@ -35,6 +41,9 @@ class MasterSignals(object):
 
     @classmethod
     def post_delete(cls, sender, **kwargs):
+        """
+        :param dj_cqrs.mixins.MasterMixin sender: Class or instance inherited from CQRS MasterMixin.
+        """
         instance_data = {'id': kwargs['instance'].pk}
         signal = SignalType.DELETE
 
@@ -43,10 +52,16 @@ class MasterSignals(object):
 
     @classmethod
     def post_bulk_create(cls, sender, **kwargs):
+        """
+        :param dj_cqrs.mixins.MasterMixin sender: Class or instance inherited from CQRS MasterMixin.
+        """
         for instance in kwargs['instances']:
             cls.post_save(sender, instance=instance)
 
     @classmethod
     def post_update(cls, sender, **kwargs):
+        """
+        :param dj_cqrs.mixins.MasterMixin sender: Class or instance inherited from CQRS MasterMixin.
+        """
         for instance in kwargs['instances']:
             cls.post_save(sender, instance=instance)
