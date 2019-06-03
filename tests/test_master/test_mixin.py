@@ -7,8 +7,68 @@ from django.db.models import CharField, IntegerField
 from django.utils.timezone import now
 
 from dj_cqrs.constants import SignalType
-from dj_cqrs.mixins import _check_cqrs_fields, _check_cqrs_id
+from dj_cqrs.mixins import _MasterMeta, _MetaUtils
+from dj_cqrs.registries import MasterRegistry
 from tests.dj_master import models
+
+
+@pytest.mark.parametrize('model', (models.SimplestModel, models.AutoFieldsModel))
+def test_models_are_registered(model):
+    assert MasterRegistry.models[model.CQRS_ID] == model
+
+
+def test_cqrs_fields_non_existing_field(mocker):
+    with pytest.raises(AssertionError) as e:
+
+        class Cls(object):
+            CQRD_ID = 'ID'
+            CQRS_FIELDS = ('char_field', 'integer_field')
+
+            char_field = CharField(max_length=100, primary_key=True)
+            int_field = IntegerField()
+
+            _meta = mocker.MagicMock(concrete_fields=(char_field, int_field), private_fields=())
+            _meta.pk.name = 'char_field'
+
+        _MasterMeta._check_cqrs_fields(Cls)
+
+    assert str(e.value) == 'CQRS_FIELDS field is not setup correctly for model Cls.'
+
+
+def test_cqrs_fields_id_is_not_included(mocker):
+    with pytest.raises(AssertionError) as e:
+
+        class Cls(object):
+            CQRD_ID = 'ID'
+            CQRS_FIELDS = ('int_field',)
+
+            char_field = CharField(max_length=100, primary_key=True)
+            int_field = IntegerField()
+
+            _meta = mocker.MagicMock(concrete_fields=(char_field, int_field), private_fields=())
+            _meta.pk.name = 'char_field'
+
+        _MasterMeta._check_cqrs_fields(Cls)
+
+    assert str(e.value) == 'PK is not in CQRS_FIELDS for model Cls.'
+
+
+def test_cqrs_fields_duplicates(mocker):
+    with pytest.raises(AssertionError) as e:
+
+        class Cls(object):
+            CQRD_ID = 'ID'
+            CQRS_FIELDS = ('char_field', 'char_field')
+
+            char_field = CharField(max_length=100, primary_key=True)
+            int_field = IntegerField()
+
+            _meta = mocker.MagicMock(concrete_fields=(char_field, int_field), private_fields=())
+            _meta.pk.name = 'char_field'
+
+        _MasterMeta._check_cqrs_fields(Cls)
+
+    assert str(e.value) == 'Duplicate names in CQRS_FIELDS field for model Cls.'
 
 
 def test_model_to_cqrs_dict_basic_types():
@@ -55,56 +115,6 @@ def test_model_to_cqrs_dict_auto_fields():
     cqrs_dct = m.model_to_cqrs_dict()
     for key in ('id', 'created', 'updated'):
         assert cqrs_dct[key] is not None
-
-
-@pytest.mark.django_db
-def test_no_cqrs_id():
-    with pytest.raises(AssertionError) as e:
-
-        class Cls(object):
-            CQRS_ID = None
-
-        _check_cqrs_id(Cls, 'cls', 'MasterMixin')
-
-    assert str(e.value) == 'CQRS_ID must be set for every model, that uses CQRS.'
-
-
-def test_cqrs_fields_non_existing_field(mocker):
-    with pytest.raises(AssertionError) as e:
-
-        class Cls(object):
-            CQRD_ID = 'ID'
-            CQRS_FIELDS = ('char_field', 'integer_field')
-
-            char_field = CharField(max_length=100, primary_key=True)
-            int_field = IntegerField()
-
-            _meta = mocker.MagicMock()
-            _meta.pk.name = 'char_field'
-
-        _check_cqrs_fields(Cls)
-
-    assert str(e.value) == 'CQRS_FIELDS are not setup correctly for model Cls.'
-
-
-def test_cqrs_fields_id_is_not_included(mocker):
-    with pytest.raises(AssertionError) as e:
-
-        class Cls(object):
-            CQRD_ID = 'ID'
-            CQRS_FIELDS = ('int_field',)
-
-            char_field = CharField(max_length=100, primary_key=True)
-            int_field = IntegerField()
-
-            _meta = mocker.MagicMock(
-                concrete_fields=(char_field, int_field), private_fields=(),
-                pk=mocker.MagicMock(name='char_field'),
-            )
-
-        _check_cqrs_fields(Cls)
-
-    assert str(e.value) == 'PK is not in CQRS_FIELDS for model Cls.'
 
 
 def test_cqrs_sync_not_created():
