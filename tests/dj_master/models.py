@@ -27,7 +27,7 @@ class AllFieldsModel(MasterMixin, models.Model):
 
 
 class ChosenFieldsModel(MasterMixin, models.Model):
-    CQRS_FIELDS = ('char_field',)
+    CQRS_FIELDS = ('char_field', 'id')
     CQRS_ID = 'chosen'
 
     float_field = models.IntegerField(null=True)

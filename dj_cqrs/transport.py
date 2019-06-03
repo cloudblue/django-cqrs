@@ -21,7 +21,8 @@ class BaseTransport(object):
     @staticmethod
     def produce(payload):
         """ Send data from master model to replicas.
-        :param dj_cqrs.dataclasses.TransportPayload payload:
+
+        :param dj_cqrs.dataclasses.TransportPayload payload: Transport payload from master model.
         """
         raise NotImplementedError
 

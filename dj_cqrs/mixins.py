@@ -3,21 +3,41 @@ from __future__ import unicode_literals
 from itertools import chain
 
 import six
+from django.db import transaction
 from django.db.models import Manager, Model, base
 
+from dj_cqrs.constants import ALL_BASIC_FIELDS
 from dj_cqrs.signals import MasterSignals, post_bulk_create, post_update
 from dj_cqrs.factories import ReplicaFactory
 
 
 def _check_cqrs_id(model_cls, model_name, mixin_name):
+    """ Check that CQRS Model has CQRS_ID set up. """
     if model_name != mixin_name:
         assert model_cls.CQRS_ID, 'CQRS_ID must be set for every model, that uses CQRS.'
+
+
+def _check_cqrs_fields(model_cls):
+    """ Check that CQRS Master Model has correct CQRS fields configuration. """
+    if model_cls.CQRS_FIELDS != ALL_BASIC_FIELDS:
+        cqrs_field_names = set(model_cls.CQRS_FIELDS)
+        opts = model_cls._meta
+        model_name = model_cls.__name__
+
+        pk_name = opts.pk.name
+        assert pk_name in cqrs_field_names, \
+            'PK is not in CQRS_FIELDS for model {}.'.format(model_name)
+
+        field_names = {f.name for f in chain(opts.concrete_fields, opts.private_fields)}
+        assert not cqrs_field_names - field_names, \
+            'CQRS_FIELDS are not setup correctly for model {}.'.format(model_name)
 
 
 class _MasterMeta(base.ModelBase):
     def __new__(mcs, *args):
         model_cls = super(_MasterMeta, mcs).__new__(mcs, *args)
         _check_cqrs_id(model_cls, args[0], 'MasterMixin')
+        _check_cqrs_fields(model_cls)
 
         MasterSignals.register_model(model_cls)
         return model_cls
@@ -28,10 +48,10 @@ class _MasterManager(Manager):
         """ Custom update method to support sending update signals.
 
         :param django.db.models.QuerySet queryset: Django Queryset (f.e. filter)
-        :param args: Update args
         :param kwargs: Update kwargs
         """
-        queryset.update(**kwargs)
+        with transaction.atomic():
+            queryset.update(**kwargs)
         queryset.model.call_post_update(list(queryset.all()))
 
 
@@ -43,7 +63,7 @@ class MasterMixin(six.with_metaclass(_MasterMeta, Model)):
     CQRS_ID - Unique CQRS identifier for all microservices.
     cqrs - Manager, that adds needed CQRS queryset methods.
     """
-    CQRS_FIELDS = '__all__'
+    CQRS_FIELDS = ALL_BASIC_FIELDS
     CQRS_ID = None
 
     objects = Manager()
@@ -56,7 +76,7 @@ class MasterMixin(six.with_metaclass(_MasterMeta, Model)):
         """ CQRS serialization for transport payload. """
         opts = self._meta
 
-        if isinstance(self.CQRS_FIELDS, six.string_types) and self.CQRS_FIELDS == '__all__':
+        if isinstance(self.CQRS_FIELDS, six.string_types) and self.CQRS_FIELDS == ALL_BASIC_FIELDS:
             included_fields = None
         else:
             included_fields = self.CQRS_FIELDS

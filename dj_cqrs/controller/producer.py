@@ -11,5 +11,5 @@ def produce(signal_type, cqrs_id, instance_data):
     :param str cqrs_id: Master model CQRS unique identifier.
     :param dict instance_data: Master model data.
     """
-    payload = TransportPayload(signal_type=signal_type, cqrs_id=cqrs_id, instance_data=instance_data)
+    payload = TransportPayload(signal_type, cqrs_id, instance_data)
     current_transport.produce(payload)

@@ -2,10 +2,12 @@ from __future__ import unicode_literals
 
 import pytest
 from uuid import uuid4
+
+from django.db.models import CharField, IntegerField
 from django.utils.timezone import now
 
-from dj_cqrs.mixins import _check_cqrs_id
-from tests.dj.transport import publish_signal
+from dj_cqrs.constants import SignalType
+from dj_cqrs.mixins import _check_cqrs_fields, _check_cqrs_id
 from tests.dj_master import models
 
 
@@ -23,9 +25,14 @@ def test_model_to_cqrs_dict_basic_types():
         uuid_field=uid,
     )
     assert m.model_to_cqrs_dict() == {
-        'int_field': 1, 'bool_field': False, 'char_field': 'str',
-        'date_field': None, 'datetime_field': dt, 'float_field': 1.23,
-        'url_field': 'http://example.com', 'uuid_field': uid,
+        'int_field': 1,
+        'bool_field': False,
+        'char_field': 'str',
+        'date_field': None,
+        'datetime_field': dt,
+        'float_field': 1.23,
+        'url_field': 'http://example.com',
+        'uuid_field': uid,
     }
 
 
@@ -36,7 +43,7 @@ def test_model_to_cqrs_dict_all_fields():
 
 def test_model_to_cqrs_dict_chosen_fields():
     m = models.ChosenFieldsModel(float_field=1.23)
-    assert m.model_to_cqrs_dict() == {'char_field': None}
+    assert m.model_to_cqrs_dict() == {'char_field': None, 'id': None}
 
 
 @pytest.mark.django_db
@@ -53,10 +60,51 @@ def test_model_to_cqrs_dict_auto_fields():
 @pytest.mark.django_db
 def test_no_cqrs_id():
     with pytest.raises(AssertionError) as e:
+
         class Cls(object):
             CQRS_ID = None
+
         _check_cqrs_id(Cls, 'cls', 'MasterMixin')
+
     assert str(e.value) == 'CQRS_ID must be set for every model, that uses CQRS.'
+
+
+def test_cqrs_fields_non_existing_field(mocker):
+    with pytest.raises(AssertionError) as e:
+
+        class Cls(object):
+            CQRD_ID = 'ID'
+            CQRS_FIELDS = ('char_field', 'integer_field')
+
+            char_field = CharField(max_length=100, primary_key=True)
+            int_field = IntegerField()
+
+            _meta = mocker.MagicMock()
+            _meta.pk.name = 'char_field'
+
+        _check_cqrs_fields(Cls)
+
+    assert str(e.value) == 'CQRS_FIELDS are not setup correctly for model Cls.'
+
+
+def test_cqrs_fields_id_is_not_included(mocker):
+    with pytest.raises(AssertionError) as e:
+
+        class Cls(object):
+            CQRD_ID = 'ID'
+            CQRS_FIELDS = ('int_field',)
+
+            char_field = CharField(max_length=100, primary_key=True)
+            int_field = IntegerField()
+
+            _meta = mocker.MagicMock(
+                concrete_fields=(char_field, int_field), private_fields=(),
+                pk=mocker.MagicMock(name='char_field'),
+            )
+
+        _check_cqrs_fields(Cls)
+
+    assert str(e.value) == 'PK is not in CQRS_FIELDS for model Cls.'
 
 
 def test_cqrs_sync_not_created():
@@ -71,27 +119,27 @@ def test_cqrs_sync_cant_refresh_model():
 
 
 @pytest.mark.django_db
-def test_cqrs_sync_not_saved():
+def test_cqrs_sync_not_saved(mocker):
     m = models.ChosenFieldsModel.objects.create(char_field='old')
     m.name = 'new'
 
-    def assert_handler(sender, **kwargs):
-        payload = kwargs['payload']
-        assert payload.instance_data['char_field'] == 'old'
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
 
-    publish_signal.connect(assert_handler)
     assert m.cqrs_sync()
+    publisher_mock.assert_called_once_with(
+        SignalType.SAVE, models.ChosenFieldsModel.CQRS_ID, {'char_field': 'old', 'id': 1},
+    )
 
 
 @pytest.mark.django_db
-def test_cqrs_sync():
+def test_cqrs_sync(mocker):
     m = models.ChosenFieldsModel.objects.create(char_field='old')
     m.char_field = 'new'
     m.save(update_fields=['char_field'])
 
-    def assert_handler(sender, **kwargs):
-        payload = kwargs['payload']
-        assert payload.instance_data['char_field'] == 'new'
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
 
-    publish_signal.connect(assert_handler)
     assert m.cqrs_sync()
+    publisher_mock.assert_called_once_with(
+        SignalType.SAVE, models.ChosenFieldsModel.CQRS_ID, {'char_field': 'new', 'id': 1},
+    )
