@@ -1,14 +1,18 @@
 from __future__ import unicode_literals
 
+import logging
 from itertools import chain
 
 import six
-from django.db import transaction
-from django.db.models import Manager, Model, base
+from django.db import Error, transaction
+from django.db.models import DateTimeField, IntegerField, Manager, Model, base, F
+from django.utils import timezone
 
 from dj_cqrs.constants import ALL_BASIC_FIELDS
 from dj_cqrs.registries import MasterRegistry, ReplicaRegistry
 from dj_cqrs.signals import MasterSignals, post_bulk_create, post_update
+
+logger = logging.getLogger()
 
 
 class _MetaUtils(object):
@@ -74,15 +78,19 @@ class _MasterMeta(base.ModelBase):
 
 
 class _MasterManager(Manager):
-    def update(self, queryset, **kwargs):
+    def bulk_update(self, queryset, **kwargs):
         """ Custom update method to support sending update signals.
 
         :param django.db.models.QuerySet queryset: Django Queryset (f.e. filter)
         :param kwargs: Update kwargs
         """
         with transaction.atomic():
-            queryset.update(**kwargs)
+            current_dt = timezone.now()
+            result = queryset.update(
+                cqrs_counter=F('cqrs_counter') + 1, cqrs_updated=current_dt, **kwargs
+            )
         queryset.model.call_post_update(list(queryset.all()))
+        return result
 
 
 class MasterMixin(six.with_metaclass(_MasterMeta, Model)):
@@ -99,8 +107,22 @@ class MasterMixin(six.with_metaclass(_MasterMeta, Model)):
     objects = Manager()
     cqrs = _MasterManager()
 
+    cqrs_counter = IntegerField(
+        default=0, help_text="This field must be incremented on any model update. "
+                             "It's used to for CQRS sync.",
+    )
+    cqrs_updated = DateTimeField(
+        auto_now=True, help_text="This field must be incremented on every model update. "
+                                 "It's used to for CQRS sync.",
+    )
+
     class Meta:
         abstract = True
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            self.cqrs_counter = F('cqrs_counter') + 1
+        return super(MasterMixin, self).save(*args, **kwargs)
 
     def model_to_cqrs_dict(self):
         """ CQRS serialization for transport payload. """
@@ -117,6 +139,11 @@ class MasterMixin(six.with_metaclass(_MasterMeta, Model)):
                 continue
 
             data[f.name] = f.value_from_object(self)
+
+        # We need to include additional fields for synchronisation, f.e. to prevent de-duplication
+        for cqrs_tech_field_name in ('cqrs_counter', 'cqrs_updated'):
+            data[cqrs_tech_field_name] = getattr(self, cqrs_tech_field_name)
+
         return data
 
     def cqrs_sync(self):
@@ -148,9 +175,9 @@ class MasterMixin(six.with_metaclass(_MasterMeta, Model)):
         """ Post bulk update signal caller (django doesn't support it by default).
 
         .. code-block:: python
-            # Used automatically by cqrs.update()
+            # Used automatically by cqrs.bulk_update()
             qs = model.objects.filter(k1=v1)
-            model.cqrs.update(qs, k2=v2)
+            model.cqrs.bulk_update(qs, k2=v2)
         """
         post_update.send(cls, instances=instances)
 
@@ -185,18 +212,88 @@ class ReplicaMixin(six.with_metaclass(_ReplicaMeta, Model)):
 
     CQRS_ID - Unique CQRS identifier for all microservices.
     CQRS_MAPPING - Mapping of master data field name to replica model field name.
+
+    Django docs state, that for model level functions we need to use model managers. The problem is
+    that some models need to override behaviour of model level functions. Manager level
+    implementation would bring unneeded level of complexity for support and increase model-manager
+    coupling.
     """
     CQRS_ID = None
     CQRS_MAPPING = None
+
+    cqrs_counter = IntegerField()
+    cqrs_updated = DateTimeField()
 
     class Meta:
         abstract = True
 
     @classmethod
     def cqrs_save(cls, master_data):
-        raise NotImplementedError
+        mapped_data = cls._map_save_data(master_data)
+        if mapped_data:
+            raise NotImplementedError
 
     @classmethod
     def cqrs_delete(cls, master_data):
-        raise NotImplementedError
+        mapped_data = cls._map_delete_data(master_data)
+        if mapped_data:
+            try:
+                pk_name = cls._get_pk_name()
+                pk_value = mapped_data[pk_name]
+                cls._default_manager.filter(**{pk_name: pk_value}).delete()
+            except Error as e:
+                logger.error('{}\npk = {}'.format(str(e), pk_value))
 
+    @classmethod
+    def _get_pk_name(cls):
+        return cls._meta.pk.name
+
+    @classmethod
+    def _map_save_data(cls, master_data):
+        if cls.CQRS_MAPPING is not None:
+            mapped_data = {}
+            for master_name, replica_name in cls.CQRS_MAPPING.items():
+                if master_name not in master_data:
+                    logger.error('Bad master-replica mapping for {} ({}).'.format(
+                        master_name, cls.CQRS_ID,
+                    ))
+                    return
+
+                mapped_data[replica_name] = master_data[master_name]
+
+        else:
+            mapped_data = master_data
+
+        if cls._get_pk_name() not in mapped_data:
+            cls._log_pk_data_error()
+            return
+
+        if cls._cqrs_fields_are_filled(mapped_data):
+            return mapped_data
+
+    @classmethod
+    def _map_delete_data(cls, master_data):
+        if 'id' not in master_data:
+            cls._log_pk_data_error()
+            return
+
+        if not cls._cqrs_fields_are_filled(master_data):
+            return
+
+        return {
+            cls._get_pk_name(): master_data['id'],
+            'cqrs_counter': master_data['cqrs_counter'],
+            'cqrs_updated': master_data['cqrs_updated'],
+        }
+
+    @classmethod
+    def _cqrs_fields_are_filled(cls, data):
+        if 'cqrs_counter' in data and 'cqrs_updated' in data:
+            return True
+
+        logger.error('CQRS sync fields are not provided in data ({}).'.format(cls.CQRS_ID))
+        return False
+
+    @classmethod
+    def _log_pk_data_error(cls):
+        logger.error('PK is not provided in data ({}).'.format(cls.CQRS_ID))

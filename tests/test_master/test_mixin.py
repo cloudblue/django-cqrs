@@ -9,6 +9,7 @@ from django.utils.timezone import now
 from dj_cqrs.constants import SignalType
 from dj_cqrs.mixins import _MasterMeta
 from tests.dj_master import models
+from tests.utils import assert_is_sub_dict, assert_publisher_once_called_with_args
 
 
 def test_cqrs_fields_non_existing_field(mocker):
@@ -65,6 +66,13 @@ def test_cqrs_fields_duplicates(mocker):
     assert str(e.value) == 'Duplicate names in CQRS_FIELDS field for model Cls.'
 
 
+@pytest.mark.django_db
+def test_model_to_cqrs_dict_has_cqrs_fields():
+    m = models.AutoFieldsModel.objects.create()
+    dct = m.model_to_cqrs_dict()
+    assert dct['cqrs_counter'] == 0 and dct['cqrs_updated'] is not None
+
+
 def test_model_to_cqrs_dict_basic_types():
     dt = now()
     uid = uuid4()
@@ -78,7 +86,7 @@ def test_model_to_cqrs_dict_basic_types():
         url_field='http://example.com',
         uuid_field=uid,
     )
-    assert m.model_to_cqrs_dict() == {
+    assert_is_sub_dict({
         'int_field': 1,
         'bool_field': False,
         'char_field': 'str',
@@ -87,23 +95,23 @@ def test_model_to_cqrs_dict_basic_types():
         'float_field': 1.23,
         'url_field': 'http://example.com',
         'uuid_field': uid,
-    }
+    }, m.model_to_cqrs_dict())
 
 
 def test_model_to_cqrs_dict_all_fields():
     m = models.AllFieldsModel(char_field='str')
-    assert m.model_to_cqrs_dict() == {'id': None, 'int_field': None, 'char_field': 'str'}
+    assert_is_sub_dict({'id': None, 'int_field': None, 'char_field': 'str'}, m.model_to_cqrs_dict())
 
 
 def test_model_to_cqrs_dict_chosen_fields():
     m = models.ChosenFieldsModel(float_field=1.23)
-    assert m.model_to_cqrs_dict() == {'char_field': None, 'id': None}
+    assert_is_sub_dict({'char_field': None, 'id': None}, m.model_to_cqrs_dict())
 
 
 @pytest.mark.django_db
 def test_model_to_cqrs_dict_auto_fields():
     m = models.AutoFieldsModel()
-    assert m.model_to_cqrs_dict() == {'id': None, 'created': None, 'updated': None}
+    assert_is_sub_dict({'id': None, 'created': None, 'updated': None}, m.model_to_cqrs_dict())
 
     m.save()
     cqrs_dct = m.model_to_cqrs_dict()
@@ -130,7 +138,8 @@ def test_cqrs_sync_not_saved(mocker):
     publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
 
     assert m.cqrs_sync()
-    publisher_mock.assert_called_once_with(
+    assert_publisher_once_called_with_args(
+        publisher_mock,
         SignalType.SAVE, models.ChosenFieldsModel.CQRS_ID, {'char_field': 'old', 'id': 1},
     )
 
@@ -144,6 +153,30 @@ def test_cqrs_sync(mocker):
     publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
 
     assert m.cqrs_sync()
-    publisher_mock.assert_called_once_with(
+    assert_publisher_once_called_with_args(
+        publisher_mock,
         SignalType.SAVE, models.ChosenFieldsModel.CQRS_ID, {'char_field': 'new', 'id': 1},
     )
+
+
+@pytest.mark.django_db
+def test_create():
+    for _ in range(2):
+        m = models.AutoFieldsModel.objects.create()
+        assert m.cqrs_counter == 0
+        assert m.cqrs_updated is not None
+
+
+@pytest.mark.django_db
+def test_update():
+    m = models.AutoFieldsModel.objects.create()
+    cqrs_updated = m.cqrs_updated
+
+    for i in range(1, 3):
+        m.save()
+        m.refresh_from_db()
+
+        assert m.cqrs_counter == i
+
+        assert m.cqrs_updated > cqrs_updated
+        cqrs_updated = m.cqrs_updated

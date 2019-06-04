@@ -22,7 +22,7 @@ class MasterSignals(object):
         models.signals.post_delete.connect(cls.post_delete, sender=model_cls)
 
         post_bulk_create.connect(cls.post_bulk_create, sender=model_cls)
-        post_update.connect(cls.post_update, sender=model_cls)
+        post_update.connect(cls.post_bulk_update, sender=model_cls)
 
     @classmethod
     def post_save(cls, sender, **kwargs):
@@ -53,7 +53,7 @@ class MasterSignals(object):
             cls.post_save(sender, instance=instance)
 
     @classmethod
-    def post_update(cls, sender, **kwargs):
+    def post_bulk_update(cls, sender, **kwargs):
         """
         :param dj_cqrs.mixins.MasterMixin sender: Class or instance inherited from CQRS MasterMixin.
         """
