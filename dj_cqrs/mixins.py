@@ -191,3 +191,12 @@ class ReplicaMixin(six.with_metaclass(_ReplicaMeta, Model)):
 
     class Meta:
         abstract = True
+
+    @classmethod
+    def cqrs_save(cls, master_data):
+        raise NotImplementedError
+
+    @classmethod
+    def cqrs_delete(cls, master_data):
+        raise NotImplementedError
+

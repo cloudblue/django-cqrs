@@ -7,14 +7,8 @@ from django.db.models import CharField, IntegerField
 from django.utils.timezone import now
 
 from dj_cqrs.constants import SignalType
-from dj_cqrs.mixins import _MasterMeta, _MetaUtils
-from dj_cqrs.registries import MasterRegistry
+from dj_cqrs.mixins import _MasterMeta
 from tests.dj_master import models
-
-
-@pytest.mark.parametrize('model', (models.SimplestModel, models.AutoFieldsModel))
-def test_models_are_registered(model):
-    assert MasterRegistry.models[model.CQRS_ID] == model
 
 
 def test_cqrs_fields_non_existing_field(mocker):

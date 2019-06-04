@@ -5,13 +5,6 @@ import pytest
 from django.db.models import CharField, IntegerField
 
 from dj_cqrs.mixins import _ReplicaMeta
-from dj_cqrs.registries import ReplicaRegistry
-from tests.dj_replica import models
-
-
-@pytest.mark.parametrize('model', (models.BasicFieldsModelRef, models.BadTypeModelRef))
-def test_models_are_registered(model):
-    assert ReplicaRegistry.models[model.CQRS_ID] == model
 
 
 def test_cqrs_fields_non_existing_field(mocker):
@@ -74,3 +67,27 @@ def test_cqrs_fields_duplicates(mocker):
         _ReplicaMeta._check_cqrs_mapping(Cls)
 
     assert str(e.value) == 'Duplicate names in CQRS_MAPPING field for model Cls.'
+
+
+def test_create_ok():
+    raise NotImplementedError
+
+
+def test_create_db_error():
+    raise NotImplementedError
+
+
+def test_update_ok():
+    raise NotImplementedError
+
+
+def test_update_db_error():
+    raise NotImplementedError
+
+
+def test_delete_ok():
+    raise NotImplementedError
+
+
+def test_delete_db_error():
+    raise NotImplementedError

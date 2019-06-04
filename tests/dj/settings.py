@@ -56,4 +56,5 @@ CQRS = {
     'transport': {
         'class': 'tests.dj.transport.TransportStub',
     },
+    'queue': 'replica',
 }
