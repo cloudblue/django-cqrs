@@ -28,7 +28,7 @@ class MasterMixin(six.with_metaclass(MasterMeta, Model)):
     objects = Manager()
     cqrs = MasterManager()
 
-    cqrs_counter = IntegerField(
+    cqrs_revision = IntegerField(
         default=0, help_text="This field must be incremented on any model update. "
                              "It's used to for CQRS sync.",
     )
@@ -42,7 +42,7 @@ class MasterMixin(six.with_metaclass(MasterMeta, Model)):
 
     def save(self, *args, **kwargs):
         if not self._state.adding:
-            self.cqrs_counter = F('cqrs_counter') + 1
+            self.cqrs_revision = F('cqrs_revision') + 1
         return super(MasterMixin, self).save(*args, **kwargs)
 
     def to_cqrs_dict(self):
@@ -62,7 +62,7 @@ class MasterMixin(six.with_metaclass(MasterMeta, Model)):
             data[f.name] = f.value_from_object(self)
 
         # We need to include additional fields for synchronisation, f.e. to prevent de-duplication
-        for cqrs_tech_field_name in ('cqrs_counter', 'cqrs_updated'):
+        for cqrs_tech_field_name in ('cqrs_revision', 'cqrs_updated'):
             data[cqrs_tech_field_name] = getattr(self, cqrs_tech_field_name)
 
         return data
@@ -117,7 +117,7 @@ class ReplicaMixin(six.with_metaclass(ReplicaMeta, Model)):
     objects = Manager()
     cqrs = ReplicaManager()
 
-    cqrs_counter = IntegerField()
+    cqrs_revision = IntegerField()
     cqrs_updated = DateTimeField()
 
     class Meta:

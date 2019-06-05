@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 from django.db import models
 from django.dispatch import Signal
+from django.utils.timezone import now
 
 from dj_cqrs.controller import producer
 from dj_cqrs.constants import SignalType
@@ -39,7 +40,10 @@ class MasterSignals(object):
         """
         :param dj_cqrs.mixins.MasterMixin sender: Class or instance inherited from CQRS MasterMixin.
         """
-        instance_data = {'id': kwargs['instance'].pk}
+        instance = kwargs['instance']
+        instance_data = {
+            'id': instance.pk, 'cqrs_revision': instance.cqrs_revision + 1, 'cqrs_updated': now(),
+        }
         signal_type = SignalType.DELETE
 
         producer.produce(signal_type, sender.CQRS_ID, instance_data)

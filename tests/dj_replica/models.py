@@ -35,3 +35,14 @@ class MappedFieldsModelRef(ReplicaMixin, models.Model):
 
     id = models.IntegerField(primary_key=True)
     name = models.CharField(max_length=200)
+
+
+class BadMappingModelRef(ReplicaMixin, models.Model):
+    CQRS_ID = 'basic_3'
+    CQRS_MAPPING = {
+        'int_field': 'id',
+        'invalid_field': 'name',
+    }
+
+    id = models.IntegerField(primary_key=True)
+    name = models.CharField(max_length=200)

@@ -76,7 +76,7 @@ def test_cqrs_fields_duplicates(mocker):
 def test_create_simple():
     instance = models.BasicFieldsModelRef.cqrs_save({
         'int_field': 1,
-        'cqrs_counter': 0,
+        'cqrs_revision': 0,
         'cqrs_updated': now(),
         'char_field': 'text',
         'bool_field': False,
@@ -95,7 +95,7 @@ def test_create_simple():
 def test_create_simple_excessive_data():
     instance = models.BasicFieldsModelRef.cqrs_save({
         'int_field': 1,
-        'cqrs_counter': 0,
+        'cqrs_revision': 0,
         'cqrs_updated': now(),
         'char_field': 'text',
         'unexpected_field': 'value',
@@ -103,10 +103,11 @@ def test_create_simple_excessive_data():
     assert isinstance(instance, models.BasicFieldsModelRef)
 
 
+@pytest.mark.django_db
 def test_create_simple_insufficient_data(caplog):
     models.BasicFieldsModelRef.cqrs_save({
         'int_field': 1,
-        'cqrs_counter': 0,
+        'cqrs_revision': 0,
         'cqrs_updated': now(),
     })
 
@@ -117,7 +118,7 @@ def test_create_simple_insufficient_data(caplog):
 def test_create_mapped(caplog):
     instance = models.MappedFieldsModelRef.cqrs_save({
         'int_field': 1,
-        'cqrs_counter': 0,
+        'cqrs_revision': 0,
         'cqrs_updated': now(),
         'char_field': 'text',
     })
@@ -129,42 +130,88 @@ def test_create_mapped(caplog):
 
 
 @pytest.mark.django_db
+def test_create_mapped_bad_mapping(caplog):
+    models.BadMappingModelRef.cqrs_save({
+        'int_field': 1,
+        'cqrs_revision': 0,
+        'cqrs_updated': now(),
+        'char_field': 'text',
+    })
+
+    assert 'Bad master-replica mapping for invalid_field (basic_3).' in caplog.text
+
+
+@pytest.mark.django_db
 def test_create_db_error(mocker, caplog):
     mocker.patch.object(models.BasicFieldsModelRef.objects, 'create', side_effect=db_error)
 
     models.BasicFieldsModelRef.cqrs_save({
         'int_field': 1,
-        'cqrs_counter': 0,
+        'cqrs_revision': 0,
         'cqrs_updated': now(),
         'char_field': 'text',
     })
     assert 'CQRS create error: pk = 1 (basic).' in caplog.text
 
 
+@pytest.mark.django_db
 def test_update_ok():
-    raise NotImplementedError
+    models.BasicFieldsModelRef.objects.create(**{
+        'int_field': 1,
+        'cqrs_revision': 0,
+        'cqrs_updated': now(),
+        'char_field': 'text',
+    })
+
+    instance = models.BasicFieldsModelRef.cqrs_save({
+        'int_field': 1,
+        'cqrs_revision': 1,
+        'cqrs_updated': now(),
+        'char_field': 'new_text',
+        'float_field': 1.30,
+    })
+
+    assert isinstance(instance, models.BasicFieldsModelRef)
+
+    instance.refresh_from_db()
+    assert instance.int_field == 1
+    assert instance.char_field == 'new_text'
+    assert instance.float_field == 1.30
 
 
-def test_update_non_existing_id():
-    raise NotImplementedError
+@pytest.mark.django_db
+def test_update_db_error(mocker, caplog):
+    models.BasicFieldsModelRef.objects.create(**{
+        'int_field': 1,
+        'cqrs_revision': 0,
+        'cqrs_updated': now(),
+        'char_field': 'text',
+    })
 
+    mocker.patch.object(models.BasicFieldsModelRef, 'save', side_effect=db_error)
 
-def test_update_db_error():
-    raise NotImplementedError
+    models.BasicFieldsModelRef.cqrs_save({
+        'int_field': 1,
+        'cqrs_revision': 1,
+        'cqrs_updated': now(),
+        'char_field': 'text',
+    })
+    assert 'CQRS update error: pk = 1, cqrs_revision = 1 (basic).' in caplog.text
 
 
 @pytest.mark.django_db
 def test_delete_ok():
     dt = now()
-    models.BasicFieldsModelRef.objects.create(
-        int_field=1,
-        cqrs_counter=0,
-        cqrs_updated=dt,
-    )
+    models.BasicFieldsModelRef.objects.create(**{
+        'int_field': 1,
+        'cqrs_revision': 0,
+        'cqrs_updated': dt,
+        'char_field': 'text',
+    })
 
     is_deleted = models.BasicFieldsModelRef.cqrs_delete({
         'id': 1,
-        'cqrs_counter': 0,
+        'cqrs_revision': 0,
         'cqrs_updated': dt,
     })
 
@@ -176,7 +223,7 @@ def test_delete_ok():
 def test_delete_non_existing_id():
     is_deleted = models.BasicFieldsModelRef.cqrs_delete({
         'id': 1,
-        'cqrs_counter': 0,
+        'cqrs_revision': 0,
         'cqrs_updated': now(),
     })
 
@@ -184,12 +231,13 @@ def test_delete_non_existing_id():
     assert models.BasicFieldsModelRef.objects.count() == 0
 
 
+@pytest.mark.django_db
 def test_delete_db_error(mocker, caplog):
     mocker.patch.object(models.BasicFieldsModelRef.objects, 'filter', side_effect=db_error)
 
     is_deleted = models.BasicFieldsModelRef.cqrs_delete({
         'id': 1,
-        'cqrs_counter': 0,
+        'cqrs_revision': 0,
         'cqrs_updated': now(),
     })
 
@@ -201,17 +249,18 @@ def test_delete_db_error(mocker, caplog):
 def test_save_bad_master_data_field_type(caplog):
     models.BadTypeModelRef.cqrs_save({
         'int_field': 1,
-        'cqrs_counter': 0,
+        'cqrs_revision': 0,
         'cqrs_updated': now(),
         'datetime_field': now(),
     })
     assert 'CQRS create error: pk = 1 (basic_1).' in caplog.text
 
 
+@pytest.mark.django_db
 def test_save_no_pk_in_master_data(caplog):
     models.BasicFieldsModelRef.cqrs_save({
         'id': 1,
-        'cqrs_counter': 0,
+        'cqrs_revision': 0,
         'cqrs_updated': now(),
         'char_field': 'text',
     })
@@ -219,19 +268,21 @@ def test_save_no_pk_in_master_data(caplog):
     assert 'CQRS PK is not provided in data (basic).' in caplog.text
 
 
+@pytest.mark.django_db
 def test_save_no_cqrs_fields_in_master_data(caplog):
     models.BasicFieldsModelRef.cqrs_save({
         'int_field': 1,
-        'cqrs_counter': 0,
+        'cqrs_revision': 0,
         'char_field': 'text',
     })
 
     assert 'CQRS sync fields are not provided in data (basic).' in caplog.text
 
 
+@pytest.mark.django_db
 def test_delete_no_id_in_master_data(caplog):
     is_deleted = models.BasicFieldsModelRef.cqrs_delete({
-        'cqrs_counter': 0,
+        'cqrs_revision': 0,
         'cqrs_updated': now(),
     })
 
@@ -239,23 +290,150 @@ def test_delete_no_id_in_master_data(caplog):
     assert 'CQRS PK is not provided in data (basic).' in caplog.text
 
 
+@pytest.mark.django_db
 def test_delete_no_cqrs_fields_in_master_data(caplog):
     is_deleted = models.BasicFieldsModelRef.cqrs_delete({
         'id': 1,
-        'cqrs_counter': 0,
+        'cqrs_revision': 0,
     })
 
     assert not is_deleted
     assert 'CQRS sync fields are not provided in data (basic).' in caplog.text
 
 
-def test_update_before_create_is_over():
-    raise NotImplementedError
+@pytest.mark.django_db(transaction=True)
+def test_update_before_create_is_over(caplog):
+    create_data = {
+        'int_field': 1,
+        'cqrs_revision': 0,
+        'cqrs_updated': now(),
+        'char_field': 'text',
+    }
+
+    update_data = {
+        'int_field': 1,
+        'cqrs_revision': 1,
+        'cqrs_updated': now(),
+        'char_field': 'new_text',
+    }
+
+    updated_instance = models.BasicFieldsModelRef.cqrs_save(update_data)
+    created_instance = models.BasicFieldsModelRef.cqrs.create_instance(create_data)
+    updated_instance.refresh_from_db()
+
+    assert updated_instance.cqrs_revision == 1
+    assert updated_instance.char_field == 'new_text'
+    assert not created_instance
+    assert 'Potentially wrong CQRS sync order: pk = 1, cqrs_revision = 0 (basic).' in caplog.text
+    assert 'CQRS create error: pk = 1 (basic).' in caplog.text
 
 
-def test_wrong_update_order():
-    raise NotImplementedError
+@pytest.mark.django_db(transaction=True)
+def test_wrong_update_order(caplog):
+    models.BasicFieldsModelRef.objects.create(**{
+        'int_field': 1,
+        'cqrs_revision': 0,
+        'cqrs_updated': now(),
+        'char_field': 'text',
+    })
+
+    update_data_1 = {
+        'int_field': 1,
+        'cqrs_revision': 1,
+        'cqrs_updated': now(),
+        'char_field': 'new_text_1',
+    }
+
+    update_data_2 = {
+        'int_field': 1,
+        'cqrs_revision': 2,
+        'cqrs_updated': now(),
+        'char_field': 'new_text_2',
+    }
+
+    earlier_instance = models.BasicFieldsModelRef.cqrs_save(update_data_2)
+    later_instance = models.BasicFieldsModelRef.cqrs_save(update_data_1)
+    earlier_instance.refresh_from_db()
+
+    assert earlier_instance.cqrs_revision == 2
+    assert earlier_instance.char_field == 'new_text_2'
+    assert not later_instance
+    assert 'Wrong CQRS sync order: pk = 1, cqrs_revision = 1 (basic).' in caplog.text
 
 
-def test_create_before_delete_is_over():
-    raise NotImplementedError
+@pytest.mark.django_db(transaction=True)
+def test_de_duplication(caplog):
+    models.BasicFieldsModelRef.objects.create(**{
+        'int_field': 1,
+        'cqrs_revision': 0,
+        'cqrs_updated': now(),
+        'char_field': 'text',
+    })
+
+    update_data = {
+        'int_field': 1,
+        'cqrs_revision': 1,
+        'cqrs_updated': now(),
+        'char_field': 'new_text',
+    }
+
+    earlier_instance = models.BasicFieldsModelRef.cqrs_save(update_data)
+    duplicate_instance = models.BasicFieldsModelRef.cqrs_save(update_data)
+
+    assert earlier_instance.cqrs_revision == 1
+    assert earlier_instance.char_field == 'new_text'
+    assert duplicate_instance.cqrs_revision == 1
+    assert duplicate_instance.char_field == 'new_text'
+    assert 'Received duplicate CQRS data: pk = 1, cqrs_revision = 1 (basic).' in caplog.text
+
+
+@pytest.mark.django_db(transaction=True)
+def test_create_before_delete_is_over(caplog):
+    # This situation may extremely rarely happen, if the IDs are not auto incremented on master
+    #  and are not unique in the infinite timeline.
+    # This will lead to expected inconsistency.
+
+    models.BasicFieldsModelRef.objects.create(**{
+        'int_field': 1,
+        'cqrs_revision': 0,
+        'cqrs_updated': now(),
+        'char_field': 'text',
+    })
+
+    delete_data = {
+        'id': 1,
+        'cqrs_revision': 1,
+        'cqrs_updated': now(),
+    }
+    new_create_data = {
+        'int_field': 1,
+        'cqrs_revision': 0,
+        'cqrs_updated': now(),
+        'char_field': 'other',
+    }
+
+    models.BasicFieldsModelRef.cqrs_save(new_create_data)
+    is_deleted = models.BasicFieldsModelRef.cqrs_delete(delete_data)
+
+    assert 'Received duplicate CQRS data: pk = 1, cqrs_revision = 0 (basic).' in caplog.text
+    assert 'CQRS potential creation race condition: pk = 1 (basic).' in caplog.text
+    assert is_deleted
+
+
+@pytest.mark.django_db
+def test_updates_were_lost(caplog):
+    models.BasicFieldsModelRef.objects.create(**{
+        'int_field': 1,
+        'cqrs_revision': 0,
+        'cqrs_updated': now(),
+        'char_field': 'text',
+    })
+
+    models.BasicFieldsModelRef.cqrs_save({
+        'int_field': 1,
+        'cqrs_revision': 5,
+        'cqrs_updated': now(),
+        'char_field': 'text1',
+    })
+
+    assert 'Lost 4 CQRS packages: pk = 1, cqrs_revision = 5 (basic)' in caplog.text

@@ -47,8 +47,9 @@ def test_post_save_delete(mocker):
     publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
     m.delete()
 
-    publisher_mock.assert_called_once_with(
-        SignalType.DELETE, models.SimplestModel.CQRS_ID, {'id': 1},
+    assert_publisher_once_called_with_args(
+        publisher_mock,
+        SignalType.DELETE, models.SimplestModel.CQRS_ID, {'id': 1, 'cqrs_revision': 1},
     )
 
 
@@ -82,4 +83,4 @@ def test_post_bulk_update(mocker):
 
     m = models.SimplestModel.objects.get(id=1)
     assert m.cqrs_updated > cqrs_updated
-    assert m.cqrs_counter == 1
+    assert m.cqrs_revision == 1

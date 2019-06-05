@@ -70,7 +70,7 @@ def test_cqrs_fields_duplicates(mocker):
 def test_to_cqrs_dict_has_cqrs_fields():
     m = models.AutoFieldsModel.objects.create()
     dct = m.to_cqrs_dict()
-    assert dct['cqrs_counter'] == 0 and dct['cqrs_updated'] is not None
+    assert dct['cqrs_revision'] == 0 and dct['cqrs_updated'] is not None
 
 
 def test_to_cqrs_dict_basic_types():
@@ -163,7 +163,7 @@ def test_cqrs_sync(mocker):
 def test_create():
     for _ in range(2):
         m = models.AutoFieldsModel.objects.create()
-        assert m.cqrs_counter == 0
+        assert m.cqrs_revision == 0
         assert m.cqrs_updated is not None
 
 
@@ -176,7 +176,7 @@ def test_update():
         m.save()
         m.refresh_from_db()
 
-        assert m.cqrs_counter == i
+        assert m.cqrs_revision == i
 
         assert m.cqrs_updated > cqrs_updated
         cqrs_updated = m.cqrs_updated

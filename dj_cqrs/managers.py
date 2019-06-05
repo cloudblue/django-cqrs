@@ -4,7 +4,7 @@ import logging
 from itertools import chain
 
 from django.core.exceptions import ValidationError
-from django.db import Error, transaction
+from django.db import Error, IntegrityError, transaction
 from django.db.models import Manager, F
 from django.utils import timezone
 
@@ -22,13 +22,14 @@ class MasterManager(Manager):
         with transaction.atomic():
             current_dt = timezone.now()
             result = queryset.update(
-                cqrs_counter=F('cqrs_counter') + 1, cqrs_updated=current_dt, **kwargs
+                cqrs_revision=F('cqrs_revision') + 1, cqrs_updated=current_dt, **kwargs
             )
         queryset.model.call_post_update(list(queryset.all()))
         return result
 
 
 class ReplicaManager(Manager):
+    @transaction.atomic
     def save_instance(self, master_data):
         """ This method saves (creates or updates) model instance from CQRS master instance data.
 
@@ -58,9 +59,17 @@ class ReplicaManager(Manager):
         try:
             return self.model._default_manager.create(**mapped_data)
         except (Error, ValidationError) as e:
+            pk_value = mapped_data[self._get_model_pk_name()]
+            if isinstance(e, IntegrityError):
+                logger.warn(
+                    'Potentially wrong CQRS sync order: pk = {}, cqrs_revision = {} ({}).'.format(
+                        pk_value, mapped_data['cqrs_revision'], self.model.CQRS_ID,
+                    ),
+                )
+
             logger.error(
                 '{}\nCQRS create error: pk = {} ({}).'.format(
-                    str(e), mapped_data[self._get_model_pk_name()], self.model.CQRS_ID,
+                    str(e), pk_value, self.model.CQRS_ID,
                 ),
             )
 
@@ -72,6 +81,34 @@ class ReplicaManager(Manager):
         :return: ReplicaMixin model instance.
         :rtype: django.db.models.Model
         """
+        pk_value = mapped_data[self._get_model_pk_name()]
+        current_cqrs_revision = mapped_data['cqrs_revision']
+
+        if instance.cqrs_revision > current_cqrs_revision:
+            logger.error('Wrong CQRS sync order: pk = {}, cqrs_revision = {} ({}).'.format(
+                pk_value, current_cqrs_revision, self.model.CQRS_ID,
+            ))
+            return
+
+        if instance.cqrs_revision == current_cqrs_revision:
+            logger.error('Received duplicate CQRS data: pk = {}, cqrs_revision = {} ({}).'.format(
+                pk_value, current_cqrs_revision, self.model.CQRS_ID,
+            ))
+            if current_cqrs_revision == 0:
+                logger.warning(
+                    'CQRS potential creation race condition: pk = {} ({}).'.format(
+                        pk_value, self.model.CQRS_ID,
+                    ),
+                )
+
+            return instance
+
+        if current_cqrs_revision != instance.cqrs_revision + 1:
+            logger.warn('Lost {} CQRS packages: pk = {}, cqrs_revision = {} ({})'.format(
+                current_cqrs_revision - instance.cqrs_revision - 1,
+                pk_value, current_cqrs_revision, self.model.CQRS_ID,
+            ))
+
         try:
             for key, value in mapped_data.items():
                 setattr(instance, key, value)
@@ -79,12 +116,12 @@ class ReplicaManager(Manager):
             return instance
         except (Error, ValidationError) as e:
             logger.error(
-                '{}\nCQRS update error: pk = {}, cqrs_counter = {} ({}).'.format(
-                    str(e), mapped_data[self._get_model_pk_name()],
-                    mapped_data['cqrs_counter'], self.model.CQRS_ID,
+                '{}\nCQRS update error: pk = {}, cqrs_revision = {} ({}).'.format(
+                    str(e), pk_value, current_cqrs_revision, self.model.CQRS_ID,
                 ),
             )
 
+    @transaction.atomic
     def delete_instance(self, master_data):
         """ This method deletes model instance from mapped CQRS master instance data.
 
@@ -114,6 +151,8 @@ class ReplicaManager(Manager):
             return
 
         mapped_data = self._make_initial_mapping(master_data)
+        if not mapped_data:
+            return
 
         if self._get_model_pk_name() not in mapped_data:
             self._log_pk_data_error()
@@ -129,7 +168,7 @@ class ReplicaManager(Manager):
             return master_data
 
         mapped_data = {
-            'cqrs_counter': master_data['cqrs_counter'],
+            'cqrs_revision': master_data['cqrs_revision'],
             'cqrs_updated': master_data['cqrs_updated'],
         }
         for master_name, replica_name in self.model.CQRS_MAPPING.items():
@@ -171,12 +210,12 @@ class ReplicaManager(Manager):
 
         return {
             self._get_model_pk_name(): master_data['id'],
-            'cqrs_counter': master_data['cqrs_counter'],
+            'cqrs_revision': master_data['cqrs_revision'],
             'cqrs_updated': master_data['cqrs_updated'],
         }
 
     def _cqrs_fields_are_filled(self, data):
-        if 'cqrs_counter' in data and 'cqrs_updated' in data:
+        if 'cqrs_revision' in data and 'cqrs_updated' in data:
             return True
 
         logger.error('CQRS sync fields are not provided in data ({}).'.format(self.model.CQRS_ID))
