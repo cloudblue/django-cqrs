@@ -29,7 +29,7 @@ class MasterSignals(object):
         """
         :param dj_cqrs.mixins.MasterMixin sender: Class or instance inherited from CQRS MasterMixin.
         """
-        instance_data = kwargs['instance'].model_to_cqrs_dict()
+        instance_data = kwargs['instance'].to_cqrs_dict()
         signal_type = SignalType.SAVE
 
         producer.produce(signal_type, sender.CQRS_ID, instance_data)

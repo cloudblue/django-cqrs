@@ -7,7 +7,7 @@ from django.db.models import CharField, IntegerField
 from django.utils.timezone import now
 
 from dj_cqrs.constants import SignalType
-from dj_cqrs.mixins import _MasterMeta
+from dj_cqrs.metas import MasterMeta
 from tests.dj_master import models
 from tests.utils import assert_is_sub_dict, assert_publisher_once_called_with_args
 
@@ -25,7 +25,7 @@ def test_cqrs_fields_non_existing_field(mocker):
             _meta = mocker.MagicMock(concrete_fields=(char_field, int_field), private_fields=())
             _meta.pk.name = 'char_field'
 
-        _MasterMeta._check_cqrs_fields(Cls)
+        MasterMeta._check_cqrs_fields(Cls)
 
     assert str(e.value) == 'CQRS_FIELDS field is not setup correctly for model Cls.'
 
@@ -43,7 +43,7 @@ def test_cqrs_fields_id_is_not_included(mocker):
             _meta = mocker.MagicMock(concrete_fields=(char_field, int_field), private_fields=())
             _meta.pk.name = 'char_field'
 
-        _MasterMeta._check_cqrs_fields(Cls)
+        MasterMeta._check_cqrs_fields(Cls)
 
     assert str(e.value) == 'PK is not in CQRS_FIELDS for model Cls.'
 
@@ -61,19 +61,19 @@ def test_cqrs_fields_duplicates(mocker):
             _meta = mocker.MagicMock(concrete_fields=(char_field, int_field), private_fields=())
             _meta.pk.name = 'char_field'
 
-        _MasterMeta._check_cqrs_fields(Cls)
+        MasterMeta._check_cqrs_fields(Cls)
 
     assert str(e.value) == 'Duplicate names in CQRS_FIELDS field for model Cls.'
 
 
 @pytest.mark.django_db
-def test_model_to_cqrs_dict_has_cqrs_fields():
+def test_to_cqrs_dict_has_cqrs_fields():
     m = models.AutoFieldsModel.objects.create()
-    dct = m.model_to_cqrs_dict()
+    dct = m.to_cqrs_dict()
     assert dct['cqrs_counter'] == 0 and dct['cqrs_updated'] is not None
 
 
-def test_model_to_cqrs_dict_basic_types():
+def test_to_cqrs_dict_basic_types():
     dt = now()
     uid = uuid4()
     m = models.BasicFieldsModel(
@@ -95,26 +95,26 @@ def test_model_to_cqrs_dict_basic_types():
         'float_field': 1.23,
         'url_field': 'http://example.com',
         'uuid_field': uid,
-    }, m.model_to_cqrs_dict())
+    }, m.to_cqrs_dict())
 
 
-def test_model_to_cqrs_dict_all_fields():
+def test_to_cqrs_dict_all_fields():
     m = models.AllFieldsModel(char_field='str')
-    assert_is_sub_dict({'id': None, 'int_field': None, 'char_field': 'str'}, m.model_to_cqrs_dict())
+    assert_is_sub_dict({'id': None, 'int_field': None, 'char_field': 'str'}, m.to_cqrs_dict())
 
 
-def test_model_to_cqrs_dict_chosen_fields():
+def test_to_cqrs_dict_chosen_fields():
     m = models.ChosenFieldsModel(float_field=1.23)
-    assert_is_sub_dict({'char_field': None, 'id': None}, m.model_to_cqrs_dict())
+    assert_is_sub_dict({'char_field': None, 'id': None}, m.to_cqrs_dict())
 
 
 @pytest.mark.django_db
-def test_model_to_cqrs_dict_auto_fields():
+def test_to_cqrs_dict_auto_fields():
     m = models.AutoFieldsModel()
-    assert_is_sub_dict({'id': None, 'created': None, 'updated': None}, m.model_to_cqrs_dict())
+    assert_is_sub_dict({'id': None, 'created': None, 'updated': None}, m.to_cqrs_dict())
 
     m.save()
-    cqrs_dct = m.model_to_cqrs_dict()
+    cqrs_dct = m.to_cqrs_dict()
     for key in ('id', 'created', 'updated'):
         assert cqrs_dct[key] is not None
 

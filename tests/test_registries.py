@@ -38,6 +38,6 @@ def test_no_cqrs_queue(settings):
     settings.CQRS.update({'queue': None})
 
     with pytest.raises(AssertionError) as e:
-        ReplicaRegistry.register_model(replica_models.BadFieldModelRef)
+        ReplicaRegistry.register_model(replica_models.MappedFieldsModelRef)
 
     assert str(e.value) == 'CQRS queue must be setup for the service, that has replica models.'

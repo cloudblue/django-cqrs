@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 import pytest
 
-from dj_cqrs.mixins import _MetaUtils
+from dj_cqrs.metas import _MetaUtils
 
 
 @pytest.mark.django_db

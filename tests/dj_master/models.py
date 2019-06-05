@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 from django.db import models
 
+from dj_cqrs.constants import ALL_BASIC_FIELDS
 from dj_cqrs.mixins import MasterMixin
 
 
@@ -19,7 +20,7 @@ class BasicFieldsModel(MasterMixin, models.Model):
 
 
 class AllFieldsModel(MasterMixin, models.Model):
-    CQRS_FIELDS = '__all__'
+    CQRS_FIELDS = ALL_BASIC_FIELDS
     CQRS_ID = 'all'
 
     int_field = models.IntegerField(null=True)
@@ -46,25 +47,3 @@ class SimplestModel(MasterMixin, models.Model):
 
     id = models.IntegerField(primary_key=True)
     name = models.CharField(max_length=200, null=True)
-
-
-# These models are done for replica tests
-class BasicFieldsModel1(MasterMixin, models.Model):
-    CQRS_ID = 'basic_1'
-
-    int_field = models.IntegerField(primary_key=True)
-    date_field = models.DateField(null=True)
-
-
-class BasicFieldsModel2(MasterMixin, models.Model):
-    CQRS_ID = 'basic_2'
-
-    int_field = models.IntegerField(primary_key=True)
-    char_field = models.CharField(max_length=200, null=True)
-
-
-class BasicFieldsModel3(MasterMixin, models.Model):
-    CQRS_ID = 'basic_3'
-
-    int_field = models.IntegerField(primary_key=True)
-    char_field = models.CharField(max_length=200, null=True)
