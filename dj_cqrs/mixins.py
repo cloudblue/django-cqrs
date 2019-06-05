@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 
-import logging
 from itertools import chain
 
 import six
@@ -10,8 +9,6 @@ from dj_cqrs.constants import ALL_BASIC_FIELDS
 from dj_cqrs.managers import MasterManager, ReplicaManager
 from dj_cqrs.metas import MasterMeta, ReplicaMeta
 from dj_cqrs.signals import MasterSignals, post_bulk_create, post_update
-
-logger = logging.getLogger()
 
 
 class MasterMixin(six.with_metaclass(MasterMeta, Model)):

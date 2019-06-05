@@ -140,7 +140,7 @@ def test_cqrs_sync_not_saved(mocker):
     assert m.cqrs_sync()
     assert_publisher_once_called_with_args(
         publisher_mock,
-        SignalType.SAVE, models.ChosenFieldsModel.CQRS_ID, {'char_field': 'old', 'id': 1},
+        SignalType.SAVE, models.ChosenFieldsModel.CQRS_ID, {'char_field': 'old', 'id': 1}, 1,
     )
 
 
@@ -155,7 +155,7 @@ def test_cqrs_sync(mocker):
     assert m.cqrs_sync()
     assert_publisher_once_called_with_args(
         publisher_mock,
-        SignalType.SAVE, models.ChosenFieldsModel.CQRS_ID, {'char_field': 'new', 'id': 1},
+        SignalType.SAVE, models.ChosenFieldsModel.CQRS_ID, {'char_field': 'new', 'id': 1}, 1,
     )
 
 

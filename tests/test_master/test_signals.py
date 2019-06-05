@@ -22,7 +22,7 @@ def test_post_save_create(mocker):
 
     assert_publisher_once_called_with_args(
         publisher_mock,
-        SignalType.SAVE, models.SimplestModel.CQRS_ID, {'id': 1, 'name': None},
+        SignalType.SAVE, models.SimplestModel.CQRS_ID, {'id': 1, 'name': None}, 1,
     )
 
 
@@ -36,7 +36,7 @@ def test_post_save_update(mocker):
 
     assert_publisher_once_called_with_args(
         publisher_mock,
-        SignalType.SAVE, models.SimplestModel.CQRS_ID, {'id': 1, 'name': 'new'},
+        SignalType.SAVE, models.SimplestModel.CQRS_ID, {'id': 1, 'name': 'new'}, 1,
     )
 
 
@@ -49,7 +49,7 @@ def test_post_save_delete(mocker):
 
     assert_publisher_once_called_with_args(
         publisher_mock,
-        SignalType.DELETE, models.SimplestModel.CQRS_ID, {'id': 1, 'cqrs_revision': 1},
+        SignalType.DELETE, models.SimplestModel.CQRS_ID, {'id': 1, 'cqrs_revision': 1}, 1,
     )
 
 
@@ -78,7 +78,7 @@ def test_post_bulk_update(mocker):
 
     assert_publisher_once_called_with_args(
         publisher_mock,
-        SignalType.SAVE, models.SimplestModel.CQRS_ID, {'id': 1, 'name': 'new'},
+        SignalType.SAVE, models.SimplestModel.CQRS_ID, {'id': 1, 'name': 'new'}, 1,
     )
 
     m = models.SimplestModel.objects.get(id=1)

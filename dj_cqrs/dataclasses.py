@@ -2,10 +2,11 @@ from __future__ import unicode_literals
 
 
 class TransportPayload(object):
-    def __init__(self, signal_type, cqrs_id, instance_data):
+    def __init__(self, signal_type, cqrs_id, instance_data, instance_pk):
         self.__signal_type = signal_type
         self.__cqrs_id = cqrs_id
         self.__instance_data = instance_data
+        self.__instance_pk = instance_pk
 
     @property
     def signal_type(self):
@@ -18,6 +19,10 @@ class TransportPayload(object):
     @property
     def instance_data(self):
         return self.__instance_data
+
+    @property
+    def pk(self):
+        return self.__instance_pk
 
     def to_dict(self):
         return {

@@ -53,8 +53,6 @@ USE_L10N = True
 USE_TZ = True
 
 CQRS = {
-    'transport': {
-        'class': 'tests.dj.transport.TransportStub',
-    },
+    'transport': 'tests.dj.transport.TransportStub',
     'queue': 'replica',
 }

@@ -30,10 +30,11 @@ class MasterSignals(object):
         """
         :param dj_cqrs.mixins.MasterMixin sender: Class or instance inherited from CQRS MasterMixin.
         """
-        instance_data = kwargs['instance'].to_cqrs_dict()
+        instance = kwargs['instance']
+        instance_data = instance.to_cqrs_dict()
         signal_type = SignalType.SAVE
 
-        producer.produce(signal_type, sender.CQRS_ID, instance_data)
+        producer.produce(signal_type, sender.CQRS_ID, instance_data, instance.pk)
 
     @classmethod
     def post_delete(cls, sender, **kwargs):
@@ -46,7 +47,7 @@ class MasterSignals(object):
         }
         signal_type = SignalType.DELETE
 
-        producer.produce(signal_type, sender.CQRS_ID, instance_data)
+        producer.produce(signal_type, sender.CQRS_ID, instance_data, instance.pk)
 
     @classmethod
     def post_bulk_create(cls, sender, **kwargs):

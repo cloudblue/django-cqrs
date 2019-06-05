@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
 from dj_cqrs.controller import consumer
-from dj_cqrs.transport import BaseTransport
+from dj_cqrs.transport.base import BaseTransport
 
 
 class TransportStub(BaseTransport):

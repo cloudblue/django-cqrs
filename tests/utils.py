@@ -14,6 +14,7 @@ def assert_publisher_once_called_with_args(publisher_mock, *args):
 
     assert call_args[0] == args[0]
     assert call_args[1] == args[1]
+    assert call_args[3] == args[3]
     assert_is_sub_dict(args[2], call_args[2])
 
     required_fields = {'cqrs_revision', 'cqrs_updated'}
