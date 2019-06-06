@@ -20,6 +20,8 @@ Development
 Testing
 =======
 
+Unit testing
+------
 1. Python 2.7+
 0. Install dependencies `requirements/test.txt`
 0. `export PYTHONPATH=/your/path/to/django-cqrs/`
@@ -33,3 +35,10 @@ Tests reports are generated in `tests/reports`.
 
 To generate HTML coverage reports use:
 `--cov-report html:tests/reports/cov_html`
+
+
+Integrational testing
+------
+1. docker-compose
+0. `cd integrational_tests`
+0. `docker-compose up`

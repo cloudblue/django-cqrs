@@ -11,3 +11,5 @@ dist/
 
 tests/reports/
 .coverage
+
+integrational_tests/db/

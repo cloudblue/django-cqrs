@@ -4,6 +4,7 @@ import logging
 import time
 import threading
 
+import ujson
 from django.conf import settings
 from pika import exceptions, BasicProperties, BlockingConnection, ConnectionParameters, credentials
 
@@ -112,9 +113,6 @@ class RabbitMQConsumerThread(threading.Thread):
                 channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=True)
                 channel.start_consuming()
             except exceptions.AMQPError:
-                if self.stopped():
-                    return
-
                 time.sleep(2)
                 logger.error('AMQP connection error... Reconnecting.')
                 continue

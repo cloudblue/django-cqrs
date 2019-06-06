@@ -1,0 +1,11 @@
+FROM python:2.7
+ENV PYTHONUNBUFFERED 1
+ENV PYTHONPATH /replica
+
+RUN mkdir /replica
+COPY . /replica/
+ADD integrational_tests/manage.py /replica/
+
+RUN pip install -r /replica/requirements/dev.txt -r /replica/requirements/test.txt && pip install gunicorn
+
+WORKDIR /replica/

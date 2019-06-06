@@ -1,0 +1,11 @@
+FROM python:2.7
+ENV PYTHONUNBUFFERED 1
+ENV PYTHONPATH /master
+
+RUN mkdir /master
+COPY . /master/
+ADD integrational_tests/setup.cfg /master/
+
+RUN pip install -r /master/requirements/dev.txt -r /master/requirements/test.txt
+
+WORKDIR /master/

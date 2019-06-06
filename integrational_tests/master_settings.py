@@ -19,7 +19,6 @@ INSTALLED_APPS = [
 
     'dj_cqrs',
     'tests.dj_master',
-    'tests.dj_replica',
 ]
 
 MIDDLEWARE = [
@@ -37,7 +36,11 @@ ROOT_URLCONF = 'tests.dj.urls'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'NAME': os.path.join(BASE_DIR, 'db/master_db.sqlite3'),
+    },
+    'replica': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'db/replica_db.sqlite3'),
     }
 }
 
@@ -52,6 +55,6 @@ USE_L10N = True
 USE_TZ = True
 
 CQRS = {
-    'transport': 'tests.dj.transport.TransportStub',
-    'queue': 'replica',
+    'transport': 'dj_cqrs.transport.rabbit_mq.RabbitMQTransport',
+    'host': 'rabbit',
 }
