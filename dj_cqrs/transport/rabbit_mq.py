@@ -1,10 +1,15 @@
 from __future__ import unicode_literals
 
 import logging
+import time
+import threading
 
 from django.conf import settings
 from pika import exceptions, BasicProperties, BlockingConnection, ConnectionParameters, credentials
 
+from dj_cqrs.controller import consumer
+from dj_cqrs.dataclasses import TransportPayload
+from dj_cqrs.registries import ReplicaRegistry
 from dj_cqrs.transport import BaseTransport
 
 
@@ -12,6 +17,13 @@ logger = logging.getLogger()
 
 
 class RabbitMQTransport(BaseTransport):
+    @classmethod
+    def consume(cls):
+        rabbit_settings = cls._get_settings() + (settings.CQRS['queue'],)
+        t = RabbitMQConsumerThread(*rabbit_settings)
+        t.start()
+        return t
+
     @classmethod
     def produce(cls, payload):
         rmq_settings = cls._get_settings()
@@ -77,3 +89,47 @@ class RabbitMQTransport(BaseTransport):
             credentials.PlainCredentials(user, password, erase_on_connect=True),
             exchange,
         )
+
+
+class RabbitMQConsumerThread(threading.Thread):
+    def __init__(self, *args):
+        super(RabbitMQConsumerThread, self).__init__()
+        self._rabbit_settings = args
+
+    def run(self):
+        exchange, queue_name = self._rabbit_settings[-2], self._rabbit_settings[-1]
+
+        while True:
+            try:
+                connection, channel = self._get_consumer_rmq_objects()
+
+                def callback(ch, method, properties, body):
+                    dct = ujson.loads(body)
+                    payload = TransportPayload(dct['signal_type'], dct['cqrs_id'],
+                                               dct['instance_data'])
+                    consumer.consume(payload)
+
+                channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=True)
+                channel.start_consuming()
+            except exceptions.AMQPError:
+                if self.stopped():
+                    return
+
+                time.sleep(2)
+                logger.error('AMQP connection error... Reconnecting.')
+                continue
+
+    def _get_consumer_rmq_objects(self):
+        host, port, creds, exchange, queue_name = self._rabbit_settings
+
+        connection = BlockingConnection(
+            ConnectionParameters(host=host, port=port, credentials=creds),
+        )
+        channel = connection.channel()
+        channel.exchange_declare(exchange=exchange, exchange_type='topic')
+        channel.queue_declare(queue_name, durable=True, exclusive=False)
+
+        for cqrs_id, replica_model in ReplicaRegistry.models.items():
+            channel.queue_bind(exchange=exchange, queue=queue_name, routing_key=cqrs_id)
+
+        return connection, channel

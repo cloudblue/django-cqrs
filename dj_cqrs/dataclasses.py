@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 
 class TransportPayload(object):
-    def __init__(self, signal_type, cqrs_id, instance_data, instance_pk):
+    def __init__(self, signal_type, cqrs_id, instance_data, instance_pk=None):
         self.__signal_type = signal_type
         self.__cqrs_id = cqrs_id
         self.__instance_data = instance_data
