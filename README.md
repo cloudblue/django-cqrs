@@ -55,8 +55,8 @@ CQRS = {
 }
 ```
 * Apply migrations on both services
-* Run consumer worker on replica service. Main command: `python manage.py start_cqrs_consumer -w 2`
-````
+* Run consumer worker on replica service. Management command: `python manage.py start_cqrs_consumer -w 2`
+
 
 Development
 ===========
