@@ -40,5 +40,5 @@ To generate HTML coverage reports use:
 Integrational testing
 ------
 1. docker-compose
-0. `cd integrational_tests`
+0. `cd integration_tests`
 0. `docker-compose run master`

@@ -4,10 +4,8 @@ services:
 
   rabbit:
     image: rabbitmq:latest
-    ports:
-      - '5672:5672'
-#    expose:
-#      - '5672'
+    expose:
+      - '5672'
 
   postgres:
     image: postgres:latest
@@ -23,15 +21,15 @@ services:
   replica:
     build:
       context: ..
-      dockerfile: integrational_tests/Dockerfile.Replica
+      dockerfile: integration_tests/Dockerfile.Replica
     restart: always
     command:
       bash -c "
       sleep 10 &&
-      python manage.py makemigrations --settings=integrational_tests.replica_settings &&
-      python manage.py makemigrations dj_replica --settings=integrational_tests.replica_settings &&
-      python manage.py migrate --settings=integrational_tests.replica_settings &&
-      python manage.py start_cqrs_consumer --settings=integrational_tests.replica_settings
+      python manage.py makemigrations --settings=integration_tests.replica_settings &&
+      python manage.py makemigrations dj_replica --settings=integration_tests.replica_settings &&
+      python manage.py migrate --settings=integration_tests.replica_settings &&
+      python manage.py start_cqrs_consumer --settings=integration_tests.replica_settings
       "
     container_name: django_cqrs_test_replica
     depends_on:
@@ -43,13 +41,13 @@ services:
   master:
     build:
       context: ..
-      dockerfile: integrational_tests/Dockerfile.Master
+      dockerfile: integration_tests/Dockerfile.Master
     command:
-      bash -c "sleep 12 && pytest integrational_tests/"
+      bash -c "sleep 12 && pytest integration_tests/"
     container_name: django_cqrs_test_master
     depends_on:
       - rabbit
       - replica
     volumes:
-      - ./tests/:/master/integrational_tests/tests
+      - ./tests/:/master/integration_tests/tests
       - ../dj_cqrs:/master/dj_cqrs
