@@ -35,8 +35,11 @@ ROOT_URLCONF = 'tests.dj.urls'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db/replica_db.sqlite3'),
+        'ENGINE': 'django.db.backends.postgresql',
+        'HOST': 'postgres',
+        'NAME': 'replica',
+        'USER': 'user',
+        'PASSWORD': 'pswd',
     }
 }
 

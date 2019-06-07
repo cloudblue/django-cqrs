@@ -6,6 +6,6 @@ RUN mkdir /master
 COPY . /master/
 ADD integrational_tests/setup.cfg /master/
 
-RUN pip install -r /master/requirements/dev.txt -r /master/requirements/test.txt
+RUN pip install -r /master/requirements/dev.txt -r /master/requirements/test.txt && pip install psycopg2-binary
 
 WORKDIR /master/

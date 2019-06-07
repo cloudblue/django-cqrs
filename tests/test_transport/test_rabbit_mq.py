@@ -62,7 +62,7 @@ def test_rabbit_transport_produce_publish_error(rabbit_transport, mocker, caplog
     mocker.patch.object(
         RabbitMQTransport, '_get_producer_rmq_objects', return_value=(mocker.MagicMock(), None),
     )
-    mocker.patch.object(RabbitMQTransport, '_publish_message', return_value=False)
+    mocker.patch.object(RabbitMQTransport, '_publish_message', side_effect=amqp_error)
 
     rabbit_transport.produce(TransportPayload(SignalType.SAVE, 'CQRS_ID', {'id': 1}, 1))
     assert "CQRS couldn't be published: pk = 1 (CQRS_ID)." in caplog.text

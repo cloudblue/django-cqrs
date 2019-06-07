@@ -3,7 +3,8 @@ from __future__ import unicode_literals
 from itertools import chain
 
 import six
-from django.db.models import DateTimeField, F, IntegerField, Manager, Model
+from django.db.models import DateField, DateTimeField, F, IntegerField, Manager, Model
+from django.db.models.expressions import CombinedExpression
 
 from dj_cqrs.constants import ALL_BASIC_FIELDS
 from dj_cqrs.managers import MasterManager, ReplicaManager
@@ -44,6 +45,9 @@ class MasterMixin(six.with_metaclass(MasterMeta, Model)):
 
     def to_cqrs_dict(self):
         """ CQRS serialization for transport payload. """
+        if isinstance(self.cqrs_revision, CombinedExpression):
+            self.refresh_from_db(fields=('cqrs_revision',))
+
         opts = self._meta
 
         if isinstance(self.CQRS_FIELDS, six.string_types) and self.CQRS_FIELDS == ALL_BASIC_FIELDS:
@@ -56,11 +60,15 @@ class MasterMixin(six.with_metaclass(MasterMeta, Model)):
             if included_fields and (f.name not in included_fields):
                 continue
 
-            data[f.name] = f.value_from_object(self)
+            value = f.value_from_object(self)
+            if value is not None and isinstance(f, (DateField, DateTimeField)):
+                value = str(value)
+
+            data[f.name] = value
 
         # We need to include additional fields for synchronisation, f.e. to prevent de-duplication
-        for cqrs_tech_field_name in ('cqrs_revision', 'cqrs_updated'):
-            data[cqrs_tech_field_name] = getattr(self, cqrs_tech_field_name)
+        data['cqrs_revision'] = self.cqrs_revision
+        data['cqrs_updated'] = str(self.cqrs_updated)
 
         return data
 

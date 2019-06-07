@@ -4,8 +4,21 @@ services:
 
   rabbit:
     image: rabbitmq:latest
+    ports:
+      - '5672:5672'
+#    expose:
+#      - '5672'
+
+  postgres:
+    image: postgres:latest
     expose:
-      - '5672'
+      - '5432'
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pswd
+      POSTGRES_DB: replica
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
 
   replica:
     build:
@@ -15,7 +28,6 @@ services:
     command:
       bash -c "
       sleep 10 &&
-      rm -f ./integrational_tests/db/replica_db.sqlite3 &&
       python manage.py makemigrations --settings=integrational_tests.replica_settings &&
       python manage.py makemigrations dj_replica --settings=integrational_tests.replica_settings &&
       python manage.py migrate --settings=integrational_tests.replica_settings &&
@@ -24,15 +36,14 @@ services:
     container_name: django_cqrs_test_replica
     depends_on:
       - rabbit
+      - postgres
     volumes:
-      - ./db:/replica/db
       - ../dj_cqrs:/replica/dj_cqrs
 
   master:
     build:
       context: ..
       dockerfile: integrational_tests/Dockerfile.Master
-    restart: always
     command:
       bash -c "sleep 12 && pytest integrational_tests/"
     container_name: django_cqrs_test_master
@@ -40,6 +51,5 @@ services:
       - rabbit
       - replica
     volumes:
-      - ./db:/master/db
       - ./tests/:/master/integrational_tests/tests
       - ../dj_cqrs:/master/dj_cqrs

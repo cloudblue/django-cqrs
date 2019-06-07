@@ -6,6 +6,6 @@ RUN mkdir /replica
 COPY . /replica/
 ADD integrational_tests/manage.py /replica/
 
-RUN pip install -r /replica/requirements/dev.txt -r /replica/requirements/test.txt && pip install gunicorn
+RUN pip install -r /replica/requirements/dev.txt -r /replica/requirements/test.txt && pip install psycopg2-binary && pip install gunicorn
 
 WORKDIR /replica/

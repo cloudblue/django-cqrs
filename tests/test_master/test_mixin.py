@@ -91,7 +91,7 @@ def test_to_cqrs_dict_basic_types():
         'bool_field': False,
         'char_field': 'str',
         'date_field': None,
-        'datetime_field': dt,
+        'datetime_field': str(dt),
         'float_field': 1.23,
         'url_field': 'http://example.com',
         'uuid_field': uid,

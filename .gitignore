@@ -12,4 +12,4 @@ dist/
 tests/reports/
 .coverage
 
-integrational_tests/db/
+integrational_tests/postgres-data/
