@@ -46,3 +46,11 @@ class BadMappingModelRef(ReplicaMixin, models.Model):
 
     id = models.IntegerField(primary_key=True)
     name = models.CharField(max_length=200)
+
+
+class Event(models.Model):
+    pid = models.IntegerField()
+    cqrs_id = models.CharField(max_length=20)
+    cqrs_revision = models.IntegerField()
+
+    time = models.DateTimeField(auto_now_add=True)

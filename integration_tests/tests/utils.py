@@ -4,7 +4,9 @@ import time
 
 
 REPLICA_BASIC_TABLE = 'dj_replica_basicfieldsmodelref'
-REPLICA_TABLES = (REPLICA_BASIC_TABLE, )
+REPLICA_EVENT_TABLE = 'dj_replica_event'
+
+REPLICA_TABLES = (REPLICA_BASIC_TABLE, REPLICA_EVENT_TABLE)
 
 
 def count_replica_rows(cursor, table):
@@ -30,5 +32,5 @@ def get_replica_first(cursor, table, columns=None):
     return cursor.fetchone()
 
 
-def transport_delay():
-    time.sleep(1)
+def transport_delay(delay=1):
+    time.sleep(delay)

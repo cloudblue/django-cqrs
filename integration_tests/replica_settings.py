@@ -54,7 +54,8 @@ USE_L10N = True
 USE_TZ = True
 
 CQRS = {
-    'transport': 'dj_cqrs.transport.rabbit_mq.RabbitMQTransport',
+    'transport': 'tests.dj.transport.RabbitMQTransportWithEvents',
     'host': 'rabbit',
+    'consumer_prefetch_count': 2,
     'queue': 'replica',
 }
