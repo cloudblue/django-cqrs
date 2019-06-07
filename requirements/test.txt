@@ -4,4 +4,4 @@ flake8==3.7.7
 pytest==4.4.0
 pytest-cov==2.6.1
 pytest-django==3.4.8
-
+pytest-mock==1.10.4
