@@ -10,6 +10,12 @@ from tests.dj_replica import models
 from tests.utils import db_error
 
 
+class ReplicaMetaTest(ReplicaMeta):
+    @classmethod
+    def check_cqrs_mapping(cls, model_cls):
+        return cls._check_cqrs_mapping(model_cls)
+
+
 def test_cqrs_fields_non_existing_field(mocker):
     with pytest.raises(AssertionError) as e:
 
@@ -26,7 +32,7 @@ def test_cqrs_fields_non_existing_field(mocker):
             _meta = mocker.MagicMock(concrete_fields=(char_field, int_field), private_fields=())
             _meta.pk.name = 'char_field'
 
-        ReplicaMeta._check_cqrs_mapping(Cls)
+        ReplicaMetaTest.check_cqrs_mapping(Cls)
 
     assert str(e.value) == 'CQRS_MAPPING field is not setup correctly for model Cls.'
 
@@ -46,7 +52,7 @@ def test_cqrs_fields_id_is_not_included(mocker):
             _meta = mocker.MagicMock(concrete_fields=(char_field, int_field), private_fields=())
             _meta.pk.name = 'char_field'
 
-        ReplicaMeta._check_cqrs_mapping(Cls)
+        ReplicaMetaTest.check_cqrs_mapping(Cls)
 
     assert str(e.value) == 'PK is not in CQRS_MAPPING for model Cls.'
 
@@ -67,7 +73,7 @@ def test_cqrs_fields_duplicates(mocker):
             _meta = mocker.MagicMock(concrete_fields=(char_field, int_field), private_fields=())
             _meta.pk.name = 'char_field'
 
-        ReplicaMeta._check_cqrs_mapping(Cls)
+        ReplicaMetaTest.check_cqrs_mapping(Cls)
 
     assert str(e.value) == 'Duplicate names in CQRS_MAPPING field for model Cls.'
 

@@ -12,6 +12,12 @@ from tests.dj_master import models
 from tests.utils import assert_is_sub_dict, assert_publisher_once_called_with_args
 
 
+class MasterMetaTest(MasterMeta):
+    @classmethod
+    def check_cqrs_fields(cls, model_cls):
+        return cls._check_cqrs_fields(model_cls)
+
+
 def test_cqrs_fields_non_existing_field(mocker):
     with pytest.raises(AssertionError) as e:
 
@@ -25,7 +31,7 @@ def test_cqrs_fields_non_existing_field(mocker):
             _meta = mocker.MagicMock(concrete_fields=(char_field, int_field), private_fields=())
             _meta.pk.name = 'char_field'
 
-        MasterMeta._check_cqrs_fields(Cls)
+        MasterMetaTest.check_cqrs_fields(Cls)
 
     assert str(e.value) == 'CQRS_FIELDS field is not setup correctly for model Cls.'
 
@@ -43,7 +49,7 @@ def test_cqrs_fields_id_is_not_included(mocker):
             _meta = mocker.MagicMock(concrete_fields=(char_field, int_field), private_fields=())
             _meta.pk.name = 'char_field'
 
-        MasterMeta._check_cqrs_fields(Cls)
+        MasterMetaTest.check_cqrs_fields(Cls)
 
     assert str(e.value) == 'PK is not in CQRS_FIELDS for model Cls.'
 
@@ -61,7 +67,7 @@ def test_cqrs_fields_duplicates(mocker):
             _meta = mocker.MagicMock(concrete_fields=(char_field, int_field), private_fields=())
             _meta.pk.name = 'char_field'
 
-        MasterMeta._check_cqrs_fields(Cls)
+        MasterMetaTest.check_cqrs_fields(Cls)
 
     assert str(e.value) == 'Duplicate names in CQRS_FIELDS field for model Cls.'
 

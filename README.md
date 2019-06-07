@@ -11,6 +11,50 @@ In Connect we have a rather complex Domain Model. There are many microservices, 
 The pattern, that solves this issue is called [CQRS - Command Query Responsibility Segregation](https://microservices.io/patterns/data/cqrs.html). Core idea behind this pattern is that view databases (replicas) are defined for efficient querying and DB joins. Applications keep their replicas up to data by subscribing to [Domain events](https://microservices.io/patterns/data/domain-event.html) published by the service that owns the data. Data is [eventually consistent](https://en.wikipedia.org/wiki/Eventual_consistency) and that's okay for non-critical business transactions.
 
 
+Examples
+========
+* Setup `RabbitMQ`
+* Install `django-cqrs`
+* Apply changes to master service, according to RabbitMQ settings
+```python
+# models.py
+
+from django.db import models
+from dj_cqrs.mixins import MasterMixin
+
+
+class Account(MasterMixin, models.Model):
+    CQRS_ID = 'account'
+```
+
+```python
+# settings.py
+
+CQRS = {
+    'transport': 'dj_cqrs.transport.rabbit_mq.RabbitMQTransport',
+}
+```
+* Apply changes to replica service, according to RabbitMQ settings
+```python
+from django.db import models
+from dj_cqrs.mixins import ReplicaMixin
+
+
+class AccountRef(ReplicaMixin, models.Model):
+    CQRS_ID = 'account'
+    
+    id = models.IntegerField(primary_key=True)
+```
+
+```python
+# settings.py
+
+CQRS = {
+    'transport': 'dj_cqrs.transport.rabbit_mq.RabbitMQTransport',
+    'queue': 'account_replica',
+}
+```
+
 Development
 ===========
 

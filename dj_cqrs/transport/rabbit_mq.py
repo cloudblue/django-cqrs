@@ -55,7 +55,13 @@ class RabbitMQTransport(BaseTransport):
 
     @classmethod
     def _consume_message(cls, *args):
-        dct = ujson.loads(args[-1])
+        body = args[-1]
+        try:
+            dct = ujson.loads(body)
+        except ValueError:
+            logger.error("CQRS couldn't be parsed: {}.".format(body))
+            return
+
         payload = TransportPayload(dct['signal_type'], dct['cqrs_id'], dct['instance_data'])
 
         cls._log_consumed(payload)

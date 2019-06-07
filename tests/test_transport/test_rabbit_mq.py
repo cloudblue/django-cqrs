@@ -4,15 +4,17 @@ import logging
 from importlib import import_module
 
 import pytest
+from django.db import DatabaseError
 from pika.exceptions import AMQPError
 from six.moves import reload_module
 
 from dj_cqrs.constants import SignalType
 from dj_cqrs.dataclasses import TransportPayload
 from dj_cqrs.transport.rabbit_mq import RabbitMQTransport
+from tests.utils import db_error
 
 
-class TestRabbitMQTransport(RabbitMQTransport):
+class PublicRabbitMQTransport(RabbitMQTransport):
     @classmethod
     def get_common_settings(cls):
         return cls._get_common_settings()
@@ -21,9 +23,17 @@ class TestRabbitMQTransport(RabbitMQTransport):
     def get_consumer_settings(cls):
         return cls._get_consumer_settings()
 
+    @classmethod
+    def consume_message(cls, *args):
+        return cls._consume_message(*args)
+
+    @classmethod
+    def produce_message(cls, *args):
+        return cls._produce_message(*args)
+
 
 def test_default_settings():
-    s = TestRabbitMQTransport.get_common_settings()
+    s = PublicRabbitMQTransport.get_common_settings()
     assert s[0] == 'localhost'
     assert s[1] == 5672
     assert s[2].username == 'guest' and s[2].password == 'guest'
@@ -40,7 +50,7 @@ def test_non_default_settings(settings):
         'exchange': 'exchange',
     }
 
-    s = TestRabbitMQTransport.get_common_settings()
+    s = PublicRabbitMQTransport.get_common_settings()
     assert s[0] == 'rabbit'
     assert s[1] == 8000
     assert s[2].username == 'usr' and s[2].password == 'pswd'
@@ -48,7 +58,7 @@ def test_non_default_settings(settings):
 
 
 def test_consumer_default_settings():
-    s = TestRabbitMQTransport.get_consumer_settings()
+    s = PublicRabbitMQTransport.get_consumer_settings()
     assert s[0] is None
     assert s[1] == 10
 
@@ -60,7 +70,7 @@ def test_consumer_non_default_settings(settings):
         'consumer_prefetch_count': 2,
     }
 
-    s = TestRabbitMQTransport.get_consumer_settings()
+    s = PublicRabbitMQTransport.get_consumer_settings()
     assert s[0] == 'q'
     assert s[1] == 2
 
@@ -119,21 +129,64 @@ def test_produce_ok(rabbit_transport, mocker, caplog):
     assert 'CQRS is published: pk = 1 (CQRS_ID).' in caplog.text
 
 
-def test_produce_message_ok(mocker, caplog):
-    raise NotImplementedError
+def test_produce_message_ok(mocker):
+    channel = mocker.MagicMock()
+    payload = TransportPayload('signal', 'cqrs_id', {})
+
+    PublicRabbitMQTransport.produce_message(channel, 'exchange', payload)
+
+    assert channel.basic_publish.call_count == 1
+
+    basic_publish_kwargs = channel.basic_publish.call_args.kwargs
+    assert basic_publish_kwargs['body'] == \
+        '{"signal_type":"signal","cqrs_id":"cqrs_id","instance_data":{}}'
+    assert basic_publish_kwargs['exchange'] == 'exchange'
+    assert basic_publish_kwargs['mandatory']
+    assert basic_publish_kwargs['routing_key'] == 'cqrs_id'
+    assert basic_publish_kwargs['properties'].content_type == 'text/plain'
+    assert basic_publish_kwargs['properties'].delivery_mode == 2
 
 
 def test_consume_connection_error(rabbit_transport, mocker, caplog):
-    raise NotImplementedError
+    mocker.patch.object(
+        RabbitMQTransport, '_get_consumer_rmq_objects', side_effect=amqp_error,
+    )
+    mocker.patch('time.sleep', side_effect=db_error)
+
+    with pytest.raises(DatabaseError):
+        rabbit_transport.consume()
+
+    assert 'AMQP connection error... Reconnecting.' in caplog.text
 
 
-def test_consume_ok(rabbit_transport, mocker, caplog):
-    raise NotImplementedError
+def test_consume_ok(rabbit_transport, mocker):
+    channel_mock = mocker.MagicMock()
+    channel_mock.start_consuming = db_error
+
+    mocker.patch.object(
+        RabbitMQTransport, '_get_consumer_rmq_objects', return_value=(None, channel_mock),
+    )
+
+    with pytest.raises(DatabaseError):
+        rabbit_transport.consume()
 
 
-def test_consume_message_ok(mocker, caplog):
-    raise NotImplementedError
+def test_consume_message_ok(mocker):
+    consumer_mock = mocker.patch('dj_cqrs.controller.consumer.consume')
+
+    PublicRabbitMQTransport.consume_message(
+        '{"signal_type":"signal","cqrs_id":"cqrs_id","instance_data":{}}',
+    )
+
+    assert consumer_mock.call_count == 1
+
+    payload = consumer_mock.call_args[0][0]
+    assert payload.signal_type == 'signal'
+    assert payload.cqrs_id == 'cqrs_id'
+    assert payload.instance_data == {}
 
 
-def test_consume_message_parsing_error(mocker, caplog):
-    raise NotImplementedError
+def test_consume_message_parsing_error(caplog):
+    PublicRabbitMQTransport.consume_message('{bad_payload:')
+
+    assert "CQRS couldn't be parsed: {bad_payload:." in caplog.text
