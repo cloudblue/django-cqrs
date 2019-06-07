@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 import psycopg2
 import pytest
 
-from .utils import REPLICA_TABLES
+from integrational_tests.tests.utils import REPLICA_TABLES
 
 
 @pytest.fixture

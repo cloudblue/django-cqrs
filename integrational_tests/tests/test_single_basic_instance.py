@@ -4,7 +4,9 @@ from __future__ import unicode_literals
 import pytest
 from django.utils.timezone import now
 
-from .utils import REPLICA_BASIC_TABLE, count_replica_rows, get_replica_first, transport_delay
+from integrational_tests.tests.utils import (
+    REPLICA_BASIC_TABLE, count_replica_rows, get_replica_first, transport_delay,
+)
 from tests.dj_master.models import BasicFieldsModel
 
 

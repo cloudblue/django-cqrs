@@ -41,4 +41,4 @@ Integrational testing
 ------
 1. docker-compose
 0. `cd integrational_tests`
-0. `docker-compose up`
+0. `docker-compose run master`
