@@ -11,5 +11,3 @@ dist/
 
 tests/reports/
 .coverage
-
-integration_tests/postgres-data/

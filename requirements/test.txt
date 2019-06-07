@@ -5,4 +5,3 @@ pytest==4.4.0
 pytest-cov==2.6.1
 pytest-django==3.4.8
 pytest-mock==1.10.4
-pytest-rabbitmq==1.1.2
