@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+
 from django.db import models
 
 from dj_cqrs.mixins import ReplicaMixin
@@ -54,3 +55,50 @@ class Event(models.Model):
     cqrs_revision = models.IntegerField()
 
     time = models.DateTimeField(auto_now_add=True)
+
+
+class Publisher(models.Model):
+    id = models.IntegerField(primary_key=True)
+    name = models.CharField(max_length=20)
+
+
+class AuthorRef(ReplicaMixin, models.Model):
+    CQRS_ID = 'author'
+    CQRS_CUSTOM_SERIALIZATION = True
+
+    id = models.IntegerField(primary_key=True)
+    name = models.CharField(max_length=20)
+
+    publisher = models.ForeignKey(Publisher, null=True)
+
+    @classmethod
+    def cqrs_create(cls, **mapped_data):
+        publisher_data, publisher = mapped_data.pop('publisher', None), None
+        if publisher_data:
+            publisher, _ = Publisher.objects.get_or_create(**publisher_data)
+
+        books_data = mapped_data.pop('books', [])
+        author = cls.objects.create(publisher=publisher, **mapped_data)
+
+        Book.objects.bulk_create(Book(author=author, **book_data) for book_data in books_data)
+        return author
+
+    def cqrs_update(self, **mapped_data):
+        # It's just an example, that doesn't make sense in real cases
+        publisher_data, publisher = mapped_data.pop('publisher', None), None
+        if publisher_data:
+            publisher, _ = Publisher.objects.get_or_create(**publisher_data)
+
+        self.publisher = publisher
+        self.cqrs_revision = mapped_data['cqrs_revision']
+        self.cqrs_updated = mapped_data['cqrs_updated']
+        self.save()
+
+        return self
+
+
+class Book(models.Model):
+    id = models.IntegerField(primary_key=True)
+    name = models.CharField(max_length=20)
+
+    author = models.ForeignKey(AuthorRef, on_delete=models.CASCADE)

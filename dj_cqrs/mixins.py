@@ -160,9 +160,11 @@ class ReplicaMixin(six.with_metaclass(ReplicaMeta, Model)):
 
     CQRS_ID - Unique CQRS identifier for all microservices.
     CQRS_MAPPING - Mapping of master data field name to replica model field name.
+    CQRS_CUSTOM_SERIALIZATION - To override default data check.
     """
     CQRS_ID = None
     CQRS_MAPPING = None
+    CQRS_CUSTOM_SERIALIZATION = False
 
     objects = Manager()
     cqrs = ReplicaManager()
@@ -176,12 +178,38 @@ class ReplicaMixin(six.with_metaclass(ReplicaMeta, Model)):
     @classmethod
     def cqrs_save(cls, master_data):
         """ This method saves (creates or updates) model instance from CQRS master instance data.
+        This method must not be overridden. Otherwise, sync checks need to be implemented manually.
 
         :param dict master_data: CQRS master instance data.
         :return: Model instance.
         :rtype: django.db.models.Model
         """
         return cls.cqrs.save_instance(master_data)
+
+    @classmethod
+    def cqrs_create(cls, **mapped_data):
+        """ This method creates model instance from CQRS mapped instance data. It must be overridden
+        by replicas of master models with custom serialization.
+
+        :param dict mapped_data: CQRS mapped instance data.
+        :return: Model instance.
+        :rtype: django.db.models.Model
+        """
+        return cls._default_manager.create(**mapped_data)
+
+    def cqrs_update(self, **mapped_data):
+        """ This method updates model instance from CQRS mapped instance data. It must be overridden
+        by replicas of master models with custom serialization.
+
+        :param dict mapped_data: CQRS mapped instance data.
+        :return: Model instance.
+        :rtype: django.db.models.Model
+        """
+
+        for key, value in mapped_data.items():
+            setattr(self, key, value)
+        self.save()
+        return self
 
     @classmethod
     def cqrs_delete(cls, master_data):
