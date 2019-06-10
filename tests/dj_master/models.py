@@ -47,3 +47,35 @@ class SimplestModel(MasterMixin, models.Model):
 
     id = models.IntegerField(primary_key=True)
     name = models.CharField(max_length=200, null=True)
+
+
+class Publisher(models.Model):
+    id = models.IntegerField(primary_key=True)
+    name = models.CharField(max_length=20)
+
+
+class Author(MasterMixin, models.Model):
+    CQRS_ID = 'author'
+    CQRS_SERIALIZER = 'tests.dj_master.serializers.AuthorSerializer'
+
+    id = models.IntegerField(primary_key=True)
+    name = models.CharField(max_length=20)
+
+    publisher = models.ForeignKey(
+        Publisher, related_name='authors', on_delete=models.SET_NULL, null=True,
+    )
+
+    def relate_cqrs_serialization(self, queryset):
+        return queryset.select_related('publisher').prefetch_related('books')
+
+
+class Book(models.Model):
+    id = models.IntegerField(primary_key=True)
+    title = models.CharField(max_length=20)
+
+    author = models.ForeignKey(Author, related_name='books', on_delete=models.CASCADE)
+
+
+class BadSerializationClassModel(MasterMixin, models.Model):
+    CQRS_ID = 'bad_serialization'
+    CQRS_SERIALIZER = 'tests.Serializer'

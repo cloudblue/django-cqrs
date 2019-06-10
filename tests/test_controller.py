@@ -18,7 +18,7 @@ def test_producer(mocker):
 
 
 def test_consumer(mocker):
-    factory_mock = mocker.patch('dj_cqrs.factories.ReplicaFactory.factory')
+    factory_mock = mocker.patch('dj_cqrs.controller.consumer.route_signal_to_replica_model')
     consume(TransportPayload('a', 'b', {}, 'c'))
 
     factory_mock.assert_called_once_with('a', 'b', {})

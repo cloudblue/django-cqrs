@@ -25,6 +25,11 @@ from dj_cqrs.mixins import MasterMixin
 
 class Account(MasterMixin, models.Model):
     CQRS_ID = 'account'
+    
+    
+class Author(MasterMixin, models.Model):
+    CQRS_ID = 'author'
+    CQRS_SERIALIZER = 'app.api.AuthorSerializer'
 ```
 
 ```python
@@ -44,6 +49,20 @@ class AccountRef(ReplicaMixin, models.Model):
     CQRS_ID = 'account'
     
     id = models.IntegerField(primary_key=True)
+    
+
+class AuthorRef(ReplicaMixin, models.Model):
+    CQRS_ID = 'author'
+    CQRS_CUSTOM_SERIALIZATION = True
+    
+    @classmethod
+    def cqrs_create(cls, **mapped_data):
+        # Override here
+        pass
+        
+    def cqrs_update(self, **mapped_data):
+        # Override here
+        pass
 ```
 
 ```python

@@ -15,7 +15,7 @@ def test_signals_are_registered(model, signal):
     assert signal.has_listeners(model)
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_post_save_create(mocker):
     publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
     models.SimplestModel.objects.create(id=1)
@@ -26,7 +26,7 @@ def test_post_save_create(mocker):
     )
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_post_save_update(mocker):
     m = models.SimplestModel.objects.create(id=1)
 
@@ -40,7 +40,7 @@ def test_post_save_update(mocker):
     )
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_post_save_delete(mocker):
     m = models.SimplestModel.objects.create(id=1)
 
@@ -53,7 +53,7 @@ def test_post_save_delete(mocker):
     )
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_post_bulk_create(mocker):
     models.AutoFieldsModel.objects.bulk_create([models.AutoFieldsModel() for _ in range(3)])
     created_models = list(models.AutoFieldsModel.objects.all())
@@ -64,7 +64,7 @@ def test_post_bulk_create(mocker):
     assert publisher_mock.call_count == 3
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_post_bulk_update(mocker):
     for i in range(3):
         models.SimplestModel.objects.create(id=i)

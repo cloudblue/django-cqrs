@@ -15,11 +15,27 @@ class MasterMeta(base.ModelBase):
 
         if args[0] != 'MasterMixin':
             _MetaUtils.check_cqrs_id(model_cls)
-            MasterMeta._check_cqrs_fields(model_cls)
+            MasterMeta._check_correct_configuration(model_cls)
+            if model_cls.CQRS_SERIALIZER is None:
+                MasterMeta._check_cqrs_fields(model_cls)
+
             MasterRegistry.register_model(model_cls)
             MasterSignals.register_model(model_cls)
 
         return model_cls
+
+    @staticmethod
+    def _check_correct_configuration(model_cls):
+        """ Check that model has correct CQRS configuration.
+
+        :param dj_cqrs.mixins.MasterMixin model_cls: CQRS Master Model.
+        :raises: AssertionError
+        """
+        if model_cls.CQRS_FIELDS != ALL_BASIC_FIELDS:
+            assert model_cls.CQRS_SERIALIZER is None, \
+                "Model {}: CQRS_FIELDS can't be set together with CQRS_SERIALIZER.".format(
+                    model_cls,
+                )
 
     @staticmethod
     def _check_cqrs_fields(model_cls):
@@ -40,6 +56,7 @@ class ReplicaMeta(base.ModelBase):
         if args[0] != 'ReplicaMixin':
             _MetaUtils.check_cqrs_id(model_cls)
             ReplicaMeta._check_cqrs_mapping(model_cls)
+
             ReplicaRegistry.register_model(model_cls)
 
         return model_cls
