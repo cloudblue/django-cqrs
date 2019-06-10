@@ -5,6 +5,7 @@ from itertools import chain
 import six
 from django.db.models import DateField, DateTimeField, F, IntegerField, Manager, Model
 from django.db.models.expressions import CombinedExpression
+from django.utils.module_loading import import_string
 
 from dj_cqrs.constants import ALL_BASIC_FIELDS
 from dj_cqrs.managers import MasterManager, ReplicaManager
@@ -16,12 +17,18 @@ class MasterMixin(six.with_metaclass(MasterMeta, Model)):
     """
     Mixin for the master CQRS model, that will send data updates to it's replicas.
 
-    CQRS_FIELDS - Fields, that need to by synchronized between microservices.
     CQRS_ID - Unique CQRS identifier for all microservices.
+    CQRS_FIELDS - Fields, that need to by synchronized between microservices.
+    CQRS_SERIALIZER - Serializer, that overrides common serialization logic.
+                      Can't be setup together with non-default CQRS_FIELDS.
+                      DRF serializers are only supported now: Serializer(instance).data
+
     cqrs - Manager, that adds needed CQRS queryset methods.
     """
-    CQRS_FIELDS = ALL_BASIC_FIELDS
     CQRS_ID = None
+
+    CQRS_FIELDS = ALL_BASIC_FIELDS
+    CQRS_SERIALIZER = None  # It must be None or string, like: 'path.to.serializer'
 
     objects = Manager()
     cqrs = MasterManager()
@@ -43,34 +50,19 @@ class MasterMixin(six.with_metaclass(MasterMeta, Model)):
             self.cqrs_revision = F('cqrs_revision') + 1
         return super(MasterMixin, self).save(*args, **kwargs)
 
-    def to_cqrs_dict(self):
+    def to_cqrs_dict(self, using=None):
         """ CQRS serialization for transport payload. """
-        if isinstance(self.cqrs_revision, CombinedExpression):
-            self.refresh_from_db(fields=('cqrs_revision',))
-
-        opts = self._meta
-
-        if isinstance(self.CQRS_FIELDS, six.string_types) and self.CQRS_FIELDS == ALL_BASIC_FIELDS:
-            included_fields = None
+        if self.CQRS_SERIALIZER:
+            data = self._class_serialization(using)
         else:
-            included_fields = self.CQRS_FIELDS
-
-        data = {}
-        for f in chain(opts.concrete_fields, opts.private_fields):
-            if included_fields and (f.name not in included_fields):
-                continue
-
-            value = f.value_from_object(self)
-            if value is not None and isinstance(f, (DateField, DateTimeField)):
-                value = str(value)
-
-            data[f.name] = value
-
-        # We need to include additional fields for synchronisation, f.e. to prevent de-duplication
-        data['cqrs_revision'] = self.cqrs_revision
-        data['cqrs_updated'] = str(self.cqrs_updated)
-
+            data = self._common_serialization(using)
         return data
+
+    def relate_cqrs_serialization(self, queryset):
+        """
+        :param django.db.models.QuerySet queryset:
+        """
+        return queryset
 
     def cqrs_sync(self, using=None):
         """ Manual instance synchronization. """
@@ -106,6 +98,59 @@ class MasterMixin(six.with_metaclass(MasterMeta, Model)):
             model.cqrs.bulk_update(qs, k2=v2)
         """
         post_update.send(cls, instances=instances, using=using)
+
+    def _common_serialization(self, using):
+        if isinstance(self.cqrs_revision, CombinedExpression):
+            self.refresh_from_db(fields=('cqrs_revision',), using=using)
+
+        opts = self._meta
+
+        if isinstance(self.CQRS_FIELDS, six.string_types) and self.CQRS_FIELDS == ALL_BASIC_FIELDS:
+            included_fields = None
+        else:
+            included_fields = self.CQRS_FIELDS
+
+        data = {}
+        for f in chain(opts.concrete_fields, opts.private_fields):
+            if included_fields and (f.name not in included_fields):
+                continue
+
+            value = f.value_from_object(self)
+            if value is not None and isinstance(f, (DateField, DateTimeField)):
+                value = str(value)
+
+            data[f.name] = value
+
+        # We need to include additional fields for synchronisation, f.e. to prevent de-duplication
+        data['cqrs_revision'] = self.cqrs_revision
+        data['cqrs_updated'] = str(self.cqrs_updated)
+
+        return data
+
+    def _class_serialization(self, using):
+        db = using if using is not None else self._state.db
+        qs = self.__class__._default_manager.using(db).filter(pk=self.pk)
+
+        instance = self.relate_cqrs_serialization(qs).first()
+
+        data = self._cqrs_serializer_cls(instance).data
+        data['cqrs_revision'] = instance.cqrs_revision
+        data['cqrs_updated'] = str(instance.cqrs_updated)
+
+        return data
+
+    @property
+    def _cqrs_serializer_cls(self):
+        """ Serialization class loader. """
+        if hasattr(self.__class__, '_cqrs_serializer_class'):
+            return self.__class__._cqrs_serializer_class
+
+        try:
+            serializer = import_string(self.CQRS_SERIALIZER)
+            self.__class__._cqrs_serializer_class = serializer
+            return serializer
+        except ImportError:
+            raise ImportError("Model {}: CQRS_SERIALIZER can't be imported.".format(self.__class__))
 
 
 class ReplicaMixin(six.with_metaclass(ReplicaMeta, Model)):
