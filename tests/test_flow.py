@@ -1,7 +1,5 @@
 from __future__ import unicode_literals
 
-import logging
-
 import pytest
 from django.db import transaction
 
