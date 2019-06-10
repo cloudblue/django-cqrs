@@ -24,7 +24,7 @@ class MasterManager(Manager):
             result = queryset.update(
                 cqrs_revision=F('cqrs_revision') + 1, cqrs_updated=current_dt, **kwargs
             )
-        queryset.model.call_post_update(list(queryset.all()))
+        queryset.model.call_post_update(list(queryset.all()), using=queryset.db)
         return result
 
 

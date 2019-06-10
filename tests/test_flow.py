@@ -6,7 +6,7 @@ from dj_master import models as master_models
 from dj_replica import models as replica_models
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_create():
     master_model = master_models.BasicFieldsModel.objects.create(
         int_field=1,
@@ -19,7 +19,7 @@ def test_create():
         assert getattr(master_model, field_name) == getattr(replica_model, field_name)
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_update():
     master_model = master_models.BasicFieldsModel.objects.create(
         int_field=1,
@@ -38,7 +38,7 @@ def test_update():
         assert getattr(master_model, field_name) == getattr(replica_model, field_name)
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_delete():
     master_model = master_models.BasicFieldsModel.objects.create(
         int_field=1,

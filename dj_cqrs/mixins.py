@@ -72,7 +72,7 @@ class MasterMixin(six.with_metaclass(MasterMeta, Model)):
 
         return data
 
-    def cqrs_sync(self):
+    def cqrs_sync(self, using=None):
         """ Manual instance synchronization. """
         if self._state.adding:
             return False
@@ -82,11 +82,11 @@ class MasterMixin(six.with_metaclass(MasterMeta, Model)):
         except self._meta.model.DoesNotExist:
             return False
 
-        MasterSignals.post_save(self._meta.model, instance=self)
+        MasterSignals.post_save(self._meta.model, instance=self, using=using)
         return True
 
     @classmethod
-    def call_post_bulk_create(cls, instances):
+    def call_post_bulk_create(cls, instances, using=None):
         """ Post bulk create signal caller (django doesn't support it by default).
 
         .. code-block:: python
@@ -94,10 +94,10 @@ class MasterMixin(six.with_metaclass(MasterMeta, Model)):
             instances = model.objects.bulk_create(instances)
             model.call_post_bulk_create(instances)
         """
-        post_bulk_create.send(cls, instances=instances)
+        post_bulk_create.send(cls, instances=instances, using=using)
 
     @classmethod
-    def call_post_update(cls, instances):
+    def call_post_update(cls, instances, using=None):
         """ Post bulk update signal caller (django doesn't support it by default).
 
         .. code-block:: python
@@ -105,7 +105,7 @@ class MasterMixin(six.with_metaclass(MasterMeta, Model)):
             qs = model.objects.filter(k1=v1)
             model.cqrs.bulk_update(qs, k2=v2)
         """
-        post_update.send(cls, instances=instances)
+        post_update.send(cls, instances=instances, using=using)
 
 
 class ReplicaMixin(six.with_metaclass(ReplicaMeta, Model)):

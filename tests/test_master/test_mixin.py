@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import pytest
 from uuid import uuid4
 
+from django.db import transaction
 from django.db.models import CharField, IntegerField
 from django.utils.timezone import now
 
@@ -136,7 +137,7 @@ def test_cqrs_sync_cant_refresh_model():
     assert not m.cqrs_sync()
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True, reset_sequences=True)
 def test_cqrs_sync_not_saved(mocker):
     m = models.ChosenFieldsModel.objects.create(char_field='old')
     m.name = 'new'
@@ -144,13 +145,14 @@ def test_cqrs_sync_not_saved(mocker):
     publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
 
     assert m.cqrs_sync()
+
     assert_publisher_once_called_with_args(
         publisher_mock,
-        SignalType.SAVE, models.ChosenFieldsModel.CQRS_ID, {'char_field': 'old', 'id': 1}, 1,
+        SignalType.SAVE, models.ChosenFieldsModel.CQRS_ID, {'char_field': 'old', 'id': m.pk}, m.pk,
     )
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_cqrs_sync(mocker):
     m = models.ChosenFieldsModel.objects.create(char_field='old')
     m.char_field = 'new'
@@ -159,9 +161,10 @@ def test_cqrs_sync(mocker):
     publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
 
     assert m.cqrs_sync()
+
     assert_publisher_once_called_with_args(
         publisher_mock,
-        SignalType.SAVE, models.ChosenFieldsModel.CQRS_ID, {'char_field': 'new', 'id': 1}, 1,
+        SignalType.SAVE, models.ChosenFieldsModel.CQRS_ID, {'char_field': 'new', 'id': m.pk}, m.pk,
     )
 
 
@@ -186,3 +189,57 @@ def test_update():
 
         assert m.cqrs_updated > cqrs_updated
         cqrs_updated = m.cqrs_updated
+
+
+@pytest.mark.django_db(transaction=True)
+def test_transaction_rollbacked(mocker):
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+
+    try:
+        with transaction.atomic():
+            models.BasicFieldsModel.objects.create(
+                int_field=1,
+                char_field='str',
+            )
+            raise ValueError
+
+    except ValueError:
+        publisher_mock.assert_not_called()
+
+
+@pytest.mark.django_db(transaction=True)
+def test_transaction_commited(mocker):
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+
+    with transaction.atomic():
+        models.BasicFieldsModel.objects.create(
+            int_field=1,
+            char_field='str',
+        )
+
+    assert_publisher_once_called_with_args(
+        publisher_mock,
+        SignalType.SAVE, models.BasicFieldsModel.CQRS_ID, {'char_field': 'str', 'int_field': 1}, 1,
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_transaction_rollbacked_to_savepoint(mocker):
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+
+    with transaction.atomic():
+        models.BasicFieldsModel.objects.create(
+            int_field=1,
+            char_field='str',
+        )
+
+        try:
+            with transaction.atomic(savepoint=True):
+                raise ValueError
+        except ValueError:
+            pass
+
+    assert_publisher_once_called_with_args(
+        publisher_mock,
+        SignalType.SAVE, models.BasicFieldsModel.CQRS_ID, {'char_field': 'str', 'int_field': 1}, 1,
+    )

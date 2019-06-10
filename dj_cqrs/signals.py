@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from django.db import models
+from django.db import models, transaction
 from django.dispatch import Signal
 from django.utils.timezone import now
 
@@ -33,8 +33,12 @@ class MasterSignals(object):
         instance = kwargs['instance']
         instance_data = instance.to_cqrs_dict()
         signal_type = SignalType.SAVE
+        producer_args = signal_type, sender.CQRS_ID, instance_data, instance.pk
 
-        producer.produce(signal_type, sender.CQRS_ID, instance_data, instance.pk)
+        if cls._can_produce_cqrs_now(kwargs['using']):
+            producer.produce(*producer_args)
+        else:
+            cls._produce_cqrs_when_possible(*producer_args)
 
     @classmethod
     def post_delete(cls, sender, **kwargs):
@@ -46,8 +50,10 @@ class MasterSignals(object):
             'id': instance.pk, 'cqrs_revision': instance.cqrs_revision + 1, 'cqrs_updated': now(),
         }
         signal_type = SignalType.DELETE
+        producer_args = signal_type, sender.CQRS_ID, instance_data, instance.pk
 
-        producer.produce(signal_type, sender.CQRS_ID, instance_data, instance.pk)
+        # Delete is always in transaction!
+        cls._produce_cqrs_when_possible(*producer_args)
 
     @classmethod
     def post_bulk_create(cls, sender, **kwargs):
@@ -55,7 +61,7 @@ class MasterSignals(object):
         :param dj_cqrs.mixins.MasterMixin sender: Class or instance inherited from CQRS MasterMixin.
         """
         for instance in kwargs['instances']:
-            cls.post_save(sender, instance=instance)
+            cls.post_save(sender, instance=instance, using=kwargs['using'])
 
     @classmethod
     def post_bulk_update(cls, sender, **kwargs):
@@ -63,4 +69,12 @@ class MasterSignals(object):
         :param dj_cqrs.mixins.MasterMixin sender: Class or instance inherited from CQRS MasterMixin.
         """
         for instance in kwargs['instances']:
-            cls.post_save(sender, instance=instance)
+            cls.post_save(sender, instance=instance, using=kwargs['using'])
+
+    @staticmethod
+    def _can_produce_cqrs_now(using):
+        return not transaction.get_connection(using).in_atomic_block
+
+    @staticmethod
+    def _produce_cqrs_when_possible(*args):
+        transaction.on_commit(lambda: producer.produce(*args))
