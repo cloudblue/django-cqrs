@@ -58,12 +58,6 @@ class MasterMixin(six.with_metaclass(MasterMeta, Model)):
             data = self._common_serialization(using)
         return data
 
-    def relate_cqrs_serialization(self, queryset):
-        """
-        :param django.db.models.QuerySet queryset:
-        """
-        return queryset
-
     def cqrs_sync(self, using=None):
         """ Manual instance synchronization. """
         if self._state.adding:
@@ -76,6 +70,13 @@ class MasterMixin(six.with_metaclass(MasterMeta, Model)):
 
         MasterSignals.post_save(self._meta.model, instance=self, using=using)
         return True
+
+    @classmethod
+    def relate_cqrs_serialization(cls, queryset):
+        """
+        :param django.db.models.QuerySet queryset:
+        """
+        return queryset
 
     @classmethod
     def call_post_bulk_create(cls, instances, using=None):

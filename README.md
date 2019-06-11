@@ -36,7 +36,7 @@ class Author(MasterMixin, models.Model):
 # settings.py
 
 CQRS = {
-    'transport': 'dj_cqrs.transport.rabbit_mq.RabbitMQTransport',
+    'transport': 'dj_cqrs.transport.RabbitMQTransport',
 }
 ```
 * Apply changes to replica service, according to RabbitMQ settings
@@ -69,12 +69,12 @@ class AuthorRef(ReplicaMixin, models.Model):
 # settings.py
 
 CQRS = {
-    'transport': 'dj_cqrs.transport.rabbit_mq.RabbitMQTransport',
+    'transport': 'dj_cqrs.transport.RabbitMQTransport',
     'queue': 'account_replica',
 }
 ```
 * Apply migrations on both services
-* Run consumer worker on replica service. Management command: `python manage.py start_cqrs_consumer -w 2`
+* Run consumer worker on replica service. Management command: `python manage.py cqrs_consume -w 2`
 
 
 Development

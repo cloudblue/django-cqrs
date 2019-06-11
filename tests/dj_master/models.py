@@ -65,7 +65,8 @@ class Author(MasterMixin, models.Model):
         Publisher, related_name='authors', on_delete=models.SET_NULL, null=True,
     )
 
-    def relate_cqrs_serialization(self, queryset):
+    @classmethod
+    def relate_cqrs_serialization(cls, queryset):
         return queryset.select_related('publisher').prefetch_related('books')
 
 
