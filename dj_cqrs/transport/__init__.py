@@ -10,7 +10,7 @@ from dj_cqrs.transport.rabbit_mq import RabbitMQTransport
 transport_cls_location = getattr(settings, 'CQRS', {}) \
     .get('transport')
 if not transport_cls_location:
-    raise AttributeError('CQRS transport is not setup.')
+    raise AttributeError('CQRS transport is not set.')
 
 try:
     current_transport = import_string(transport_cls_location)

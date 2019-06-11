@@ -39,7 +39,7 @@ def test_cqrs_fields_non_existing_field(mocker):
 
         MasterMetaTest.check_cqrs_fields(Cls)
 
-    assert str(e.value) == 'CQRS_FIELDS field is not setup correctly for model Cls.'
+    assert str(e.value) == 'CQRS_FIELDS field is not correctly set for model Cls.'
 
 
 def test_cqrs_fields_id_is_not_included(mocker):
@@ -171,7 +171,7 @@ def test_cqrs_sync_not_saved(mocker):
 
     assert_publisher_once_called_with_args(
         publisher_mock,
-        SignalType.SAVE, models.ChosenFieldsModel.CQRS_ID, {'char_field': 'old', 'id': m.pk}, m.pk,
+        SignalType.SYNC, models.ChosenFieldsModel.CQRS_ID, {'char_field': 'old', 'id': m.pk}, m.pk,
     )
 
 
@@ -187,7 +187,7 @@ def test_cqrs_sync(mocker):
 
     assert_publisher_once_called_with_args(
         publisher_mock,
-        SignalType.SAVE, models.ChosenFieldsModel.CQRS_ID, {'char_field': 'new', 'id': m.pk}, m.pk,
+        SignalType.SYNC, models.ChosenFieldsModel.CQRS_ID, {'char_field': 'new', 'id': m.pk}, m.pk,
     )
 
 
@@ -357,7 +357,7 @@ def test_create_from_related_table(mocker):
             }],
             'cqrs_revision': 1,
         },
-        publisher_mock.call_args[0][2],
+        publisher_mock.call_args[0][0].instance_data,
     )
 
 
@@ -387,7 +387,7 @@ def test_update_from_related_table(mocker):
             'books': [],
             'cqrs_revision': 1,
         },
-        publisher_mock.call_args[0][2],
+        publisher_mock.call_args[0][0].instance_data,
     )
 
 
@@ -406,3 +406,11 @@ def test_to_cqrs_dict_serializer_import_error():
             models.BadSerializationClassModel.objects.create(id=1)
 
     assert "CQRS_SERIALIZER can't be imported." in str(e)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_to_cqrs_dict_serializer_bad_related_function():
+    with pytest.raises(RuntimeError) as e:
+        models.BadQuerySetSerializationClassModel.objects.create()
+
+    assert "Couldn't serialize CQRS class (bad_queryset)." in str(e)

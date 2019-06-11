@@ -9,7 +9,7 @@ from integration_tests.tests.utils import (
 from tests.dj_master.models import BasicFieldsModel
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_flow(replica_cursor):
     assert count_replica_rows(replica_cursor, REPLICA_BASIC_TABLE) == 0
 

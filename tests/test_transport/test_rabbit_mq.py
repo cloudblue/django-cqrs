@@ -131,7 +131,7 @@ def test_produce_ok(rabbit_transport, mocker, caplog):
 
 def test_produce_message_ok(mocker):
     channel = mocker.MagicMock()
-    payload = TransportPayload('signal', 'cqrs_id', {})
+    payload = TransportPayload(SignalType.SAVE, 'cqrs_id', {})
 
     PublicRabbitMQTransport.produce_message(channel, 'exchange', payload)
 
@@ -139,12 +139,36 @@ def test_produce_message_ok(mocker):
 
     basic_publish_kwargs = channel.basic_publish.call_args.kwargs
     assert basic_publish_kwargs['body'] == \
-        '{"signal_type":"signal","cqrs_id":"cqrs_id","instance_data":{}}'
+        '{"signal_type":"SAVE","cqrs_id":"cqrs_id","instance_data":{}}'
     assert basic_publish_kwargs['exchange'] == 'exchange'
     assert basic_publish_kwargs['mandatory']
     assert basic_publish_kwargs['routing_key'] == 'cqrs_id'
     assert basic_publish_kwargs['properties'].content_type == 'text/plain'
     assert basic_publish_kwargs['properties'].delivery_mode == 2
+
+
+def test_produce_sync_message_no_queue(mocker):
+    channel = mocker.MagicMock()
+    payload = TransportPayload(SignalType.SYNC, 'cqrs_id', {})
+
+    PublicRabbitMQTransport.produce_message(channel, 'exchange', payload)
+
+    basic_publish_kwargs = channel.basic_publish.call_args.kwargs
+    assert basic_publish_kwargs['body'] == \
+        '{"signal_type":"SYNC","cqrs_id":"cqrs_id","instance_data":{}}'
+    assert basic_publish_kwargs['routing_key'] == 'cqrs_id'
+
+
+def test_produce_sync_message_queue(mocker):
+    channel = mocker.MagicMock()
+    payload = TransportPayload(SignalType.SYNC, 'cqrs_id', {}, '', 'queue')
+
+    PublicRabbitMQTransport.produce_message(channel, 'exchange', payload)
+
+    basic_publish_kwargs = channel.basic_publish.call_args.kwargs
+    assert basic_publish_kwargs['body'] == \
+        '{"signal_type":"SYNC","cqrs_id":"cqrs_id","instance_data":{}}'
+    assert basic_publish_kwargs['routing_key'] == 'cqrs.queue.cqrs_id'
 
 
 def test_consume_connection_error(rabbit_transport, mocker, caplog):
@@ -156,7 +180,7 @@ def test_consume_connection_error(rabbit_transport, mocker, caplog):
     with pytest.raises(DatabaseError):
         rabbit_transport.consume()
 
-    assert 'AMQP connection error... Reconnecting.' in caplog.text
+    assert 'AMQP connection error. Reconnecting...' in caplog.text
 
 
 def test_consume_ok(rabbit_transport, mocker):

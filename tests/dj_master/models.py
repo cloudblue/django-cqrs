@@ -80,3 +80,12 @@ class Book(models.Model):
 class BadSerializationClassModel(MasterMixin, models.Model):
     CQRS_ID = 'bad_serialization'
     CQRS_SERIALIZER = 'tests.Serializer'
+
+
+class BadQuerySetSerializationClassModel(MasterMixin, models.Model):
+    CQRS_ID = 'bad_queryset'
+    CQRS_SERIALIZER = 'tests.dj_master.serializers.AuthorSerializer'
+
+    @classmethod
+    def relate_cqrs_serialization(cls, queryset):
+        return queryset.none()
