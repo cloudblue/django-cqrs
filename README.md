@@ -13,6 +13,9 @@ The pattern, that solves this issue is called [CQRS - Command Query Responsibili
 
 Examples
 ========
+
+Integration
+-----------
 * Setup `RabbitMQ`
 * Install `django-cqrs`
 * Apply changes to master service, according to RabbitMQ settings
@@ -76,6 +79,15 @@ CQRS = {
 * Apply migrations on both services
 * Run consumer worker on replica service. Management command: `python manage.py cqrs_consume -w 2`
 
+Utilities
+---------
+Bulk synchronizer without transport (usage example: it may be used for initial configuration). Should be used at planned downtime.
+* On master service: `python manage.py cqrs_bulk_dump --cqrs_id=author` -> `author.dump`
+* On replica service: `python manage.py cqrs_bulk_load -i=author.dump`
+
+Filter synchronizer over transport (usage example: sync some specific records to a given replica). Can be used dynamically.
+* To sync all replicas: `python manage.py cqrs_sync --cqrs_id=author -f={"id__in": [1, 2]}`
+* To sync only with one replica: `python manage.py cqrs_sync --cqrs_id=author -f={"id__in": [1, 2]} -q=replica`
 
 Development
 ===========

@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+from django.core.exceptions import FieldError
 from django.core.management.base import BaseCommand, CommandError
 
 import ujson
@@ -23,7 +24,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         model = self._get_model(options)
 
-        qs = model._default_manager.objects.none()
+        qs = model._default_manager.none()
         if options['filter']:
             try:
                 kwargs = ujson.loads(options['filter'])
@@ -32,14 +33,21 @@ class Command(BaseCommand):
             except ValueError:
                 raise CommandError('Bad filter kwargs!')
 
-            qs = model._default_manager.objects.filter(**kwargs)
+            try:
+                qs = model._default_manager.filter(**kwargs)
+            except FieldError as e:
+                raise CommandError('Bad filter kwargs! {}'.format(str(e)))
 
         if qs.count() == 0:
-            print('No objects found for the filter!')
+            print('No objects found for filter!')
             return
 
+        counter = 0
         for instance in model.relate_cqrs_serialization(qs):
             instance.cqrs_sync(queue=options['queue'])
+            counter += 1
+
+        print('Done! {} instance(s) synced.'.format(counter))
 
     def _get_model(self, options):
         cqrs_id = options['cqrs_id']
