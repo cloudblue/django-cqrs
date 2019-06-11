@@ -29,9 +29,9 @@ def test_bad_cqrs_id():
 
 def test_output_file_exists():
     with pytest.raises(CommandError) as e:
-        call_command(COMMAND_NAME, '--cqrs_id=author', '-o=__init__.py')
+        call_command(COMMAND_NAME, '--cqrs_id=author', '-o=setup.py')
 
-    assert 'File __init__.py exists!' in str(e)
+    assert 'File setup.py exists!' in str(e)
 
 
 def remove_file(path):
