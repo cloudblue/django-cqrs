@@ -14,7 +14,7 @@ def test_no_transport_setting(settings):
     with pytest.raises(AttributeError) as e:
         reload_module(import_module('dj_cqrs.transport'))
 
-    assert str(e.value) == 'CQRS transport is not setup.'
+    assert str(e.value) == 'CQRS transport is not set.'
 
 
 def test_bad_transport_setting(settings):

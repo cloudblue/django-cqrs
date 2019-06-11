@@ -9,7 +9,7 @@ from integration_tests.tests.utils import (
 from tests.dj_master.models import BasicFieldsModel
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_both_consumers_consume(replica_cursor):
     assert count_replica_rows(replica_cursor, REPLICA_BASIC_TABLE) == 0
     assert count_replica_rows(replica_cursor, REPLICA_EVENT_TABLE) == 0
@@ -31,7 +31,7 @@ def test_both_consumers_consume(replica_cursor):
     assert len({d[0] for d in events_data}) == 2
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_de_duplication(replica_cursor):
     assert count_replica_rows(replica_cursor, REPLICA_BASIC_TABLE) == 0
     assert count_replica_rows(replica_cursor, REPLICA_EVENT_TABLE) == 0

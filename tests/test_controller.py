@@ -7,7 +7,7 @@ from dj_cqrs.dataclasses import TransportPayload
 
 def test_producer(mocker):
     transport_mock = mocker.patch('tests.dj.transport.TransportStub.produce')
-    produce('a', 'b', {}, 'c')
+    produce(TransportPayload('a', 'b', {}, 'c'))
 
     assert transport_mock.call_count == 1
     assert transport_mock.call_args[0][0].to_dict() == {

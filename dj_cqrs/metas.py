@@ -99,7 +99,7 @@ class _MetaUtils(object):
 
         model_field_names = {f.name for f in chain(opts.concrete_fields, opts.private_fields)}
         assert not set(cqrs_field_names) - model_field_names, \
-            '{} field is not setup correctly for model {}.'.format(cqrs_attr, model_name)
+            '{} field is not correctly set for model {}.'.format(cqrs_attr, model_name)
 
     @staticmethod
     def _check_id_in_names(model_cls, cqrs_field_names, cqrs_attr):

@@ -20,7 +20,7 @@ class MasterMixin(six.with_metaclass(MasterMeta, Model)):
     CQRS_ID - Unique CQRS identifier for all microservices.
     CQRS_FIELDS - Fields, that need to by synchronized between microservices.
     CQRS_SERIALIZER - Serializer, that overrides common serialization logic.
-                      Can't be setup together with non-default CQRS_FIELDS.
+                      Can't be set together with non-default CQRS_FIELDS.
                       DRF serializers are only supported now: Serializer(instance).data
 
     cqrs - Manager, that adds needed CQRS queryset methods.
@@ -58,24 +58,28 @@ class MasterMixin(six.with_metaclass(MasterMeta, Model)):
             data = self._common_serialization(using)
         return data
 
-    def relate_cqrs_serialization(self, queryset):
-        """
-        :param django.db.models.QuerySet queryset:
-        """
-        return queryset
-
-    def cqrs_sync(self, using=None):
+    def cqrs_sync(self, using=None, queue=None):
         """ Manual instance synchronization. """
         if self._state.adding:
             return False
 
-        try:
-            self.refresh_from_db()
-        except self._meta.model.DoesNotExist:
-            return False
+        if not self.CQRS_SERIALIZER:
+            try:
+                self.refresh_from_db()
+            except self._meta.model.DoesNotExist:
+                return False
 
-        MasterSignals.post_save(self._meta.model, instance=self, using=using)
+        MasterSignals.post_save(
+            self._meta.model, instance=self, using=using, queue=queue, sync=True,
+        )
         return True
+
+    @classmethod
+    def relate_cqrs_serialization(cls, queryset):
+        """
+        :param django.db.models.QuerySet queryset:
+        """
+        return queryset
 
     @classmethod
     def call_post_bulk_create(cls, instances, using=None):
@@ -132,6 +136,8 @@ class MasterMixin(six.with_metaclass(MasterMeta, Model)):
         qs = self.__class__._default_manager.using(db).filter(pk=self.pk)
 
         instance = self.relate_cqrs_serialization(qs).first()
+        if not instance:
+            raise RuntimeError("Couldn't serialize CQRS class ({}).".format(self.CQRS_ID))
 
         data = self._cqrs_serializer_cls(instance).data
         data['cqrs_revision'] = instance.cqrs_revision
@@ -176,15 +182,16 @@ class ReplicaMixin(six.with_metaclass(ReplicaMeta, Model)):
         abstract = True
 
     @classmethod
-    def cqrs_save(cls, master_data):
+    def cqrs_save(cls, master_data, sync=False):
         """ This method saves (creates or updates) model instance from CQRS master instance data.
         This method must not be overridden. Otherwise, sync checks need to be implemented manually.
 
         :param dict master_data: CQRS master instance data.
+        :param bool sync: Sync package flag.
         :return: Model instance.
         :rtype: django.db.models.Model
         """
-        return cls.cqrs.save_instance(master_data)
+        return cls.cqrs.save_instance(master_data, sync)
 
     @classmethod
     def cqrs_create(cls, **mapped_data):

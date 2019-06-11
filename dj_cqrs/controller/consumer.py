@@ -37,5 +37,9 @@ def route_signal_to_replica_model(signal_type, cqrs_id, instance_data):
             with transaction.atomic():
                 return model_cls.cqrs_save(instance_data)
 
+        elif signal_type == SignalType.SYNC:
+            with transaction.atomic():
+                return model_cls.cqrs_save(instance_data, sync=True)
+
         else:
             logger.error('Bad signal type "{}" for CQRS_ID "{}".'.format(signal_type, cqrs_id))

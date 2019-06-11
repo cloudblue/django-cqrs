@@ -29,10 +29,11 @@ class MasterManager(Manager):
 
 
 class ReplicaManager(Manager):
-    def save_instance(self, master_data):
+    def save_instance(self, master_data, sync=False):
         """ This method saves (creates or updates) model instance from CQRS master instance data.
 
         :param dict master_data: CQRS master instance data.
+        :param bool sync: Sync package flag.
         :return: Model instance.
         :rtype: django.db.models.Model
         """
@@ -41,12 +42,19 @@ class ReplicaManager(Manager):
         if mapped_data:
             pk_name = self._get_model_pk_name()
             pk_value = mapped_data[pk_name]
-            instance = self.model._default_manager.filter(**{pk_name: pk_value}).first()
+            f_kwargs = {pk_name: pk_value}
 
-            if instance:
-                return self.update_instance(instance, mapped_data)
+            if sync:
+                self.model._default_manager.filter(**f_kwargs).delete()
+                return self.create_instance(mapped_data)
 
-            return self.create_instance(mapped_data)
+            else:
+                instance = self.model._default_manager.filter(**f_kwargs).first()
+
+                if instance:
+                    return self.update_instance(instance, mapped_data)
+
+                return self.create_instance(mapped_data)
 
     def create_instance(self, mapped_data):
         """ This method creates model instance from mapped CQRS master instance data.

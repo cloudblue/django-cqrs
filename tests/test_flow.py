@@ -116,3 +116,38 @@ def test_delete_serialized():
 
     assert replica_models.AuthorRef.objects.count() == 0
     assert replica_models.Book.objects.count() == 0
+
+
+@pytest.mark.django_db(transaction=True)
+def test_sync_is_deleted():
+    author = master_models.Author.objects.create(id=1, name='author')
+    author.refresh_from_db()
+
+    assert replica_models.AuthorRef.objects.count() == 1
+
+    replica_models.AuthorRef.objects.all().delete()
+    author.cqrs_sync()
+
+    assert replica_models.AuthorRef.objects.count() == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_sync_exists(mocker):
+    author = master_models.Author.objects.create(id=1, name='author')
+    author.refresh_from_db()
+
+    assert replica_models.AuthorRef.objects.count() == 1
+
+    # We simulate transport error
+    mocker.patch('dj_cqrs.controller.producer.produce')
+    author.name = 'new'
+    author.save()
+    mocker.stopall()
+
+    author.cqrs_sync()
+
+    assert replica_models.AuthorRef.objects.count() == 1
+
+    replica_author = replica_models.AuthorRef.objects.first()
+    assert replica_author.cqrs_revision == 1
+    assert replica_author.name == 'new'

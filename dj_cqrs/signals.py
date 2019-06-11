@@ -6,7 +6,7 @@ from django.utils.timezone import now
 
 from dj_cqrs.controller import producer
 from dj_cqrs.constants import SignalType
-
+from dj_cqrs.dataclasses import TransportPayload
 
 post_bulk_create = Signal(providing_args=['instances', 'using'])
 post_update = Signal(providing_args=['instances', 'using'])
@@ -33,16 +33,23 @@ class MasterSignals(object):
         instance = kwargs['instance']
         using = kwargs['using']
 
+        sync = kwargs.get('sync', False)
+        queue = kwargs.get('queue', None)
+
         if not transaction.get_connection(using).in_atomic_block:
             instance_data = instance.to_cqrs_dict(using)
-            signal_type = SignalType.SAVE
-            producer_args = signal_type, sender.CQRS_ID, instance_data, instance.pk
 
-            producer.produce(*producer_args)
+            signal_type = SignalType.SYNC if sync else SignalType.SAVE
+            payload = TransportPayload(
+                signal_type, sender.CQRS_ID, instance_data, instance.pk, queue,
+            )
+            producer.produce(payload)
 
         else:
             transaction.on_commit(
-                lambda: MasterSignals.post_save(sender, instance=instance, using=using),
+                lambda: MasterSignals.post_save(
+                    sender, instance=instance, using=using, sync=sync, queue=queue,
+                ),
             )
 
     @classmethod
@@ -56,10 +63,9 @@ class MasterSignals(object):
         }
         signal_type = SignalType.DELETE
 
+        payload = TransportPayload(signal_type, sender.CQRS_ID, instance_data, instance.pk)
         # Delete is always in transaction!
-        transaction.on_commit(
-            lambda: producer.produce(signal_type, sender.CQRS_ID, instance_data, instance.pk),
-        )
+        transaction.on_commit(lambda: producer.produce(payload))
 
     @classmethod
     def post_bulk_create(cls, sender, **kwargs):

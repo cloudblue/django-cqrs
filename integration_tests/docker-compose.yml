@@ -27,7 +27,7 @@ services:
       python manage.py makemigrations --settings=integration_tests.replica_settings &&
       python manage.py makemigrations dj_replica --settings=integration_tests.replica_settings &&
       python manage.py migrate --settings=integration_tests.replica_settings &&
-      python manage.py start_cqrs_consumer -w 2 --settings=integration_tests.replica_settings
+      python manage.py cqrs_consume -w 2 --settings=integration_tests.replica_settings
       "
     container_name: django_cqrs_test_replica
     depends_on:

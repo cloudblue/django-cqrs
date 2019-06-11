@@ -34,7 +34,7 @@ def test_cqrs_fields_non_existing_field(mocker):
 
         ReplicaMetaTest.check_cqrs_mapping(Cls)
 
-    assert str(e.value) == 'CQRS_MAPPING field is not setup correctly for model Cls.'
+    assert str(e.value) == 'CQRS_MAPPING field is not correctly set for model Cls.'
 
 
 def test_cqrs_fields_id_is_not_included(mocker):
