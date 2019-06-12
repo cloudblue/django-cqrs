@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 
-import os
 import ujson
 
 import pytest
@@ -8,7 +7,7 @@ from django.core.management import CommandError, call_command
 from django.db import transaction
 
 from tests.dj_master.models import Author, Publisher
-
+from tests.test_commands.utils import remove_file
 
 COMMAND_NAME = 'cqrs_bulk_dump'
 
@@ -32,13 +31,6 @@ def test_output_file_exists():
         call_command(COMMAND_NAME, '--cqrs_id=author', '-o=setup.py')
 
     assert 'File setup.py exists!' in str(e)
-
-
-def remove_file(path):
-    try:
-        os.remove(path)
-    except OSError:
-        pass
 
 
 @pytest.mark.django_db

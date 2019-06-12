@@ -44,7 +44,7 @@ def test_unparseable_line():
     with pytest.raises(CommandError) as e:
         call_command(COMMAND_NAME, '-i={}unparseable.dump'.format(DUMPS_PATH))
 
-    assert "Dump file can't be parsed: line 1!" in str(e)
+    assert "Dump file can't be parsed: line 2!" in str(e)
 
 
 @pytest.mark.django_db
@@ -52,7 +52,7 @@ def test_bad_master_data():
     with pytest.raises(CommandError) as e:
         call_command(COMMAND_NAME, '-i={}bad_master_data.dump'.format(DUMPS_PATH))
 
-    assert "Instance can't be saved: line 2!" in str(e)
+    assert "Instance can't be saved: line 3!" in str(e)
 
 
 @pytest.mark.django_db

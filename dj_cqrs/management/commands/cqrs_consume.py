@@ -12,7 +12,7 @@ class Command(BaseCommand):
     help = 'Starts CQRS worker, which consumes messages from message queue.'
 
     def add_arguments(self, parser):
-        parser.add_argument('--workers', '-w', help='Number of workers', type=int, default=0)
+        parser.add_argument('--workers', '-w', help='Number of workers.', type=int, default=0)
 
     def handle(self, *args, **options):
         if options['workers'] == 0:

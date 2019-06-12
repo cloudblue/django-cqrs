@@ -7,9 +7,7 @@ class BaseTransport(object):
     All transports need to inherit from this base class.
     Transport must be set in Django settings:
         CQRS = {
-            'transport': {
-                'class': 'tests.dj.transport.TransportStub',
-            },
+            'transport': 'tests.dj.transport.TransportStub',
         }
     """
     consumers = {}

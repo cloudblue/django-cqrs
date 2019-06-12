@@ -38,7 +38,7 @@ class Command(BaseCommand):
             with transaction.atomic():
                 model._default_manager.all().delete()
 
-                line_number = 1
+                line_number = 2
                 for line in f:
                     try:
                         master_data = ujson.loads(line.strip())
