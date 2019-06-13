@@ -1,7 +1,10 @@
 from __future__ import unicode_literals
 
+import os
+
 from dj_cqrs.controller import consumer
-from dj_cqrs.transport import BaseTransport
+from dj_cqrs.transport.base import BaseTransport
+from dj_cqrs.transport.rabbit_mq import RabbitMQTransport
 
 
 class TransportStub(BaseTransport):
@@ -12,3 +15,14 @@ class TransportStub(BaseTransport):
     @staticmethod
     def consume(payload):
         consumer.consume(payload)
+
+
+class RabbitMQTransportWithEvents(RabbitMQTransport):
+    @staticmethod
+    def _log_consumed(payload):
+        from tests.dj_replica.models import Event
+        Event.objects.create(
+            pid=os.getpid(),
+            cqrs_id=payload.cqrs_id,
+            cqrs_revision=int(payload.instance_data['cqrs_revision']),
+        )

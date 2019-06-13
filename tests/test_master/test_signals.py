@@ -15,18 +15,18 @@ def test_signals_are_registered(model, signal):
     assert signal.has_listeners(model)
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_post_save_create(mocker):
     publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
     models.SimplestModel.objects.create(id=1)
 
     assert_publisher_once_called_with_args(
         publisher_mock,
-        SignalType.SAVE, models.SimplestModel.CQRS_ID, {'id': 1, 'name': None},
+        SignalType.SAVE, models.SimplestModel.CQRS_ID, {'id': 1, 'name': None}, 1,
     )
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_post_save_update(mocker):
     m = models.SimplestModel.objects.create(id=1)
 
@@ -36,11 +36,11 @@ def test_post_save_update(mocker):
 
     assert_publisher_once_called_with_args(
         publisher_mock,
-        SignalType.SAVE, models.SimplestModel.CQRS_ID, {'id': 1, 'name': 'new'},
+        SignalType.SAVE, models.SimplestModel.CQRS_ID, {'id': 1, 'name': 'new'}, 1,
     )
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_post_save_delete(mocker):
     m = models.SimplestModel.objects.create(id=1)
 
@@ -49,11 +49,11 @@ def test_post_save_delete(mocker):
 
     assert_publisher_once_called_with_args(
         publisher_mock,
-        SignalType.DELETE, models.SimplestModel.CQRS_ID, {'id': 1, 'cqrs_revision': 1},
+        SignalType.DELETE, models.SimplestModel.CQRS_ID, {'id': 1, 'cqrs_revision': 1}, 1,
     )
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_post_bulk_create(mocker):
     models.AutoFieldsModel.objects.bulk_create([models.AutoFieldsModel() for _ in range(3)])
     created_models = list(models.AutoFieldsModel.objects.all())
@@ -64,7 +64,7 @@ def test_post_bulk_create(mocker):
     assert publisher_mock.call_count == 3
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_post_bulk_update(mocker):
     for i in range(3):
         models.SimplestModel.objects.create(id=i)
@@ -78,7 +78,7 @@ def test_post_bulk_update(mocker):
 
     assert_publisher_once_called_with_args(
         publisher_mock,
-        SignalType.SAVE, models.SimplestModel.CQRS_ID, {'id': 1, 'name': 'new'},
+        SignalType.SAVE, models.SimplestModel.CQRS_ID, {'id': 1, 'name': 'new'}, 1,
     )
 
     m = models.SimplestModel.objects.get(id=1)

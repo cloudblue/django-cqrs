@@ -1,0 +1,51 @@
+version: '3'
+
+services:
+
+  rabbit:
+    image: rabbitmq:latest
+    expose:
+      - '5672'
+
+  postgres:
+    image: postgres:latest
+    expose:
+      - '5432'
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pswd
+      POSTGRES_DB: replica
+
+  replica:
+    build:
+      context: ..
+      dockerfile: integration_tests/Dockerfile.Replica
+    restart: always
+    command:
+      bash -c "
+      sleep 10 &&
+      python manage.py makemigrations --settings=integration_tests.replica_settings &&
+      python manage.py makemigrations dj_replica --settings=integration_tests.replica_settings &&
+      python manage.py migrate --settings=integration_tests.replica_settings &&
+      python manage.py cqrs_consume -w 2 --settings=integration_tests.replica_settings
+      "
+    container_name: django_cqrs_test_replica
+    depends_on:
+      - rabbit
+      - postgres
+    volumes:
+      - ../dj_cqrs:/replica/dj_cqrs
+
+  master:
+    build:
+      context: ..
+      dockerfile: integration_tests/Dockerfile.Master
+    command:
+      bash -c "sleep 12 && pytest integration_tests/"
+    container_name: django_cqrs_test_master
+    depends_on:
+      - rabbit
+      - replica
+    volumes:
+      - ./tests/:/master/integration_tests/tests
+      - ../dj_cqrs:/master/dj_cqrs

@@ -3,13 +3,25 @@ from __future__ import unicode_literals
 import pytest
 from uuid import uuid4
 
+from django.db import transaction
 from django.db.models import CharField, IntegerField
 from django.utils.timezone import now
 
 from dj_cqrs.constants import SignalType
 from dj_cqrs.metas import MasterMeta
 from tests.dj_master import models
+from tests.dj_master.serializers import AuthorSerializer
 from tests.utils import assert_is_sub_dict, assert_publisher_once_called_with_args
+
+
+class MasterMetaTest(MasterMeta):
+    @classmethod
+    def check_cqrs_fields(cls, model_cls):
+        return cls._check_cqrs_fields(model_cls)
+
+    @classmethod
+    def check_correct_configuration(cls, model_cls):
+        return cls._check_correct_configuration(model_cls)
 
 
 def test_cqrs_fields_non_existing_field(mocker):
@@ -25,9 +37,9 @@ def test_cqrs_fields_non_existing_field(mocker):
             _meta = mocker.MagicMock(concrete_fields=(char_field, int_field), private_fields=())
             _meta.pk.name = 'char_field'
 
-        MasterMeta._check_cqrs_fields(Cls)
+        MasterMetaTest.check_cqrs_fields(Cls)
 
-    assert str(e.value) == 'CQRS_FIELDS field is not setup correctly for model Cls.'
+    assert str(e.value) == 'CQRS_FIELDS field is not correctly set for model Cls.'
 
 
 def test_cqrs_fields_id_is_not_included(mocker):
@@ -43,7 +55,7 @@ def test_cqrs_fields_id_is_not_included(mocker):
             _meta = mocker.MagicMock(concrete_fields=(char_field, int_field), private_fields=())
             _meta.pk.name = 'char_field'
 
-        MasterMeta._check_cqrs_fields(Cls)
+        MasterMetaTest.check_cqrs_fields(Cls)
 
     assert str(e.value) == 'PK is not in CQRS_FIELDS for model Cls.'
 
@@ -61,9 +73,27 @@ def test_cqrs_fields_duplicates(mocker):
             _meta = mocker.MagicMock(concrete_fields=(char_field, int_field), private_fields=())
             _meta.pk.name = 'char_field'
 
-        MasterMeta._check_cqrs_fields(Cls)
+        MasterMetaTest.check_cqrs_fields(Cls)
 
     assert str(e.value) == 'Duplicate names in CQRS_FIELDS field for model Cls.'
+
+
+def test_cqrs_bad_configuration(mocker):
+    with pytest.raises(AssertionError) as e:
+
+        class Cls(object):
+            CQRD_ID = 'ID'
+            CQRS_FIELDS = ('char_field',)
+            CQRS_SERIALIZER = 'path.to.serializer'
+
+            char_field = CharField(max_length=100, primary_key=True)
+
+            _meta = mocker.MagicMock(concrete_fields=(char_field,), private_fields=())
+            _meta.pk.name = 'char_field'
+
+        MasterMetaTest.check_correct_configuration(Cls)
+
+    assert "CQRS_FIELDS can't be set together with CQRS_SERIALIZER." in str(e.value)
 
 
 @pytest.mark.django_db
@@ -91,7 +121,7 @@ def test_to_cqrs_dict_basic_types():
         'bool_field': False,
         'char_field': 'str',
         'date_field': None,
-        'datetime_field': dt,
+        'datetime_field': str(dt),
         'float_field': 1.23,
         'url_field': 'http://example.com',
         'uuid_field': uid,
@@ -130,7 +160,7 @@ def test_cqrs_sync_cant_refresh_model():
     assert not m.cqrs_sync()
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True, reset_sequences=True)
 def test_cqrs_sync_not_saved(mocker):
     m = models.ChosenFieldsModel.objects.create(char_field='old')
     m.name = 'new'
@@ -138,13 +168,14 @@ def test_cqrs_sync_not_saved(mocker):
     publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
 
     assert m.cqrs_sync()
+
     assert_publisher_once_called_with_args(
         publisher_mock,
-        SignalType.SAVE, models.ChosenFieldsModel.CQRS_ID, {'char_field': 'old', 'id': 1},
+        SignalType.SYNC, models.ChosenFieldsModel.CQRS_ID, {'char_field': 'old', 'id': m.pk}, m.pk,
     )
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_cqrs_sync(mocker):
     m = models.ChosenFieldsModel.objects.create(char_field='old')
     m.char_field = 'new'
@@ -153,9 +184,10 @@ def test_cqrs_sync(mocker):
     publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
 
     assert m.cqrs_sync()
+
     assert_publisher_once_called_with_args(
         publisher_mock,
-        SignalType.SAVE, models.ChosenFieldsModel.CQRS_ID, {'char_field': 'new', 'id': 1},
+        SignalType.SYNC, models.ChosenFieldsModel.CQRS_ID, {'char_field': 'new', 'id': m.pk}, m.pk,
     )
 
 
@@ -180,3 +212,205 @@ def test_update():
 
         assert m.cqrs_updated > cqrs_updated
         cqrs_updated = m.cqrs_updated
+
+
+@pytest.mark.django_db(transaction=True)
+def test_transaction_rollbacked(mocker):
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+
+    try:
+        with transaction.atomic():
+            models.BasicFieldsModel.objects.create(
+                int_field=1,
+                char_field='str',
+            )
+            raise ValueError
+
+    except ValueError:
+        publisher_mock.assert_not_called()
+
+
+@pytest.mark.django_db(transaction=True)
+def test_transaction_commited(mocker):
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+
+    with transaction.atomic():
+        models.BasicFieldsModel.objects.create(
+            int_field=1,
+            char_field='str',
+        )
+
+    assert_publisher_once_called_with_args(
+        publisher_mock,
+        SignalType.SAVE, models.BasicFieldsModel.CQRS_ID, {'char_field': 'str', 'int_field': 1}, 1,
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_transaction_rollbacked_to_savepoint(mocker):
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+
+    with transaction.atomic():
+        models.BasicFieldsModel.objects.create(
+            int_field=1,
+            char_field='str',
+        )
+
+        try:
+            with transaction.atomic(savepoint=True):
+                raise ValueError
+        except ValueError:
+            pass
+
+    assert_publisher_once_called_with_args(
+        publisher_mock,
+        SignalType.SAVE, models.BasicFieldsModel.CQRS_ID, {'char_field': 'str', 'int_field': 1}, 1,
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_serialization_no_related_instance(mocker):
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+    models.Author.objects.create(id=1, name='author', publisher=None)
+
+    assert_publisher_once_called_with_args(
+        publisher_mock,
+        SignalType.SAVE, models.Author.CQRS_ID,
+        {
+            'id': 1,
+            'name': 'author',
+            'publisher': None,
+            'books': [],
+            'cqrs_revision': 0,
+        }, 1,
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_save_serialization(mocker, django_assert_num_queries):
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+
+    # 0 - Transaction start
+    # 1 - Publisher
+    # 2 - Author
+    # 3-4 - Books
+    # 5-6 - Serialization with prefetch_related
+    query_counter = 7
+    with django_assert_num_queries(query_counter):
+        with transaction.atomic():
+            publisher = models.Publisher.objects.create(id=1, name='publisher')
+            author = models.Author.objects.create(id=1, name='author', publisher=publisher)
+            for index in range(1, 3):
+                models.Book.objects.create(id=index, title=str(index), author=author)
+
+    assert_publisher_once_called_with_args(
+        publisher_mock,
+        SignalType.SAVE, models.Author.CQRS_ID,
+        {
+            'id': 1,
+            'name': 'author',
+            'publisher': {
+                'id': 1,
+                'name': 'publisher',
+            },
+            'books': [{
+                'id': 1,
+                'name': '1',
+            }, {
+                'id': 2,
+                'name': '2',
+            }],
+            'cqrs_revision': 0,
+        }, 1,
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_delete_serialization():
+    m = models.Author.objects.create(id=1, name='author', publisher=None)
+    assert models.Author.objects.count() == 1
+
+    m.delete()
+    assert models.Author.objects.count() == 0
+
+
+@pytest.mark.django_db(transaction=True)
+def test_create_from_related_table(mocker):
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+    author = models.Author.objects.create(id=1, name='author', publisher=None)
+
+    with transaction.atomic():
+        models.Book.objects.create(id=1, title='title', author=author)
+
+        # Calling author.cqrs_sync() would result in a wrong cqrs_revision!
+        author.save()
+
+    assert publisher_mock.call_count == 2
+    assert_is_sub_dict(
+        {
+            'id': 1,
+            'name': 'author',
+            'publisher': None,
+            'books': [{
+                'id': 1,
+                'name': 'title',
+            }],
+            'cqrs_revision': 1,
+        },
+        publisher_mock.call_args[0][0].instance_data,
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_update_from_related_table(mocker):
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+
+    with transaction.atomic():
+        publisher = models.Publisher.objects.create(id=1, name='publisher')
+        author = models.Author.objects.create(id=1, name='author', publisher=publisher)
+
+    with transaction.atomic():
+        publisher.name = 'new'
+        publisher.save()
+
+        author.save()
+
+    assert publisher_mock.call_count == 2
+    assert_is_sub_dict(
+        {
+            'id': 1,
+            'name': 'author',
+            'publisher': {
+                'id': 1,
+                'name': 'new'
+            },
+            'books': [],
+            'cqrs_revision': 1,
+        },
+        publisher_mock.call_args[0][0].instance_data,
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_to_cqrs_dict_serializer_ok():
+    model = models.Author.objects.create(id=1)
+
+    assert_is_sub_dict(AuthorSerializer(model).data, model.to_cqrs_dict())
+    assert models.Author._cqrs_serializer_class == AuthorSerializer
+
+
+@pytest.mark.django_db(transaction=True)
+def test_to_cqrs_dict_serializer_import_error():
+    with pytest.raises(ImportError) as e:
+        with transaction.atomic():
+            models.BadSerializationClassModel.objects.create(id=1)
+
+    assert "CQRS_SERIALIZER can't be imported." in str(e)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_to_cqrs_dict_serializer_bad_related_function():
+    with pytest.raises(RuntimeError) as e:
+        models.BadQuerySetSerializationClassModel.objects.create()
+
+    assert "Couldn't serialize CQRS class (bad_queryset)." in str(e)

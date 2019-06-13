@@ -16,7 +16,6 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'django.contrib.staticfiles',
 
     'dj_cqrs',
     'tests.dj_master',
@@ -53,8 +52,6 @@ USE_L10N = True
 USE_TZ = True
 
 CQRS = {
-    'transport': {
-        'class': 'tests.dj.transport.TransportStub',
-    },
+    'transport': 'tests.dj.transport.TransportStub',
     'queue': 'replica',
 }

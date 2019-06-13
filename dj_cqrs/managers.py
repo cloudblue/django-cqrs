@@ -24,16 +24,16 @@ class MasterManager(Manager):
             result = queryset.update(
                 cqrs_revision=F('cqrs_revision') + 1, cqrs_updated=current_dt, **kwargs
             )
-        queryset.model.call_post_update(list(queryset.all()))
+        queryset.model.call_post_update(list(queryset.all()), using=queryset.db)
         return result
 
 
 class ReplicaManager(Manager):
-    @transaction.atomic
-    def save_instance(self, master_data):
+    def save_instance(self, master_data, sync=False):
         """ This method saves (creates or updates) model instance from CQRS master instance data.
 
         :param dict master_data: CQRS master instance data.
+        :param bool sync: Sync package flag.
         :return: Model instance.
         :rtype: django.db.models.Model
         """
@@ -42,12 +42,19 @@ class ReplicaManager(Manager):
         if mapped_data:
             pk_name = self._get_model_pk_name()
             pk_value = mapped_data[pk_name]
-            instance = self.model._default_manager.filter(**{pk_name: pk_value}).first()
+            f_kwargs = {pk_name: pk_value}
 
-            if instance:
-                return self.update_instance(instance, mapped_data)
+            if sync:
+                self.model._default_manager.filter(**f_kwargs).delete()
+                return self.create_instance(mapped_data)
 
-            return self.create_instance(mapped_data)
+            else:
+                instance = self.model._default_manager.filter(**f_kwargs).first()
+
+                if instance:
+                    return self.update_instance(instance, mapped_data)
+
+                return self.create_instance(mapped_data)
 
     def create_instance(self, mapped_data):
         """ This method creates model instance from mapped CQRS master instance data.
@@ -57,7 +64,7 @@ class ReplicaManager(Manager):
         :rtype: django.db.models.Model
         """
         try:
-            return self.model._default_manager.create(**mapped_data)
+            return self.model.cqrs_create(**mapped_data)
         except (Error, ValidationError) as e:
             pk_value = mapped_data[self._get_model_pk_name()]
             if isinstance(e, IntegrityError):
@@ -110,10 +117,7 @@ class ReplicaManager(Manager):
             ))
 
         try:
-            for key, value in mapped_data.items():
-                setattr(instance, key, value)
-            instance.save()
-            return instance
+            return instance.cqrs_update(**mapped_data)
         except (Error, ValidationError) as e:
             logger.error(
                 '{}\nCQRS update error: pk = {}, cqrs_revision = {} ({}).'.format(
@@ -121,7 +125,6 @@ class ReplicaManager(Manager):
                 ),
             )
 
-    @transaction.atomic
     def delete_instance(self, master_data):
         """ This method deletes model instance from mapped CQRS master instance data.
 
@@ -157,6 +160,9 @@ class ReplicaManager(Manager):
         if self._get_model_pk_name() not in mapped_data:
             self._log_pk_data_error()
             return
+
+        if self.model.CQRS_CUSTOM_SERIALIZATION:
+            return mapped_data
 
         mapped_data = self._remove_excessive_data(mapped_data)
 

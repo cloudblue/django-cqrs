@@ -1,0 +1,216 @@
+from __future__ import unicode_literals
+
+import logging
+from importlib import import_module
+
+import pytest
+from django.db import DatabaseError
+from pika.exceptions import AMQPError
+from six.moves import reload_module
+
+from dj_cqrs.constants import SignalType
+from dj_cqrs.dataclasses import TransportPayload
+from dj_cqrs.transport.rabbit_mq import RabbitMQTransport
+from tests.utils import db_error
+
+
+class PublicRabbitMQTransport(RabbitMQTransport):
+    @classmethod
+    def get_common_settings(cls):
+        return cls._get_common_settings()
+
+    @classmethod
+    def get_consumer_settings(cls):
+        return cls._get_consumer_settings()
+
+    @classmethod
+    def consume_message(cls, *args):
+        return cls._consume_message(*args)
+
+    @classmethod
+    def produce_message(cls, *args):
+        return cls._produce_message(*args)
+
+
+def test_default_settings():
+    s = PublicRabbitMQTransport.get_common_settings()
+    assert s[0] == 'localhost'
+    assert s[1] == 5672
+    assert s[2].username == 'guest' and s[2].password == 'guest'
+    assert s[3] == 'cqrs'
+
+
+def test_non_default_settings(settings):
+    settings.CQRS = {
+        'transport': 'dj_cqrs.transport.rabbit_mq.RabbitMQTransport',
+        'host': 'rabbit',
+        'port': 8000,
+        'user': 'usr',
+        'password': 'pswd',
+        'exchange': 'exchange',
+    }
+
+    s = PublicRabbitMQTransport.get_common_settings()
+    assert s[0] == 'rabbit'
+    assert s[1] == 8000
+    assert s[2].username == 'usr' and s[2].password == 'pswd'
+    assert s[3] == 'exchange'
+
+
+def test_consumer_default_settings():
+    s = PublicRabbitMQTransport.get_consumer_settings()
+    assert s[0] is None
+    assert s[1] == 10
+
+
+def test_consumer_non_default_settings(settings):
+    settings.CQRS = {
+        'transport': 'dj_cqrs.transport.rabbit_mq.RabbitMQTransport',
+        'queue': 'q',
+        'consumer_prefetch_count': 2,
+    }
+
+    s = PublicRabbitMQTransport.get_consumer_settings()
+    assert s[0] == 'q'
+    assert s[1] == 2
+
+
+@pytest.fixture
+def rabbit_transport(settings):
+    settings.CQRS = {
+        'transport': 'dj_cqrs.transport.rabbit_mq.RabbitMQTransport',
+        'queue': 'replica',
+    }
+    module = reload_module(import_module('dj_cqrs.transport'))
+    yield module.current_transport
+
+
+def amqp_error(*args, **kwargs):
+    raise AMQPError
+
+
+def test_produce_connection_error(rabbit_transport, mocker, caplog):
+    mocker.patch.object(RabbitMQTransport, '_get_producer_rmq_objects', side_effect=amqp_error)
+
+    rabbit_transport.produce(
+        TransportPayload(
+            SignalType.SAVE, 'CQRS_ID', {'id': 1}, 1,
+        ),
+    )
+    assert "CQRS couldn't be published: pk = 1 (CQRS_ID)." in caplog.text
+
+
+def test_produce_publish_error(rabbit_transport, mocker, caplog):
+    mocker.patch.object(
+        RabbitMQTransport, '_get_producer_rmq_objects', return_value=(mocker.MagicMock(), None),
+    )
+    mocker.patch.object(RabbitMQTransport, '_produce_message', side_effect=amqp_error)
+
+    rabbit_transport.produce(
+        TransportPayload(
+            SignalType.SAVE, 'CQRS_ID', {'id': 1}, 1,
+        ),
+    )
+    assert "CQRS couldn't be published: pk = 1 (CQRS_ID)." in caplog.text
+
+
+def test_produce_ok(rabbit_transport, mocker, caplog):
+    caplog.set_level(logging.INFO)
+    mocker.patch.object(
+        RabbitMQTransport, '_get_producer_rmq_objects', return_value=(mocker.MagicMock(), None),
+    )
+    mocker.patch.object(RabbitMQTransport, '_produce_message', return_value=True)
+
+    rabbit_transport.produce(
+        TransportPayload(
+            SignalType.SAVE, 'CQRS_ID', {'id': 1}, 1,
+        ),
+    )
+    assert 'CQRS is published: pk = 1 (CQRS_ID).' in caplog.text
+
+
+def test_produce_message_ok(mocker):
+    channel = mocker.MagicMock()
+    payload = TransportPayload(SignalType.SAVE, 'cqrs_id', {})
+
+    PublicRabbitMQTransport.produce_message(channel, 'exchange', payload)
+
+    assert channel.basic_publish.call_count == 1
+
+    basic_publish_kwargs = channel.basic_publish.call_args.kwargs
+    assert basic_publish_kwargs['body'] == \
+        '{"signal_type":"SAVE","cqrs_id":"cqrs_id","instance_data":{}}'
+    assert basic_publish_kwargs['exchange'] == 'exchange'
+    assert basic_publish_kwargs['mandatory']
+    assert basic_publish_kwargs['routing_key'] == 'cqrs_id'
+    assert basic_publish_kwargs['properties'].content_type == 'text/plain'
+    assert basic_publish_kwargs['properties'].delivery_mode == 2
+
+
+def test_produce_sync_message_no_queue(mocker):
+    channel = mocker.MagicMock()
+    payload = TransportPayload(SignalType.SYNC, 'cqrs_id', {})
+
+    PublicRabbitMQTransport.produce_message(channel, 'exchange', payload)
+
+    basic_publish_kwargs = channel.basic_publish.call_args.kwargs
+    assert basic_publish_kwargs['body'] == \
+        '{"signal_type":"SYNC","cqrs_id":"cqrs_id","instance_data":{}}'
+    assert basic_publish_kwargs['routing_key'] == 'cqrs_id'
+
+
+def test_produce_sync_message_queue(mocker):
+    channel = mocker.MagicMock()
+    payload = TransportPayload(SignalType.SYNC, 'cqrs_id', {}, '', 'queue')
+
+    PublicRabbitMQTransport.produce_message(channel, 'exchange', payload)
+
+    basic_publish_kwargs = channel.basic_publish.call_args.kwargs
+    assert basic_publish_kwargs['body'] == \
+        '{"signal_type":"SYNC","cqrs_id":"cqrs_id","instance_data":{}}'
+    assert basic_publish_kwargs['routing_key'] == 'cqrs.queue.cqrs_id'
+
+
+def test_consume_connection_error(rabbit_transport, mocker, caplog):
+    mocker.patch.object(
+        RabbitMQTransport, '_get_consumer_rmq_objects', side_effect=amqp_error,
+    )
+    mocker.patch('time.sleep', side_effect=db_error)
+
+    with pytest.raises(DatabaseError):
+        rabbit_transport.consume()
+
+    assert 'AMQP connection error. Reconnecting...' in caplog.text
+
+
+def test_consume_ok(rabbit_transport, mocker):
+    channel_mock = mocker.MagicMock()
+    channel_mock.start_consuming = db_error
+
+    mocker.patch.object(
+        RabbitMQTransport, '_get_consumer_rmq_objects', return_value=(None, channel_mock),
+    )
+
+    with pytest.raises(DatabaseError):
+        rabbit_transport.consume()
+
+
+def test_consume_message_ok(mocker):
+    consumer_mock = mocker.patch('dj_cqrs.controller.consumer.consume')
+
+    PublicRabbitMQTransport.consume_message(
+        '{"signal_type":"signal","cqrs_id":"cqrs_id","instance_data":{}}',
+    )
+
+    assert consumer_mock.call_count == 1
+
+    payload = consumer_mock.call_args[0][0]
+    assert payload.signal_type == 'signal'
+    assert payload.cqrs_id == 'cqrs_id'
+    assert payload.instance_data == {}
+
+
+def test_consume_message_parsing_error(caplog):
+    PublicRabbitMQTransport.consume_message('{bad_payload:')
+
+    assert "CQRS couldn't be parsed: {bad_payload:." in caplog.text

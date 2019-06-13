@@ -33,5 +33,5 @@ class ReplicaRegistry(RegistryMixin):
     @classmethod
     def register_model(cls, model_cls):
         assert getattr(settings, 'CQRS', {}).get('queue') is not None, \
-            'CQRS queue must be setup for the service, that has replica models.'
+            'CQRS queue must be set for the service, that has replica models.'
         super(ReplicaRegistry, cls).register_model(model_cls)
