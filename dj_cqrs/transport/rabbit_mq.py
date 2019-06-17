@@ -60,18 +60,23 @@ class RabbitMQTransport(BaseTransport):
                 connection.close()
 
     @classmethod
-    def _consume_message(cls, *rabbit_mq_callback_args):
-        body = rabbit_mq_callback_args[-1]
+    def _consume_message(cls, ch, method, properties, body):
         try:
             dct = ujson.loads(body)
         except ValueError:
             logger.error("CQRS couldn't be parsed: {}.".format(body))
+            ch.basic_reject(delivery_tag=method.delivery_tag)
             return
 
         payload = TransportPayload(dct['signal_type'], dct['cqrs_id'], dct['instance_data'])
 
         cls._log_consumed(payload)
-        consumer.consume(payload)
+        instance = consumer.consume(payload)
+
+        if instance:
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+        else:
+            ch.basic_nack(delivery_tag=method.delivery_tag)
 
     @classmethod
     def _produce_message(cls, channel, exchange, payload):
@@ -102,7 +107,7 @@ class RabbitMQTransport(BaseTransport):
         channel = connection.channel()
         channel.basic_qos(prefetch_count=prefetch_count)
 
-        channel.exchange_declare(exchange=exchange, exchange_type='topic')
+        cls._declare_exchange(channel, exchange)
         channel.queue_declare(queue_name, durable=True, exclusive=False)
 
         for cqrs_id, replica_model in ReplicaRegistry.models.items():
@@ -118,7 +123,7 @@ class RabbitMQTransport(BaseTransport):
         channel.basic_consume(
             queue=queue_name,
             on_message_callback=cls._consume_message,
-            auto_ack=True,
+            auto_ack=False,
             exclusive=False,
         )
 
@@ -135,11 +140,17 @@ class RabbitMQTransport(BaseTransport):
             ),
         )
         channel = connection.channel()
+        cls._declare_exchange(channel, exchange)
+
+        return connection, channel
+
+    @staticmethod
+    def _declare_exchange(channel, exchange):
         channel.exchange_declare(
             exchange=exchange,
             exchange_type='topic',
+            durable=True,
         )
-        return connection, channel
 
     @staticmethod
     def _get_common_settings():

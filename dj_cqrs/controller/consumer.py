@@ -16,7 +16,9 @@ def consume(payload):
 
     :param dj_cqrs.dataclasses.TransportPayload payload: Consumed payload from master service.
     """
-    route_signal_to_replica_model(payload.signal_type, payload.cqrs_id, payload.instance_data)
+    return route_signal_to_replica_model(
+        payload.signal_type, payload.cqrs_id, payload.instance_data,
+    )
 
 
 def route_signal_to_replica_model(signal_type, cqrs_id, instance_data):
