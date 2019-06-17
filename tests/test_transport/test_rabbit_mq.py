@@ -199,6 +199,9 @@ def test_consume_message_ok(mocker):
     consumer_mock = mocker.patch('dj_cqrs.controller.consumer.consume')
 
     PublicRabbitMQTransport.consume_message(
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        None,
         '{"signal_type":"signal","cqrs_id":"cqrs_id","instance_data":{}}',
     )
 
@@ -210,7 +213,9 @@ def test_consume_message_ok(mocker):
     assert payload.instance_data == {}
 
 
-def test_consume_message_parsing_error(caplog):
-    PublicRabbitMQTransport.consume_message('{bad_payload:')
+def test_consume_message_parsing_error(mocker,caplog):
+    PublicRabbitMQTransport.consume_message(
+        mocker.MagicMock(), mocker.MagicMock(), None, '{bad_payload:',
+    )
 
     assert "CQRS couldn't be parsed: {bad_payload:." in caplog.text
