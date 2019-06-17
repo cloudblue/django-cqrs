@@ -102,7 +102,7 @@ class RabbitMQTransport(BaseTransport):
         channel = connection.channel()
         channel.basic_qos(prefetch_count=prefetch_count)
 
-        channel.exchange_declare(exchange=exchange, exchange_type='topic')
+        channel.exchange_declare(exchange=exchange, exchange_type='topic', durable=True)
         channel.queue_declare(queue_name, durable=True, exclusive=False)
 
         for cqrs_id, replica_model in ReplicaRegistry.models.items():
@@ -138,6 +138,7 @@ class RabbitMQTransport(BaseTransport):
         channel.exchange_declare(
             exchange=exchange,
             exchange_type='topic',
+            durable=True,
         )
         return connection, channel
 
