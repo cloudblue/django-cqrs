@@ -102,7 +102,7 @@ class RabbitMQTransport(BaseTransport):
         channel = connection.channel()
         channel.basic_qos(prefetch_count=prefetch_count)
 
-        channel.exchange_declare(exchange=exchange, exchange_type='topic', durable=True)
+        cls._declare_exchange(channel, exchange)
         channel.queue_declare(queue_name, durable=True, exclusive=False)
 
         for cqrs_id, replica_model in ReplicaRegistry.models.items():
@@ -135,12 +135,17 @@ class RabbitMQTransport(BaseTransport):
             ),
         )
         channel = connection.channel()
+        cls._declare_exchange(channel, exchange)
+
+        return connection, channel
+
+    @staticmethod
+    def _declare_exchange(channel, exchange):
         channel.exchange_declare(
             exchange=exchange,
             exchange_type='topic',
             durable=True,
         )
-        return connection, channel
 
     @staticmethod
     def _get_common_settings():
