@@ -39,8 +39,13 @@ class Author(MasterMixin, models.Model):
 # settings.py
 
 CQRS = {
-    'transport': 'dj_cqrs.transport.RabbitMQTransport',
+    'transport': 'dj_cqrs.transport.rabbit_mq.RabbitMQTransport',
+    'host': RABBITMQ_HOST,
+    'port': RABBITMQ_PORT,
+    'username': RABBITMQ_USERNAME,
+    'password': RABBITMQ_PASSWORD,
 }
+
 ```
 * Apply changes to replica service, according to RabbitMQ settings
 ```python
@@ -74,10 +79,34 @@ class AuthorRef(ReplicaMixin, models.Model):
 CQRS = {
     'transport': 'dj_cqrs.transport.RabbitMQTransport',
     'queue': 'account_replica',
+    'host': RABBITMQ_HOST,
+    'port': RABBITMQ_PORT,
+    'username': RABBITMQ_USERNAME,
+    'password': RABBITMQ_PASSWORD,
 }
 ```
 * Apply migrations on both services
 * Run consumer worker on replica service. Management command: `python manage.py cqrs_consume -w 2`
+
+Notes
+-----
+
+When there are master models with related entities in CQRS_SERIALIZER, it's important to have operations within atomic transactions.
+CQRS sync will happen on transaction commit. Please, avoid saving master model within transaction more then once to reduce syncing and potential racing on replica side.
+Updating of related model won't trigger CQRS automatic synchronization for master model. This needs to be done manually.
+
+Example:
+```python
+with transaction.atomic():
+    publisher = models.Publisher.objects.create(id=1, name='publisher')
+    author = models.Author.objects.create(id=1, name='author', publisher=publisher)
+
+with transaction.atomic():
+    publisher.name = 'new'
+    publisher.save()
+
+    author.save()
+```
 
 Utilities
 ---------
