@@ -108,6 +108,22 @@ with transaction.atomic():
     author.save()
 ```
 
+When only needed instances need to be synchronized, there is a method `is_sync_instance` to set filtering rule. 
+It's important to understand, that CQRS counting works even without syncing and rule is applied every time model is updated.
+
+Example:
+```python
+
+class FilteredSimplestModel(MasterMixin, models.Model):
+    CQRS_ID = 'filter'
+
+    name = models.CharField(max_length=200)
+
+    def is_sync_instance(self):
+        return len(str(self.name)) > 2
+```
+
+
 Utilities
 ---------
 Bulk synchronizer without transport (usage example: it may be used for initial configuration). Should be used at planned downtime.

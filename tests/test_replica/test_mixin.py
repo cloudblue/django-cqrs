@@ -442,4 +442,4 @@ def test_updates_were_lost(caplog):
         'char_field': 'text1',
     })
 
-    assert 'Lost 4 CQRS packages: pk = 1, cqrs_revision = 5 (basic)' in caplog.text
+    assert 'Lost or filtered out 4 CQRS packages: pk = 1, cqrs_revision = 5 (basic)' in caplog.text

@@ -191,6 +191,59 @@ def test_cqrs_sync(mocker):
     )
 
 
+@pytest.mark.django_db(transaction=True)
+def test_is_sync_instance(mocker):
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+
+    out_instance = models.FilteredSimplestModel.objects.create(name='a')
+    in_instance = models.FilteredSimplestModel.objects.create(name='title')
+
+    instances = (out_instance, in_instance)
+    for instance in instances:
+        assert instance.cqrs_revision == 0
+
+    assert_publisher_once_called_with_args(
+        publisher_mock,
+        SignalType.SAVE,
+        models.FilteredSimplestModel.CQRS_ID,
+        {'name': 'title', 'id': in_instance.pk},
+        in_instance.pk,
+    )
+    publisher_mock.reset_mock()
+
+    in_instance.name = 'longer title'
+    for instance in instances:
+        instance.save()
+        instance.refresh_from_db()
+
+        assert instance.cqrs_revision == 1
+
+    assert_publisher_once_called_with_args(
+        publisher_mock,
+        SignalType.SAVE,
+        models.FilteredSimplestModel.CQRS_ID,
+        {'name': 'longer title', 'id': in_instance.pk},
+        in_instance.pk,
+    )
+    publisher_mock.reset_mock()
+
+    out_instance.name = 'long'
+    in_instance.name = 's'
+    for instance in instances:
+        instance.save()
+        instance.refresh_from_db()
+
+        assert instance.cqrs_revision == 2
+
+    assert_publisher_once_called_with_args(
+        publisher_mock,
+        SignalType.SAVE,
+        models.FilteredSimplestModel.CQRS_ID,
+        {'name': 'long', 'id': out_instance.pk},
+        out_instance.pk,
+    )
+
+
 @pytest.mark.django_db
 def test_create():
     for _ in range(2):
