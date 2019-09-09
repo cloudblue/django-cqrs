@@ -31,6 +31,9 @@ class MasterSignals(object):
         :param dj_cqrs.mixins.MasterMixin sender: Class or instance inherited from CQRS MasterMixin.
         """
         instance = kwargs['instance']
+        if not instance.is_sync_instance():
+            return
+
         using = kwargs['using']
 
         sync = kwargs.get('sync', False)
@@ -58,6 +61,9 @@ class MasterSignals(object):
         :param dj_cqrs.mixins.MasterMixin sender: Class or instance inherited from CQRS MasterMixin.
         """
         instance = kwargs['instance']
+        if not instance.is_sync_instance():
+            return
+
         instance_data = {
             'id': instance.pk, 'cqrs_revision': instance.cqrs_revision + 1, 'cqrs_updated': now(),
         }

@@ -111,10 +111,12 @@ class ReplicaManager(Manager):
             return instance
 
         if current_cqrs_revision != instance.cqrs_revision + 1:
-            logger.warn('Lost {} CQRS packages: pk = {}, cqrs_revision = {} ({})'.format(
-                current_cqrs_revision - instance.cqrs_revision - 1,
-                pk_value, current_cqrs_revision, self.model.CQRS_ID,
-            ))
+            logger.warn(
+                'Lost or filtered out {} CQRS packages: pk = {}, cqrs_revision = {} ({})'.format(
+                    current_cqrs_revision - instance.cqrs_revision - 1,
+                    pk_value, current_cqrs_revision, self.model.CQRS_ID,
+                ),
+            )
 
         try:
             return instance.cqrs_update(**mapped_data)

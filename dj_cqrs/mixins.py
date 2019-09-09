@@ -74,6 +74,16 @@ class MasterMixin(six.with_metaclass(MasterMeta, Model)):
         )
         return True
 
+    def is_sync_instance(self):
+        """
+        This method can be overridden to apply syncing only to instances by some rules.
+        For example, only objects with special status or after some creation date, etc.
+
+        :return: True if this instance needs to be synced, False otherwise
+        :rtype: bool
+        """
+        return True
+
     @classmethod
     def relate_cqrs_serialization(cls, queryset):
         """

@@ -49,6 +49,15 @@ class SimplestModel(MasterMixin, models.Model):
     name = models.CharField(max_length=200, null=True)
 
 
+class FilteredSimplestModel(MasterMixin, models.Model):
+    CQRS_ID = 'filter'
+
+    name = models.CharField(max_length=200)
+
+    def is_sync_instance(self):
+        return len(str(self.name)) > 2
+
+
 class Publisher(models.Model):
     id = models.IntegerField(primary_key=True)
     name = models.CharField(max_length=20)
