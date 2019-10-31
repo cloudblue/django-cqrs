@@ -42,7 +42,7 @@ CQRS = {
     'transport': 'dj_cqrs.transport.rabbit_mq.RabbitMQTransport',
     'host': RABBITMQ_HOST,
     'port': RABBITMQ_PORT,
-    'username': RABBITMQ_USERNAME,
+    'user': RABBITMQ_USERNAME,
     'password': RABBITMQ_PASSWORD,
 }
 
@@ -81,7 +81,7 @@ CQRS = {
     'queue': 'account_replica',
     'host': RABBITMQ_HOST,
     'port': RABBITMQ_PORT,
-    'username': RABBITMQ_USERNAME,
+    'user': RABBITMQ_USERNAME,
     'password': RABBITMQ_PASSWORD,
 }
 ```
