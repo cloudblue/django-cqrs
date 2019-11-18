@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import pytest
 from django.core.management import CommandError, call_command
+from django.db import DatabaseError
 from django.utils.timezone import now
 
 from tests.dj_replica.models import AuthorRef
@@ -40,19 +41,23 @@ def test_no_cqrs_id():
 
 
 @pytest.mark.django_db
-def test_unparseable_line():
-    with pytest.raises(CommandError) as e:
-        call_command(COMMAND_NAME, '-i={}unparseable.dump'.format(DUMPS_PATH))
+def test_unparseable_line(capsys):
+    call_command(COMMAND_NAME, '-i={}unparseable.dump'.format(DUMPS_PATH))
+    assert AuthorRef.objects.count() == 0
 
-    assert "Dump file can't be parsed: line 2!" in str(e)
+    captured = capsys.readouterr()
+    assert "Dump file can't be parsed: line 2!" in captured.out
+    assert 'Done! 0 instance(s) saved.' in captured.out
 
 
 @pytest.mark.django_db
-def test_bad_master_data():
-    with pytest.raises(CommandError) as e:
-        call_command(COMMAND_NAME, '-i={}bad_master_data.dump'.format(DUMPS_PATH))
+def test_bad_master_data(capsys):
+    call_command(COMMAND_NAME, '-i={}bad_master_data.dump'.format(DUMPS_PATH))
+    assert AuthorRef.objects.count() == 1
 
-    assert "Instance can't be saved: line 3!" in str(e)
+    captured = capsys.readouterr()
+    assert "Instance can't be saved: line 3!" in captured.out
+    assert 'Done! 1 instance(s) saved.' in captured.out
 
 
 @pytest.mark.django_db
@@ -60,7 +65,7 @@ def test_no_rows(capsys):
     AuthorRef.objects.create(id=1, name='1', cqrs_revision=0, cqrs_updated=now())
 
     call_command(COMMAND_NAME, '--input={}no_rows.dump'.format(DUMPS_PATH))
-    assert AuthorRef.objects.count() == 0
+    assert AuthorRef.objects.count() == 1
 
     captured = capsys.readouterr()
     assert 'Done! 0 instance(s) saved.' in captured.out
@@ -75,3 +80,40 @@ def test_loaded_correctly(capsys):
 
     captured = capsys.readouterr()
     assert 'Done! 2 instance(s) saved.' in captured.out
+
+
+@pytest.mark.django_db
+def test_delete_before_upload_ok(capsys):
+    AuthorRef.objects.create(id=1, name='1', cqrs_revision=0, cqrs_updated=now())
+
+    call_command(COMMAND_NAME, '--input={}no_rows.dump'.format(DUMPS_PATH), '--clear=true')
+    assert AuthorRef.objects.count() == 0
+
+    captured = capsys.readouterr()
+    assert 'Done! 0 instance(s) saved.' in captured.out
+
+
+@pytest.mark.django_db
+def test_delete_operation_fails(mocker, ):
+    def db_error():
+        raise DatabaseError
+
+    mocker.patch('django.db.models.manager.BaseManager.all', side_effect=db_error)
+    with pytest.raises(CommandError) as e:
+        call_command(COMMAND_NAME, '--input={}no_rows.dump'.format(DUMPS_PATH), '--clear=true')
+
+    assert "Delete operation fails!" in str(e)
+
+
+@pytest.mark.django_db
+def test_unexpected_error(mocker, capsys):
+    def unexpected_error():
+        raise DatabaseError
+
+    mocker.patch('tests.dj_replica.models.AuthorRef.cqrs_save', side_effect=unexpected_error)
+    call_command(COMMAND_NAME, '--input={}author.dump'.format(DUMPS_PATH))
+
+    captured = capsys.readouterr()
+    assert 'Unexpected error: line 2!' in captured.out
+    assert 'Unexpected error: line 3!' in captured.out
+    assert 'Done! 0 instance(s) saved.' in captured.out

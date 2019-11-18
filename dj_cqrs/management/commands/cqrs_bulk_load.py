@@ -4,7 +4,7 @@ import os
 
 import ujson
 from django.core.management.base import BaseCommand, CommandError
-from django.db import transaction
+from django.db import transaction, DatabaseError
 
 from dj_cqrs.registries import ReplicaRegistry
 
@@ -15,6 +15,13 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument(
             '--input', '-i', help='Input file for loading.', type=str, required=True,
+        )
+        parser.add_argument(
+            '--clear', '-c',
+            help='Delete existing models.',
+            type=bool,
+            required=False,
+            default=False,
         )
 
     def handle(self, *args, **options):
@@ -35,24 +42,36 @@ class Command(BaseCommand):
             if not model:
                 raise CommandError('Wrong CQRS ID: {}!'.format(cqrs_id))
 
+            success_counter = 0
             with transaction.atomic():
-                model._default_manager.all().delete()
+                if options['clear']:
+                    try:
+                        model._default_manager.all().delete()
+                    except DatabaseError:
+                        raise CommandError("Delete operation fails!")
 
                 line_number = 2
                 for line in f:
                     try:
-                        master_data = ujson.loads(line.strip())
-                    except ValueError:
-                        raise CommandError(
-                            "Dump file can't be parsed: line {}!".format(line_number),
-                        )
+                        try:
+                            master_data = ujson.loads(line.strip())
+                        except ValueError:
+                            print(
+                                "Dump file can't be parsed: line {}!".format(line_number),
+                            )
+                            line_number += 1
+                            continue
 
-                    instance = model.cqrs_save(master_data)
-                    if not instance:
-                        raise CommandError(
-                            "Instance can't be saved: line {}!".format(line_number),
-                        )
+                        instance = model.cqrs_save(master_data)
+                        if not instance:
+                            print(
+                                "Instance can't be saved: line {}!".format(line_number),
+                            )
+                        else:
+                            success_counter += 1
+                    except Exception as e:
+                        print('Unexpected error: line {}! {}'.format(line_number, str(e)))
+                    finally:
+                        line_number += 1
 
-                    line_number += 1
-
-            print('Done! {} instance(s) saved.'.format(model._default_manager.count()))
+            print('Done! {} instance(s) saved.'.format(success_counter))
