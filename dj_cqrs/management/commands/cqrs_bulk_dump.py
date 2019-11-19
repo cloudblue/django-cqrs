@@ -27,20 +27,24 @@ class Command(BaseCommand):
         with open(out_fname, 'w') as f:
             f.write(model.CQRS_ID)
 
-            counter = 0
+            counter, success_counter = 0, 0
             db_count = model._default_manager.count()
 
             for qs in batch_qs(model.relate_cqrs_serialization(
                     model._default_manager.order_by().all(),
             )):
                 for instance in qs:
-                    f.write(
-                        '\n' + ujson.dumps(instance.to_cqrs_dict()),
-                    )
+                    try:
+                        f.write(
+                            '\n' + ujson.dumps(instance.to_cqrs_dict()),
+                        )
+                        success_counter += 1
+                    except Exception as e:
+                        print('Write failed for pk={}: {}'.format(instance.pk, str(e)))
                     counter += 1
                 print('{} from {} processed...'.format(counter, db_count))
 
-        print('Done! {} instance(s) saved.'.format(counter))
+        print('Done! {} instance(s) saved.'.format(success_counter))
 
     def _get_model(self, options):
         cqrs_id = options['cqrs_id']
