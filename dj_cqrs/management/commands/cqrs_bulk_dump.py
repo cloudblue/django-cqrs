@@ -28,12 +28,17 @@ class Command(BaseCommand):
             f.write(model.CQRS_ID)
 
             counter = 0
-            for qs in batch_qs(model.relate_cqrs_serialization(model._default_manager.all())):
+            db_count = model._default_manager.count()
+
+            for qs in batch_qs(model.relate_cqrs_serialization(
+                    model._default_manager.order_by().all(),
+            )):
                 for instance in qs:
                     f.write(
                         '\n' + ujson.dumps(instance.to_cqrs_dict()),
                     )
                     counter += 1
+                print('{} from {} processed...'.format(counter, db_count))
 
         print('Done! {} instance(s) saved.'.format(counter))
 
