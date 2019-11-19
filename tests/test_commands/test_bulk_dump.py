@@ -4,7 +4,7 @@ import ujson
 
 import pytest
 from django.core.management import CommandError, call_command
-from django.db import transaction
+from django.db import transaction, DatabaseError
 
 from tests.dj_master.models import Author, Publisher
 from tests.test_commands.utils import remove_file
@@ -88,3 +88,21 @@ def tests_dumps_more_than_batch(capsys):
 
     captured = capsys.readouterr()
     assert 'Done! 149 instance(s) saved.' in captured.out
+
+
+@pytest.mark.django_db
+def test_error(capsys, mocker):
+    remove_file('author.dump')
+
+    def unexpected_error():
+        raise DatabaseError
+
+    Author.objects.create(id=2, name='2')
+
+    mocker.patch('tests.dj_master.models.Author.to_cqrs_dict', side_effect=unexpected_error)
+    call_command(COMMAND_NAME, '--cqrs_id=author')
+
+    captured = capsys.readouterr()
+    assert 'Write failed for pk=2' in captured.out
+    assert '1 from 1 processed...' in captured.out
+    assert 'Done! 0 instance(s) saved.' in captured.out
