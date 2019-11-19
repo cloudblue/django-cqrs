@@ -46,8 +46,8 @@ def test_unparseable_line(capsys):
     assert AuthorRef.objects.count() == 0
 
     captured = capsys.readouterr()
-    assert "Dump file can't be parsed: line 2!" in captured.out
-    assert 'Done! 0 instance(s) saved.' in captured.out
+    assert "Dump file can't be parsed: line 2!" in captured.err
+    assert '0 instance(s) loaded.' in captured.err
 
 
 @pytest.mark.django_db
@@ -56,8 +56,8 @@ def test_bad_master_data(capsys):
     assert AuthorRef.objects.count() == 1
 
     captured = capsys.readouterr()
-    assert "Instance can't be saved: line 3!" in captured.out
-    assert 'Done! 1 instance(s) saved.' in captured.out
+    assert "Instance can't be saved: line 3!" in captured.err
+    assert '1 instance(s) loaded.' in captured.err
 
 
 @pytest.mark.django_db
@@ -68,7 +68,7 @@ def test_no_rows(capsys):
     assert AuthorRef.objects.count() == 1
 
     captured = capsys.readouterr()
-    assert 'Done! 0 instance(s) saved.' in captured.out
+    assert '0 instance(s) loaded.' in captured.err
 
 
 @pytest.mark.django_db(transaction=True)
@@ -79,7 +79,7 @@ def test_loaded_correctly(capsys):
     assert AuthorRef.objects.count() == 2
 
     captured = capsys.readouterr()
-    assert 'Done! 2 instance(s) saved.' in captured.out
+    assert '2 instance(s) loaded.' in captured.err
 
 
 @pytest.mark.django_db
@@ -90,7 +90,7 @@ def test_delete_before_upload_ok(capsys):
     assert AuthorRef.objects.count() == 0
 
     captured = capsys.readouterr()
-    assert 'Done! 0 instance(s) saved.' in captured.out
+    assert '0 instance(s) loaded.' in captured.err
 
 
 @pytest.mark.django_db
@@ -114,6 +114,6 @@ def test_unexpected_error(mocker, capsys):
     call_command(COMMAND_NAME, '--input={}author.dump'.format(DUMPS_PATH))
 
     captured = capsys.readouterr()
-    assert 'Unexpected error: line 2!' in captured.out
-    assert 'Unexpected error: line 3!' in captured.out
-    assert 'Done! 0 instance(s) saved.' in captured.out
+    assert 'Unexpected error: line 2!' in captured.err
+    assert 'Unexpected error: line 3!' in captured.err
+    assert '0 instance(s) loaded.' in captured.err

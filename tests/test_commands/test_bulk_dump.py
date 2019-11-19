@@ -16,19 +16,19 @@ def test_no_cqrs_id():
     with pytest.raises(CommandError) as e:
         call_command(COMMAND_NAME)
 
-    assert 'Error: argument --cqrs_id/-cid is required' in str(e)
+    assert 'Error: argument --cqrs-id/-c is required' in str(e)
 
 
 def test_bad_cqrs_id():
     with pytest.raises(CommandError) as e:
-        call_command(COMMAND_NAME, '--cqrs_id=invalid')
+        call_command(COMMAND_NAME, '--cqrs-id=invalid')
 
     assert 'Wrong CQRS ID: invalid!' in str(e)
 
 
 def test_output_file_exists():
     with pytest.raises(CommandError) as e:
-        call_command(COMMAND_NAME, '--cqrs_id=author', '-o=setup.py')
+        call_command(COMMAND_NAME, '--cqrs-id=author', '-o=setup.py')
 
     assert 'File setup.py exists!' in str(e)
 
@@ -37,7 +37,7 @@ def test_output_file_exists():
 def test_dumps_no_rows(capsys):
     remove_file('author.dump')
 
-    call_command(COMMAND_NAME, '--cqrs_id=author')
+    call_command(COMMAND_NAME, '--cqrs-id=author')
 
     with open('author.dump', 'r') as f:
         lines = f.readlines()
@@ -45,7 +45,7 @@ def test_dumps_no_rows(capsys):
         assert lines[0] == 'author'
 
     captured = capsys.readouterr()
-    assert 'Done! 0 instance(s) saved.' in captured.out
+    assert '0 instance(s) saved.' in captured.err
 
 
 @pytest.mark.django_db
@@ -58,7 +58,7 @@ def tests_dumps_several_rows(capsys):
         publisher = Publisher.objects.create(id=1, name='publisher')
         author = Author.objects.create(id=1, name='1', publisher=publisher)
 
-    call_command(COMMAND_NAME, '--cqrs_id=author')
+    call_command(COMMAND_NAME, '--cqrs-id=author')
 
     with open('author.dump', 'r') as f:
         lines = f.readlines()
@@ -69,7 +69,7 @@ def tests_dumps_several_rows(capsys):
         assert author.to_cqrs_dict() == ujson.loads(line_with_publisher)
 
     captured = capsys.readouterr()
-    assert 'Done! 2 instance(s) saved.' in captured.out
+    assert '2 instance(s) saved.' in captured.err
 
 
 @pytest.mark.django_db
@@ -80,14 +80,14 @@ def tests_dumps_more_than_batch(capsys):
         Author(id=index, name='n') for index in range(1, 150),
     )
 
-    call_command(COMMAND_NAME, '--cqrs_id=author')
+    call_command(COMMAND_NAME, '--cqrs-id=author')
 
     with open('author.dump', 'r') as f:
         lines = f.readlines()
         assert len(lines) == 150
 
     captured = capsys.readouterr()
-    assert 'Done! 149 instance(s) saved.' in captured.out
+    assert '149 instance(s) saved.' in captured.err
 
 
 @pytest.mark.django_db
@@ -100,9 +100,9 @@ def test_error(capsys, mocker):
     Author.objects.create(id=2, name='2')
 
     mocker.patch('tests.dj_master.models.Author.to_cqrs_dict', side_effect=unexpected_error)
-    call_command(COMMAND_NAME, '--cqrs_id=author')
+    call_command(COMMAND_NAME, '--cqrs-id=author')
 
     captured = capsys.readouterr()
-    assert 'Write failed for pk=2' in captured.out
-    assert '1 from 1 processed...' in captured.out
-    assert 'Done! 0 instance(s) saved.' in captured.out
+    assert 'Dump record failed for pk=2' in captured.err
+    assert '1 instance(s) processed.' in captured.err
+    assert '0 instance(s) saved.' in captured.err
