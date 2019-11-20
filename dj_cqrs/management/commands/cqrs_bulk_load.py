@@ -1,6 +1,8 @@
 from __future__ import unicode_literals
+from __future__ import print_function
 
 import os
+import sys
 
 import ujson
 from django.core.management.base import BaseCommand, CommandError
@@ -14,7 +16,9 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--input', '-i', help='Input file for loading.', type=str, required=True,
+            '--input', '-i',
+            help='Input file for loading (- for reading from stdin).',
+            type=str, required=True,
         )
         parser.add_argument(
             '--clear', '-c',
@@ -26,10 +30,10 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         f_name = options['input']
-        if not os.path.exists(f_name):
+        if f_name != '-' and not os.path.exists(f_name):
             raise CommandError("File {} doesn't exist!".format(f_name))
 
-        with open(f_name, 'r') as f:
+        with sys.stdin if f_name == '-' else open(f_name, 'r') as f:
             try:
                 cqrs_id = next(f).strip()
             except StopIteration:
@@ -58,6 +62,7 @@ class Command(BaseCommand):
                         except ValueError:
                             print(
                                 "Dump file can't be parsed: line {}!".format(line_number),
+                                file=sys.stderr
                             )
                             line_number += 1
                             continue
@@ -66,12 +71,16 @@ class Command(BaseCommand):
                         if not instance:
                             print(
                                 "Instance can't be saved: line {}!".format(line_number),
+                                file=sys.stderr
                             )
                         else:
                             success_counter += 1
                     except Exception as e:
-                        print('Unexpected error: line {}! {}'.format(line_number, str(e)))
+                        print(
+                            'Unexpected error: line {}! {}'.format(line_number, str(e)),
+                            file=sys.stderr
+                        )
                     finally:
                         line_number += 1
 
-            print('Done! {} instance(s) saved.'.format(success_counter))
+            print('Done!\n{} instance(s) loaded.'.format(success_counter), file=sys.stderr)

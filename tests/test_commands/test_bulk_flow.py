@@ -23,7 +23,7 @@ def tests_dumps_several_rows(mocker):
     assert replica_models.AuthorRef.objects.count() == 0
     assert replica_models.Publisher.objects.count() == 0
 
-    call_command('cqrs_bulk_dump', '--cqrs_id=author', '-o=bulk_flow.dump')
+    call_command('cqrs_bulk_dump', '--cqrs-id=author', '-o=bulk_flow.dump')
     call_command('cqrs_bulk_load', '-i=bulk_flow.dump')
 
     assert replica_models.AuthorRef.objects.count() == 2
