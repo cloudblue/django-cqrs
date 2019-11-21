@@ -363,7 +363,7 @@ def test_wrong_update_order(caplog):
 
     assert earlier_instance.cqrs_revision == 2
     assert earlier_instance.char_field == 'new_text_2'
-    assert not later_instance
+    assert later_instance
     assert 'Wrong CQRS sync order: pk = 1, cqrs_revision = 1 (basic).' in caplog.text
 
 

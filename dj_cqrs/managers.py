@@ -95,7 +95,7 @@ class ReplicaManager(Manager):
             logger.error('Wrong CQRS sync order: pk = {}, cqrs_revision = {} ({}).'.format(
                 pk_value, current_cqrs_revision, self.model.CQRS_ID,
             ))
-            return
+            return instance
 
         if instance.cqrs_revision == current_cqrs_revision:
             logger.error('Received duplicate CQRS data: pk = {}, cqrs_revision = {} ({}).'.format(
