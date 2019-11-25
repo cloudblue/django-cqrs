@@ -32,7 +32,10 @@ class RabbitMQTransport(BaseTransport):
                     *(common_rabbit_settings + consumer_rabbit_settings)
                 )
                 channel.start_consuming()
-            except (exceptions.AMQPError, gaierror):
+            except (exceptions.AMQPError,
+                    exceptions.ChannelError,
+                    exceptions.ReentrancyError,
+                    gaierror):
                 logger.error('AMQP connection error. Reconnecting...')
                 time.sleep(cls.CONSUMER_RETRY_TIMEOUT)
             finally:
@@ -51,7 +54,7 @@ class RabbitMQTransport(BaseTransport):
 
             cls._produce_message(channel, exchange, payload)
             cls._log_produced(payload)
-        except exceptions.AMQPError:
+        except (exceptions.AMQPError, exceptions.ChannelError, exceptions.ReentrancyError):
             logger.error("CQRS couldn't be published: pk = {} ({}).".format(
                 payload.pk, payload.cqrs_id,
             ))
