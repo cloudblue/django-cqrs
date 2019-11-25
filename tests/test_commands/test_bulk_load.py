@@ -2,8 +2,8 @@ from __future__ import unicode_literals
 
 import pytest
 from django.core.management import CommandError, call_command
-from django.db import DatabaseError
 from django.utils.timezone import now
+from tests.utils import db_error
 
 from tests.dj_replica.models import AuthorRef
 
@@ -95,9 +95,6 @@ def test_delete_before_upload_ok(capsys):
 
 @pytest.mark.django_db
 def test_delete_operation_fails(mocker, ):
-    def db_error():
-        raise DatabaseError
-
     mocker.patch('django.db.models.manager.BaseManager.all', side_effect=db_error)
     with pytest.raises(CommandError) as e:
         call_command(COMMAND_NAME, '--input={}no_rows.dump'.format(DUMPS_PATH), '--clear=true')
@@ -107,10 +104,7 @@ def test_delete_operation_fails(mocker, ):
 
 @pytest.mark.django_db
 def test_unexpected_error(mocker, capsys):
-    def unexpected_error():
-        raise DatabaseError
-
-    mocker.patch('tests.dj_replica.models.AuthorRef.cqrs_save', side_effect=unexpected_error)
+    mocker.patch('tests.dj_replica.models.AuthorRef.cqrs_save', side_effect=db_error)
     call_command(COMMAND_NAME, '--input={}author.dump'.format(DUMPS_PATH))
 
     captured = capsys.readouterr()

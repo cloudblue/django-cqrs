@@ -19,13 +19,13 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument(
             '--cqrs-id', '-c',
-            help='CQRS_ID of the master model.',
+            help='CQRS_ID of the master model',
             type=str,
             required=True,
         )
         parser.add_argument(
             '--output', '-o',
-            help='Output file for dumping (- for stdout).',
+            help='Output file for dumping (- for writing to stdout)',
             type=str,
             default=None,
         )
@@ -37,12 +37,12 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             '--progress', '-p',
-            help='Display progress',
+            help='Display progress.',
             action='store_true',
         )
         parser.add_argument(
             '--force', '-f',
-            help='Override output file',
+            help='Override output file.',
             action='store_true',
         )
 
@@ -59,12 +59,14 @@ class Command(BaseCommand):
             db_count = model._default_manager.count()
 
             if progress:
-                print('Processing {} records with batch size {}'
-                      .format(db_count, batch_size),
-                      file=sys.stderr)
+                print(
+                    'Processing {} records with batch size {}'.format(db_count, batch_size),
+                    file=sys.stderr,
+                )
             for qs in batch_qs(
                     model.relate_cqrs_serialization(model._default_manager.order_by().all()),
-                    batch_size=batch_size):
+                    batch_size=batch_size,
+            ):
                 ts = time.time()
                 cs = counter
                 for instance in qs:
@@ -75,22 +77,25 @@ class Command(BaseCommand):
                         )
                         success_counter += 1
                     except Exception as e:
-                        print('\nDump record failed for pk={}: {}: {}'
-                              .format(instance.pk, type(e).__name__, str(e)),
-                              file=sys.stderr)
+                        print('\nDump record failed for pk={}: {}: {}'.format(
+                            instance.pk, type(e).__name__, str(e),
+                        ), file=sys.stderr)
                 if progress:
-                    rate = (counter - cs)/(time.time() - ts)
-                    percent = 100*counter/db_count
-                    eta = datetime.timedelta(seconds=int((db_count - counter)/rate))
+                    rate = (counter - cs) / (time.time() - ts)
+                    percent = 100 * counter / db_count
+                    eta = datetime.timedelta(seconds=int((db_count - counter) / rate))
                     sys.stderr.write(
-                        '\r{} of {} processed - {}% with rate {:.1f} rps, to go {} ...{:20}'
-                        .format(counter, db_count, percent, rate, str(eta), ' '))
+                        '\r{} of {} processed - {}% with rate {:.1f} rps, to go {} ...{:20}'.format(
+                            counter, db_count, percent, rate, str(eta), ' ',
+                        ))
                     sys.stderr.flush()
 
-        print('Done!\n{} instance(s) saved.\n{} instance(s) processed.'
-              .format(success_counter, counter), file=sys.stderr)
+        print('Done!\n{} instance(s) saved.\n{} instance(s) processed.'.format(
+            success_counter, counter,
+        ), file=sys.stderr)
 
-    def _get_model(self, options):
+    @staticmethod
+    def _get_model(options):
         cqrs_id = options['cqrs_id']
         model = MasterRegistry.get_model_by_cqrs_id(cqrs_id)
 
@@ -99,18 +104,21 @@ class Command(BaseCommand):
 
         return model
 
-    def _get_output_filename(self, options):
+    @staticmethod
+    def _get_output_filename(options):
         f_name = options['output']
         if f_name is None:
             f_name = '{}.dump'.format(options['cqrs_id'])
 
-        if f_name != '-' and os.path.exists(f_name) and not(options['force']):
+        if f_name != '-' and os.path.exists(f_name) and not (options['force']):
             raise CommandError('File {} exists!'.format(f_name))
 
         return f_name
 
-    def _get_progress(self, options):
+    @staticmethod
+    def _get_progress(options):
         return bool(options['progress'])
 
-    def _get_batch_size(self, options):
+    @staticmethod
+    def _get_batch_size(options):
         return options['batch']

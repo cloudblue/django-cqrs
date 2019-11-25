@@ -127,12 +127,12 @@ class FilteredSimplestModel(MasterMixin, models.Model):
 Utilities
 ---------
 Bulk synchronizer without transport (usage example: it may be used for initial configuration). May be used at planned downtime.
-* On master service: `python manage.py cqrs_bulk_dump --cqrs_id=author` -> `author.dump`
+* On master service: `python manage.py cqrs_bulk_dump --cqrs-id=author` -> `author.dump`
 * On replica service: `python manage.py cqrs_bulk_load -i=author.dump`
 
 Filter synchronizer over transport (usage example: sync some specific records to a given replica). Can be used dynamically.
-* To sync all replicas: `python manage.py cqrs_sync --cqrs_id=author -f={"id__in": [1, 2]}`
-* To sync only with one replica: `python manage.py cqrs_sync --cqrs_id=author -f={"id__in": [1, 2]} -q=replica`
+* To sync all replicas: `python manage.py cqrs_sync --cqrs-id=author -f={"id__in": [1, 2]}`
+* To sync all instances only with one replica: `python manage.py cqrs_sync --cqrs-id=author -f={} -q=replica`
 
 Development
 ===========
