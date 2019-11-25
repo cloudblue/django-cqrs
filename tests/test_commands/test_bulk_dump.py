@@ -4,7 +4,8 @@ import ujson
 
 import pytest
 from django.core.management import CommandError, call_command
-from django.db import transaction, DatabaseError
+from django.db import transaction
+from tests.utils import db_error
 
 from tests.dj_master.models import Author, Publisher
 from tests.test_commands.utils import remove_file
@@ -45,7 +46,7 @@ def test_dumps_no_rows(capsys):
         assert lines[0] == 'author'
 
     captured = capsys.readouterr()
-    assert '0 instance(s) saved.' in captured.err
+    assert 'Done!\n0 instance(s) saved.\n0 instance(s) processed.' in captured.err
 
 
 @pytest.mark.django_db
@@ -69,7 +70,7 @@ def tests_dumps_several_rows(capsys):
         assert author.to_cqrs_dict() == ujson.loads(line_with_publisher)
 
     captured = capsys.readouterr()
-    assert '2 instance(s) saved.' in captured.err
+    assert 'Done!\n2 instance(s) saved.\n2 instance(s) processed.' in captured.err
 
 
 @pytest.mark.django_db
@@ -87,22 +88,30 @@ def tests_dumps_more_than_batch(capsys):
         assert len(lines) == 150
 
     captured = capsys.readouterr()
-    assert '149 instance(s) saved.' in captured.err
+    assert 'Done!\n149 instance(s) saved.\n149 instance(s) processed.' in captured.err
 
 
 @pytest.mark.django_db
 def test_error(capsys, mocker):
     remove_file('author.dump')
-
-    def unexpected_error():
-        raise DatabaseError
-
     Author.objects.create(id=2, name='2')
 
-    mocker.patch('tests.dj_master.models.Author.to_cqrs_dict', side_effect=unexpected_error)
+    mocker.patch('tests.dj_master.models.Author.to_cqrs_dict', side_effect=db_error)
     call_command(COMMAND_NAME, '--cqrs-id=author')
 
     captured = capsys.readouterr()
     assert 'Dump record failed for pk=2' in captured.err
     assert '1 instance(s) processed.' in captured.err
     assert '0 instance(s) saved.' in captured.err
+
+
+@pytest.mark.django_db
+def test_progress(capsys):
+    remove_file('author.dump')
+
+    Author.objects.create(id=2, name='2')
+    call_command(COMMAND_NAME, '--cqrs-id=author', '--progress')
+
+    captured = capsys.readouterr()
+    assert 'Processing 1 records with batch size 10000' in captured.err
+    assert '1 of 1 processed - 100% with rate' in captured.err

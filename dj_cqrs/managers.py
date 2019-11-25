@@ -44,31 +44,27 @@ class ReplicaManager(Manager):
             pk_value = mapped_data[pk_name]
             f_kwargs = {pk_name: pk_value}
 
-            if sync:
-                self.model._default_manager.filter(**f_kwargs).delete()
-                return self.create_instance(mapped_data)
+            instance = self.model._default_manager.filter(**f_kwargs).first()
 
-            else:
-                instance = self.model._default_manager.filter(**f_kwargs).first()
+            if instance:
+                return self.update_instance(instance, mapped_data, sync=sync)
 
-                if instance:
-                    return self.update_instance(instance, mapped_data)
+            return self.create_instance(mapped_data, sync=sync)
 
-                return self.create_instance(mapped_data)
-
-    def create_instance(self, mapped_data):
+    def create_instance(self, mapped_data, sync=False):
         """ This method creates model instance from mapped CQRS master instance data.
 
         :param dict mapped_data: Mapped CQRS master instance data.
+        :param bool sync: Sync package flag.
         :return: ReplicaMixin model instance.
         :rtype: django.db.models.Model
         """
         try:
-            return self.model.cqrs_create(**mapped_data)
+            return self.model.cqrs_create(sync, **mapped_data)
         except (Error, ValidationError) as e:
             pk_value = mapped_data[self._get_model_pk_name()]
             if isinstance(e, IntegrityError):
-                logger.warn(
+                logger.warning(
                     'Potentially wrong CQRS sync order: pk = {}, cqrs_revision = {} ({}).'.format(
                         pk_value, mapped_data['cqrs_revision'], self.model.CQRS_ID,
                     ),
@@ -80,46 +76,59 @@ class ReplicaManager(Manager):
                 ),
             )
 
-    def update_instance(self, instance, mapped_data):
+    def update_instance(self, instance, mapped_data, sync=False):
         """ This method updates model instance from mapped CQRS master instance data.
 
         :param django.db.models.Model instance: ReplicaMixin model instance.
         :param dict mapped_data: Mapped CQRS master instance data.
+        :param bool sync: Sync package flag.
         :return: ReplicaMixin model instance.
         :rtype: django.db.models.Model
         """
         pk_value = mapped_data[self._get_model_pk_name()]
         current_cqrs_revision = mapped_data['cqrs_revision']
+        existing_cqrs_revision = instance.cqrs_revision
 
-        if instance.cqrs_revision > current_cqrs_revision:
-            logger.error('Wrong CQRS sync order: pk = {}, cqrs_revision = {} ({}).'.format(
-                pk_value, current_cqrs_revision, self.model.CQRS_ID,
-            ))
-            return instance
+        if sync:
+            if existing_cqrs_revision > current_cqrs_revision:
+                w_tpl = 'CQRS revision downgrade on sync: pk = {}, ' \
+                    'cqrs_revision = new {} / existing {} ({}).'
+                logger.warning(w_tpl.format(
+                    pk_value, current_cqrs_revision, existing_cqrs_revision, self.model.CQRS_ID,
+                ))
 
-        if instance.cqrs_revision == current_cqrs_revision:
-            logger.error('Received duplicate CQRS data: pk = {}, cqrs_revision = {} ({}).'.format(
-                pk_value, current_cqrs_revision, self.model.CQRS_ID,
-            ))
-            if current_cqrs_revision == 0:
-                logger.warning(
-                    'CQRS potential creation race condition: pk = {} ({}).'.format(
-                        pk_value, self.model.CQRS_ID,
+        else:
+            if existing_cqrs_revision > current_cqrs_revision:
+                e_tpl = 'Wrong CQRS sync order: pk = {}, cqrs_revision = new {} / existing {} ({}).'
+                logger.error(e_tpl.format(
+                    pk_value, current_cqrs_revision, existing_cqrs_revision, self.model.CQRS_ID,
+                ))
+                return instance
+
+            if existing_cqrs_revision == current_cqrs_revision:
+                logger.error(
+                    'Received duplicate CQRS data: pk = {}, cqrs_revision = {} ({}).'.format(
+                        pk_value, current_cqrs_revision, self.model.CQRS_ID,
                     ),
                 )
+                if current_cqrs_revision == 0:
+                    logger.warning(
+                        'CQRS potential creation race condition: pk = {} ({}).'.format(
+                            pk_value, self.model.CQRS_ID,
+                        ),
+                    )
 
-            return instance
+                return instance
 
-        if current_cqrs_revision != instance.cqrs_revision + 1:
-            logger.warn(
-                'Lost or filtered out {} CQRS packages: pk = {}, cqrs_revision = {} ({})'.format(
+            if current_cqrs_revision != instance.cqrs_revision + 1:
+                w_tpl = 'Lost or filtered out {} CQRS packages: pk = {}, cqrs_revision = {} ({})'
+                logger.warning(w_tpl.format(
                     current_cqrs_revision - instance.cqrs_revision - 1,
                     pk_value, current_cqrs_revision, self.model.CQRS_ID,
-                ),
-            )
+                ))
 
         try:
-            return instance.cqrs_update(**mapped_data)
+            return instance.cqrs_update(sync, **mapped_data)
         except (Error, ValidationError) as e:
             logger.error(
                 '{}\nCQRS update error: pk = {}, cqrs_revision = {} ({}).'.format(

@@ -243,6 +243,13 @@ def test_is_sync_instance(mocker):
         out_instance.pk,
     )
 
+    publisher_mock.reset_mock()
+    in_instance.delete()
+    assert publisher_mock.call_count == 0
+
+    out_instance.delete()
+    assert publisher_mock.call_count == 1
+
 
 @pytest.mark.django_db
 def test_create():

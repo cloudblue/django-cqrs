@@ -9,7 +9,7 @@ def assert_is_sub_dict(dict1, dict2):
 
 
 def assert_publisher_once_called_with_args(publisher_mock, *args):
-    publisher_mock.call_count = 1
+    assert publisher_mock.call_count == 1
     call_t_payload = publisher_mock.call_args[0][0]
 
     assert call_t_payload.signal_type == args[0]
