@@ -65,7 +65,7 @@ class RabbitMQTransport(BaseTransport):
             dct = ujson.loads(body)
         except ValueError:
             logger.error("CQRS couldn't be parsed: {}.".format(body))
-            ch.basic_reject(delivery_tag=method.delivery_tag)
+            ch.basic_reject(delivery_tag=method.delivery_tag, requeue=False)
             return
 
         payload = TransportPayload(dct['signal_type'], dct['cqrs_id'], dct['instance_data'])
@@ -76,7 +76,7 @@ class RabbitMQTransport(BaseTransport):
         if instance:
             ch.basic_ack(delivery_tag=method.delivery_tag)
         else:
-            ch.basic_nack(delivery_tag=method.delivery_tag)
+            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
     @classmethod
     def _produce_message(cls, channel, exchange, payload):
