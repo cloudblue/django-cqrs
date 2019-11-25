@@ -17,12 +17,12 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument(
             '--input', '-i',
-            help='Input file for loading (- for reading from stdin).',
+            help='Input file for loading (- for reading from stdin)',
             type=str, required=True,
         )
         parser.add_argument(
             '--clear', '-c',
-            help='Delete existing models.',
+            help='Delete existing models',
             type=bool,
             required=False,
             default=False,

@@ -19,31 +19,31 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument(
             '--cqrs-id', '-cid',
-            help='CQRS_ID of the master model.',
+            help='CQRS_ID of the master model',
             type=str,
             required=True,
         )
         parser.add_argument(
             '--filter', '-f',
-            help='Filter kwargs.',
+            help='Filter kwargs',
             type=str,
             default=None,
         )
         parser.add_argument(
             '--queue', '-q',
-            help='Name of a specific replica queue.',
+            help='Name of the specific replica queue',
             type=str,
             default=None,
         )
         parser.add_argument(
             '--batch', '-b',
-            help='Batch size.',
+            help='Batch size',
             type=int,
             default=10000,
         )
         parser.add_argument(
             '--progress', '-p',
-            help='Display progress.',
+            help='Display progress',
             action='store_true',
         )
 

@@ -31,18 +31,18 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             '--batch', '-b',
-            help='Batch size.',
+            help='Batch size',
             type=int,
             default=10000,
         )
         parser.add_argument(
             '--progress', '-p',
-            help='Display progress.',
+            help='Display progress',
             action='store_true',
         )
         parser.add_argument(
             '--force', '-f',
-            help='Override output file.',
+            help='Override output file',
             action='store_true',
         )
 
