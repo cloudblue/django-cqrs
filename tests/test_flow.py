@@ -147,7 +147,33 @@ def test_sync_exists(mocker):
     author.cqrs_sync()
 
     assert replica_models.AuthorRef.objects.count() == 1
-
     replica_author = replica_models.AuthorRef.objects.first()
     assert replica_author.cqrs_revision == 1
     assert replica_author.name == 'new'
+
+
+@pytest.mark.django_db(transaction=True)
+def test_sync_downgrade(mocker, caplog):
+    author = master_models.Author.objects.create(id=1, name='author')
+    author.name = 'new'
+    author.save()
+
+    assert replica_models.AuthorRef.objects.count() == 1
+    replica_author = replica_models.AuthorRef.objects.first()
+    assert replica_author.cqrs_revision == 1
+    assert replica_author.name == 'new'
+
+    mocker.patch('dj_cqrs.controller.producer.produce')
+    author.delete()
+    author = master_models.Author.objects.create(id=1, name='other')
+    mocker.stopall()
+
+    author.cqrs_sync()
+
+    assert replica_models.AuthorRef.objects.count() == 1
+    replica_author = replica_models.AuthorRef.objects.first()
+    assert replica_author.cqrs_revision == 0
+    assert replica_author.name == 'other'
+
+    assert 'CQRS revision downgrade on sync: pk = 1, cqrs_revision = new 0 / existing 1 (author).' \
+        in caplog.text

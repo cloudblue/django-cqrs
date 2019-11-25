@@ -64,11 +64,11 @@ class AuthorRef(ReplicaMixin, models.Model):
     CQRS_CUSTOM_SERIALIZATION = True
     
     @classmethod
-    def cqrs_create(cls, **mapped_data):
+    def cqrs_create(cls, sync, **mapped_data):
         # Override here
         pass
         
-    def cqrs_update(self, **mapped_data):
+    def cqrs_update(self, sync, **mapped_data):
         # Override here
         pass
 ```
@@ -126,7 +126,7 @@ class FilteredSimplestModel(MasterMixin, models.Model):
 
 Utilities
 ---------
-Bulk synchronizer without transport (usage example: it may be used for initial configuration). Should be used at planned downtime.
+Bulk synchronizer without transport (usage example: it may be used for initial configuration). May be used at planned downtime.
 * On master service: `python manage.py cqrs_bulk_dump --cqrs_id=author` -> `author.dump`
 * On replica service: `python manage.py cqrs_bulk_load -i=author.dump`
 

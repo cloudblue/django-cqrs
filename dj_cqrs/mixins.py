@@ -204,21 +204,23 @@ class ReplicaMixin(six.with_metaclass(ReplicaMeta, Model)):
         return cls.cqrs.save_instance(master_data, sync)
 
     @classmethod
-    def cqrs_create(cls, **mapped_data):
+    def cqrs_create(cls, sync, **mapped_data):
         """ This method creates model instance from CQRS mapped instance data. It must be overridden
         by replicas of master models with custom serialization.
 
         :param dict mapped_data: CQRS mapped instance data.
+        :param bool sync: Sync package flag.
         :return: Model instance.
         :rtype: django.db.models.Model
         """
         return cls._default_manager.create(**mapped_data)
 
-    def cqrs_update(self, **mapped_data):
+    def cqrs_update(self, sync, **mapped_data):
         """ This method updates model instance from CQRS mapped instance data. It must be overridden
         by replicas of master models with custom serialization.
 
         :param dict mapped_data: CQRS mapped instance data.
+        :param bool sync: Sync package flag.
         :return: Model instance.
         :rtype: django.db.models.Model
         """
