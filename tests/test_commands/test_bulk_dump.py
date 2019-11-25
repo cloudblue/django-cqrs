@@ -4,7 +4,7 @@ import ujson
 
 import pytest
 from django.core.management import CommandError, call_command
-from django.db import transaction, DatabaseError
+from django.db import transaction
 from tests.utils import db_error
 
 from tests.dj_master.models import Author, Publisher
