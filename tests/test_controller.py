@@ -14,6 +14,7 @@ def test_producer(mocker):
         'signal_type': 'a',
         'cqrs_id': 'b',
         'instance_data': {},
+        'instance_pk': 'c',
     }
 
 
