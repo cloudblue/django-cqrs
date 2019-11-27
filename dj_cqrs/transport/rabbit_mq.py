@@ -32,7 +32,10 @@ class RabbitMQTransport(BaseTransport):
                     *(common_rabbit_settings + consumer_rabbit_settings)
                 )
                 channel.start_consuming()
-            except (exceptions.AMQPError, gaierror):
+            except (exceptions.AMQPError,
+                    exceptions.ChannelError,
+                    exceptions.ReentrancyError,
+                    gaierror):
                 logger.error('AMQP connection error. Reconnecting...')
                 time.sleep(cls.CONSUMER_RETRY_TIMEOUT)
             finally:
@@ -51,7 +54,7 @@ class RabbitMQTransport(BaseTransport):
 
             cls._produce_message(channel, exchange, payload)
             cls._log_produced(payload)
-        except exceptions.AMQPError:
+        except (exceptions.AMQPError, exceptions.ChannelError, exceptions.ReentrancyError):
             logger.error("CQRS couldn't be published: pk = {} ({}).".format(
                 payload.pk, payload.cqrs_id,
             ))
@@ -63,20 +66,31 @@ class RabbitMQTransport(BaseTransport):
     def _consume_message(cls, ch, method, properties, body):
         try:
             dct = ujson.loads(body)
+            for key in ('signal_type', 'cqrs_id', 'instance_data'):
+                if key not in dct:
+                    raise ValueError
+
+            if 'instance_pk' not in dct:
+                logger.warning('CQRS deprecated package structure.')
+
         except ValueError:
             logger.error("CQRS couldn't be parsed: {}.".format(body))
             ch.basic_reject(delivery_tag=method.delivery_tag, requeue=False)
             return
 
-        payload = TransportPayload(dct['signal_type'], dct['cqrs_id'], dct['instance_data'])
+        payload = TransportPayload(
+            dct['signal_type'], dct['cqrs_id'], dct['instance_data'], dct.get('instance_pk'),
+        )
 
         cls._log_consumed(payload)
         instance = consumer.consume(payload)
 
         if instance:
             ch.basic_ack(delivery_tag=method.delivery_tag)
+            cls._log_consumed_accepted(payload)
         else:
             ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+            cls._log_consumed_denied(payload)
 
     @classmethod
     def _produce_message(cls, channel, exchange, payload):
@@ -180,7 +194,24 @@ class RabbitMQTransport(BaseTransport):
         """
         :param dj_cqrs.dataclasses.TransportPayload payload: Transport payload from master model.
         """
-        pass
+        if payload.pk:
+            logger.info('CQRS is received: pk = {} ({}).'.format(payload.pk, payload.cqrs_id))
+
+    @staticmethod
+    def _log_consumed_accepted(payload):
+        """
+        :param dj_cqrs.dataclasses.TransportPayload payload: Transport payload from master model.
+        """
+        if payload.pk:
+            logger.info('CQRS is applied: pk = {} ({}).'.format(payload.pk, payload.cqrs_id))
+
+    @staticmethod
+    def _log_consumed_denied(payload):
+        """
+        :param dj_cqrs.dataclasses.TransportPayload payload: Transport payload from master model.
+        """
+        if payload.pk:
+            logger.info('CQRS is denied: pk = {} ({}).'.format(payload.pk, payload.cqrs_id))
 
     @staticmethod
     def _log_produced(payload):

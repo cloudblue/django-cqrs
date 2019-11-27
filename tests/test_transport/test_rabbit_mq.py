@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 import logging
+import ujson
 from importlib import import_module
 
 import pytest
@@ -131,15 +132,20 @@ def test_produce_ok(rabbit_transport, mocker, caplog):
 
 def test_produce_message_ok(mocker):
     channel = mocker.MagicMock()
-    payload = TransportPayload(SignalType.SAVE, 'cqrs_id', {})
+    payload = TransportPayload(SignalType.SAVE, 'cqrs_id', {}, 'id')
 
     PublicRabbitMQTransport.produce_message(channel, 'exchange', payload)
 
     assert channel.basic_publish.call_count == 1
 
     basic_publish_kwargs = channel.basic_publish.call_args.kwargs
-    assert basic_publish_kwargs['body'] == \
-        '{"signal_type":"SAVE","cqrs_id":"cqrs_id","instance_data":{}}'
+    assert ujson.loads(basic_publish_kwargs['body']) == \
+        {
+            'signal_type': SignalType.SAVE,
+            'cqrs_id': 'cqrs_id',
+            'instance_data': {},
+            'instance_pk': 'id',
+        }
     assert basic_publish_kwargs['exchange'] == 'exchange'
     assert basic_publish_kwargs['mandatory']
     assert basic_publish_kwargs['routing_key'] == 'cqrs_id'
@@ -149,25 +155,35 @@ def test_produce_message_ok(mocker):
 
 def test_produce_sync_message_no_queue(mocker):
     channel = mocker.MagicMock()
-    payload = TransportPayload(SignalType.SYNC, 'cqrs_id', {})
+    payload = TransportPayload(SignalType.SYNC, 'cqrs_id', {}, None)
 
     PublicRabbitMQTransport.produce_message(channel, 'exchange', payload)
 
     basic_publish_kwargs = channel.basic_publish.call_args.kwargs
-    assert basic_publish_kwargs['body'] == \
-        '{"signal_type":"SYNC","cqrs_id":"cqrs_id","instance_data":{}}'
+    assert ujson.loads(basic_publish_kwargs['body']) == \
+        {
+            'signal_type': SignalType.SYNC,
+            'cqrs_id': 'cqrs_id',
+            'instance_data': {},
+            'instance_pk': None,
+        }
     assert basic_publish_kwargs['routing_key'] == 'cqrs_id'
 
 
 def test_produce_sync_message_queue(mocker):
     channel = mocker.MagicMock()
-    payload = TransportPayload(SignalType.SYNC, 'cqrs_id', {}, '', 'queue')
+    payload = TransportPayload(SignalType.SYNC, 'cqrs_id', {}, 'id', 'queue')
 
     PublicRabbitMQTransport.produce_message(channel, 'exchange', payload)
 
     basic_publish_kwargs = channel.basic_publish.call_args.kwargs
-    assert basic_publish_kwargs['body'] == \
-        '{"signal_type":"SYNC","cqrs_id":"cqrs_id","instance_data":{}}'
+    assert ujson.loads(basic_publish_kwargs['body']) == \
+        {
+            'signal_type': SignalType.SYNC,
+            'cqrs_id': 'cqrs_id',
+            'instance_data': {},
+            'instance_pk': 'id',
+        }
     assert basic_publish_kwargs['routing_key'] == 'cqrs.queue.cqrs_id'
 
 
@@ -195,7 +211,31 @@ def test_consume_ok(rabbit_transport, mocker):
         rabbit_transport.consume()
 
 
-def test_consume_message_ok(mocker):
+def test_consume_message_ack(mocker, caplog):
+    caplog.set_level(logging.INFO)
+    consumer_mock = mocker.patch('dj_cqrs.controller.consumer.consume')
+
+    PublicRabbitMQTransport.consume_message(
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        None,
+        '{"signal_type":"signal","cqrs_id":"cqrs_id","instance_data":{},"instance_pk":1}',
+    )
+
+    assert consumer_mock.call_count == 1
+
+    payload = consumer_mock.call_args[0][0]
+    assert payload.signal_type == 'signal'
+    assert payload.cqrs_id == 'cqrs_id'
+    assert payload.instance_data == {}
+    assert payload.pk == 1
+
+    assert 'CQRS is received: pk = 1 (cqrs_id).' in caplog.text
+    assert 'CQRS is applied: pk = 1 (cqrs_id).' in caplog.text
+
+
+def test_consume_message_ack_deprecated_structure(mocker, caplog):
+    caplog.set_level(logging.INFO)
     consumer_mock = mocker.patch('dj_cqrs.controller.consumer.consume')
 
     PublicRabbitMQTransport.consume_message(
@@ -211,11 +251,54 @@ def test_consume_message_ok(mocker):
     assert payload.signal_type == 'signal'
     assert payload.cqrs_id == 'cqrs_id'
     assert payload.instance_data == {}
+    assert payload.pk is None
+
+    assert 'CQRS deprecated package structure.' in caplog.text
+    assert 'CQRS is received: pk = None (cqrs_id).' not in caplog.text
+    assert 'CQRS is applied: pk = None (cqrs_id).' not in caplog.text
 
 
-def test_consume_message_parsing_error(mocker, caplog):
+def test_consume_message_nack(mocker, caplog):
+    caplog.set_level(logging.INFO)
+    mocker.patch('dj_cqrs.controller.consumer.consume', return_value=None)
+
+    PublicRabbitMQTransport.consume_message(
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        None,
+        '{"signal_type":"signal","cqrs_id":"cqrs_id","instance_data":{},"instance_pk":1}',
+    )
+
+    assert 'CQRS is received: pk = 1 (cqrs_id).' in caplog.text
+    assert 'CQRS is denied: pk = 1 (cqrs_id).' in caplog.text
+
+
+def test_consume_message_nack_deprecated_structure(mocker, caplog):
+    caplog.set_level(logging.INFO)
+    mocker.patch('dj_cqrs.controller.consumer.consume', return_value=None)
+
+    PublicRabbitMQTransport.consume_message(
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        None,
+        '{"signal_type":"signal","cqrs_id":"cqrs_id","instance_data":{}}',
+    )
+
+    assert 'CQRS is received: pk = 1 (cqrs_id).' not in caplog.text
+    assert 'CQRS is denied: pk = 1 (cqrs_id).' not in caplog.text
+
+
+def test_consume_message_json_parsing_error(mocker, caplog):
     PublicRabbitMQTransport.consume_message(
         mocker.MagicMock(), mocker.MagicMock(), None, '{bad_payload:',
     )
 
     assert "CQRS couldn't be parsed: {bad_payload:." in caplog.text
+
+
+def test_consume_message_package_structure_error(mocker, caplog):
+    PublicRabbitMQTransport.consume_message(
+        mocker.MagicMock(), mocker.MagicMock(), None, '{"pk":"1"}',
+    )
+
+    assert """CQRS couldn't be parsed: {"pk":"1"}""" in caplog.text
