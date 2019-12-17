@@ -1,12 +1,11 @@
 #! /bin/bash
 set -e
 
-flake8
-
 /usr/local/bin/python3.6 -m virtualenv django_cqrs_env
 . django_cqrs_env/bin/activate
-/usr/local/bin/python3.6 setup.py test
-/usr/local/bin/python3.6 setup.py publish $@
+python -m pip flake8 --upgrade
+python setup.py test
+python setup.py publish $@
 deactivate
 rm -rf django_cqrs_env
 
