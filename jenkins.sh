@@ -1,6 +1,7 @@
 #! /bin/bash
 set -e
 
+/usr/local/bin/python3.6 -m pip install virtualenv
 /usr/local/bin/python3.6 -m virtualenv django_cqrs_env
 . django_cqrs_env/bin/activate
 python -m pip flake8 --upgrade
