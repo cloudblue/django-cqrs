@@ -1,5 +1,3 @@
-import os
-
 from setuptools import find_packages, setup
 
 
@@ -9,16 +7,10 @@ def read_file(name):
     return content
 
 
-def version():
-    import odintools
-    return odintools.version(read_file('VERSION'), os.environ.get('BUILD_NUMBER'))
-
-
 setup(
     name='django-cqrs',
     author='Ingram Micro',
     url='https://connect.cloud.im',
-    version_getter=version,
     description='Django CQRS data synchronisation',
     long_description=read_file('README.md'),
     license=read_file('LICENSE'),
@@ -29,8 +21,8 @@ setup(
     include_package_data=True,
     install_requires=read_file('requirements/dev.txt').splitlines(),
     tests_require=read_file('requirements/test.txt').splitlines(),
-    setup_requires=['pytest-runner', 'odintools'],
-    odintools=True,
+    setup_requires=['setuptools_scm', 'pytest-runner'],
+    use_scm_version=True,
 
     keywords='django cqrs sql mixin amqp',
     classifiers=[
