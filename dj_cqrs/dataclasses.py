@@ -1,6 +1,3 @@
-from __future__ import unicode_literals
-
-
 class TransportPayload(object):
     def __init__(self, signal_type, cqrs_id, instance_data, instance_pk, queue=None):
         self.__signal_type = signal_type

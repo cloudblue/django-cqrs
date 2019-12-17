@@ -1,6 +1,3 @@
-from __future__ import unicode_literals
-
-
 class BaseTransport(object):
     """
     CQRS pattern can be implemented over any transport (AMQP, HTTP, etc.)

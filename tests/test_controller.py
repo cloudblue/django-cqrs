@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 from dj_cqrs.controller.consumer import consume
 from dj_cqrs.controller.producer import produce
 from dj_cqrs.dataclasses import TransportPayload

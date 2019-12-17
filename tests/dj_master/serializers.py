@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 from rest_framework.serializers import CharField, ModelSerializer
 
 from tests.dj_master.models import Author, Book, Publisher

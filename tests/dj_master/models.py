@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 from django.db import models
 
 from dj_cqrs.constants import ALL_BASIC_FIELDS
