@@ -1,0 +1,54 @@
+import sys
+
+import ujson
+from django.core.management.base import BaseCommand, CommandError
+
+from dj_cqrs.registries import ReplicaRegistry
+
+
+class Command(BaseCommand):
+    help = 'Diff of CQRS replica models from master diff stream.'
+
+    @classmethod
+    def deserialize_in(cls, package_line):
+        return ujson.loads(package_line)
+
+    @classmethod
+    def serialize_out(cls, ids):
+        return ujson.dumps(ids)
+
+    def handle(self, *args, **options):
+        with sys.stdin as f:
+            first_line = f.read()
+            model = self._get_model(first_line)
+            self.stdout.write(model.CQRS_ID)
+
+            for package_line in f:
+                master_data = self.deserialize_in(package_line)
+
+                qs = model._default_manager.filter(pk__in=master_data.keys()) \
+                    .order_by().only('pk', 'cqrs_revision')
+                replica_data = {instance.pk: instance.cqrs_revision for instance in qs}
+
+                diff_ids = set()
+                for pk, cqrs_revision in master_data.items():
+                    if replica_data.get(pk, -1) != cqrs_revision:
+                        diff_ids.add(pk)
+
+                if diff_ids:
+                    # TODO: Good output
+                    self.stderr.write(str(diff_ids))
+
+                    self.stdout.write(self.serialize_out(diff_ids))
+
+    @staticmethod
+    def _get_model(first_line):
+        # TODO: Error check
+        cqrs_id = first_line.split(',')[0]
+
+        model = ReplicaRegistry.get_model_by_cqrs_id(cqrs_id)
+
+        if not model:
+            raise CommandError('Wrong CQRS ID: {}!'.format(cqrs_id))
+
+        return model
