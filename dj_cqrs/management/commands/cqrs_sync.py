@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import datetime
 import sys
 import time
@@ -93,7 +91,7 @@ class Command(BaseCommand):
                 eta = datetime.timedelta(seconds=int((db_count - counter) / rate))
                 sys.stdout.write(
                     '\r{} of {} processed - {}% with rate {:.1f} rps, to go {} ...{:20}'.format(
-                        counter, db_count, percent, rate, str(eta), ' ',
+                        counter, db_count, int(percent), rate, str(eta), ' ',
                     ))
                 sys.stdout.flush()
 

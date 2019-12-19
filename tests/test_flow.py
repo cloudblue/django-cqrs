@@ -1,10 +1,8 @@
-from __future__ import unicode_literals
-
 import pytest
 from django.db import transaction
 
-from dj_master import models as master_models
-from dj_replica import models as replica_models
+from tests.dj_master import models as master_models
+from tests.dj_replica import models as replica_models
 
 
 @pytest.mark.django_db(transaction=True)

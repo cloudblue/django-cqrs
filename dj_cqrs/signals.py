@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 from django.db import models, transaction
 from django.dispatch import Signal
 from django.utils.timezone import now

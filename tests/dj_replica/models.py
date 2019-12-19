@@ -1,6 +1,3 @@
-from __future__ import unicode_literals
-
-
 from django.db import models
 
 from dj_cqrs.mixins import ReplicaMixin
@@ -69,7 +66,7 @@ class AuthorRef(ReplicaMixin, models.Model):
     id = models.IntegerField(primary_key=True)
     name = models.CharField(max_length=20)
 
-    publisher = models.ForeignKey(Publisher, null=True)
+    publisher = models.ForeignKey(Publisher, null=True, on_delete=models.CASCADE)
 
     @classmethod
     def cqrs_create(cls, sync, **mapped_data):

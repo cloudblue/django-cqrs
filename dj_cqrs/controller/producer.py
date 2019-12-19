@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 from dj_cqrs.transport import current_transport
 
 

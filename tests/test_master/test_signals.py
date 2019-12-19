@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import pytest
 from django.db.models.signals import post_delete, post_save
 

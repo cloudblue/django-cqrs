@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import random
 
 from django.core.management.base import BaseCommand

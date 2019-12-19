@@ -14,7 +14,7 @@ kind: Pod
 spec:
   containers:
     - name: python
-      image: python:2.7.16-stretch
+      image: python:3.8.0-buster
       imagePullPolicy: IfNotPresent
       command:
         - cat
@@ -47,9 +47,7 @@ spec:
       steps {
         container('python') {
           sh 'pip install -U pip'
-          sh """pip install --index-url=\"https://repo.int.zone/artifactory/api/pypi/pypi/simple\" \
-                -r requirements/dev.txt \
-                -r requirements/test.txt"""
+          sh 'pip install flake8'
         }
       }
     }

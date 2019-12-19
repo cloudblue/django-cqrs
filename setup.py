@@ -15,7 +15,7 @@ setup(
     long_description=read_file('README.md'),
     license=read_file('LICENSE'),
 
-    python_requires='>=2.7',
+    python_requires='>=3.5',
     zip_safe=True,
     packages=find_packages(),
     include_package_data=True,
@@ -31,7 +31,6 @@ setup(
         'Intended Audience :: Developers',
         'License :: OSI Approved :: Apache Software License',
         'Operating System :: Unix',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Topic :: Communications',
         'Topic :: Database',

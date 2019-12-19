@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import logging
 import ujson
 from importlib import import_module
@@ -138,7 +136,7 @@ def test_produce_message_ok(mocker):
 
     assert channel.basic_publish.call_count == 1
 
-    basic_publish_kwargs = channel.basic_publish.call_args.kwargs
+    basic_publish_kwargs = channel.basic_publish.call_args[1]
     assert ujson.loads(basic_publish_kwargs['body']) == \
         {
             'signal_type': SignalType.SAVE,
@@ -159,7 +157,7 @@ def test_produce_sync_message_no_queue(mocker):
 
     PublicRabbitMQTransport.produce_message(channel, 'exchange', payload)
 
-    basic_publish_kwargs = channel.basic_publish.call_args.kwargs
+    basic_publish_kwargs = channel.basic_publish.call_args[1]
     assert ujson.loads(basic_publish_kwargs['body']) == \
         {
             'signal_type': SignalType.SYNC,
@@ -176,7 +174,7 @@ def test_produce_sync_message_queue(mocker):
 
     PublicRabbitMQTransport.produce_message(channel, 'exchange', payload)
 
-    basic_publish_kwargs = channel.basic_publish.call_args.kwargs
+    basic_publish_kwargs = channel.basic_publish.call_args[1]
     assert ujson.loads(basic_publish_kwargs['body']) == \
         {
             'signal_type': SignalType.SYNC,

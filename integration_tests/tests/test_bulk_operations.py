@@ -1,6 +1,3 @@
-from __future__ import unicode_literals
-
-
 import pytest
 
 from integration_tests.tests.utils import (

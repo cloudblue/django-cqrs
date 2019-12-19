@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import pytest
 from django.core.management import CommandError, call_command
 from django.utils.timezone import now
@@ -13,10 +11,8 @@ DUMPS_PATH = 'tests/test_commands/dumps/'
 
 
 def test_no_input():
-    with pytest.raises(CommandError) as e:
+    with pytest.raises(CommandError):
         call_command(COMMAND_NAME)
-
-    assert 'Error: argument --input/-i is required' in str(e)
 
 
 def test_no_file():

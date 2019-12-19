@@ -1,6 +1,3 @@
-from __future__ import unicode_literals
-
-
 import pytest
 from django.core.management import CommandError, call_command
 from tests.utils import db_error
@@ -12,10 +9,8 @@ COMMAND_NAME = 'cqrs_sync'
 
 
 def test_no_cqrs_id():
-    with pytest.raises(CommandError) as e:
+    with pytest.raises(CommandError):
         call_command(COMMAND_NAME)
-
-    assert 'Error: argument --cqrs-id/-cid is required' in str(e)
 
 
 def test_bad_cqrs_id():

@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import ujson
 
 import pytest
@@ -14,10 +12,8 @@ COMMAND_NAME = 'cqrs_bulk_dump'
 
 
 def test_no_cqrs_id():
-    with pytest.raises(CommandError) as e:
+    with pytest.raises(CommandError):
         call_command(COMMAND_NAME)
-
-    assert 'Error: argument --cqrs-id/-c is required' in str(e)
 
 
 def test_bad_cqrs_id():
@@ -78,7 +74,7 @@ def tests_dumps_more_than_batch(capsys):
     remove_file('author.dump')
 
     Author.objects.bulk_create(
-        Author(id=index, name='n') for index in range(1, 150),
+        (Author(id=index, name='n') for index in range(1, 150)),
     )
 
     call_command(COMMAND_NAME, '--cqrs-id=author')
