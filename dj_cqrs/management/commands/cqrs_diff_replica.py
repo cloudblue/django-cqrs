@@ -23,7 +23,7 @@ class Command(BaseCommand):
         with sys.stdin as f:
             first_line = f.read()
             model = self._get_model(first_line)
-            self.stdout.write('{},{}'.format(first_line, settings.CQRS.get('queue')))
+            self.stdout.write('{},{}'.format(first_line.strip(), settings.CQRS.get('queue')))
 
             for package_line in f:
                 master_data = self.deserialize_in(package_line)
