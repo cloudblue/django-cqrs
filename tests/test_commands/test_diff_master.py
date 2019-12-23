@@ -1,9 +1,10 @@
+import ujson
+
 import pytest
 from django.core.management import CommandError, call_command
-from django.db import transaction
-from tests.utils import db_error
 
-from tests.dj_master.models import Author, Publisher
+from tests.dj_master.models import Author
+
 
 COMMAND_NAME = 'cqrs_diff_master'
 
@@ -21,10 +22,72 @@ def test_bad_cqrs_id():
 
 
 @pytest.mark.django_db
-def tests_ok(capsys):
-    Author.objects.create(id=2, name='2')
+def test_first_row(capsys):
+    Author.objects.create(name='author')
 
     call_command(COMMAND_NAME, '--cqrs-id=author')
 
     captured = capsys.readouterr()
-    assert 'Done!\n2 instance(s) saved.\n2 instance(s) processed.' in captured.err
+    assert '{},'.format(Author.CQRS_ID) in captured.out
+
+
+@pytest.mark.django_db
+def test_objects_less_than_batch(capsys):
+    Author.objects.create(name='author')
+
+    call_command(COMMAND_NAME, '--cqrs-id=author')
+
+    captured = capsys.readouterr()
+    out_lines = captured.out.split('\n')
+
+    author = Author.objects.first()
+    assert ujson.loads(out_lines[1]) == [[author.pk, author.cqrs_revision]]
+
+
+@pytest.mark.django_db
+def test_objects_more_than_batch(capsys):
+    for i in range(3):
+        Author.objects.create(name=str(i))
+
+    call_command(COMMAND_NAME, '--cqrs-id=author', '--batch=2')
+
+    captured = capsys.readouterr()
+    out_lines = captured.out.split('\n')
+    assert ujson.loads(out_lines[1]) == [
+        [author.pk, author.cqrs_revision] for author in Author.objects.all()[:2]
+    ]
+    assert ujson.loads(out_lines[2]) == [
+        [author.pk, author.cqrs_revision] for author in Author.objects.all()[2:]
+    ]
+
+
+@pytest.mark.django_db
+def test_filter_no_objects(capsys):
+    call_command(COMMAND_NAME, '--cqrs-id=author', '-f={"id__in": [1, 2]}')
+
+    captured = capsys.readouterr()
+    assert 'No objects found for filter!' in captured.err
+
+
+@pytest.mark.django_db
+def test_objects_are_filtered(capsys):
+    for i in range(2):
+        Author.objects.create(name=str(i))
+
+    call_command(COMMAND_NAME, '--cqrs-id=author', '-f={"id__in": [1, 3]}')
+
+    captured = capsys.readouterr()
+    out_lines = captured.out.split('\n')
+
+    author = Author.objects.first()
+    assert ujson.loads(out_lines[1]) == [[author.pk, author.cqrs_revision]]
+
+
+@pytest.mark.django_db
+def test_progress(capsys):
+    Author.objects.create(id=2, name='2')
+    call_command(COMMAND_NAME, '--cqrs-id=author', '--progress')
+
+    captured = capsys.readouterr()
+    assert 'Processing 1 records with batch size 10000' in captured.err
+    assert '1 of 1 processed - 100% with rate' in captured.err

@@ -79,8 +79,8 @@ class Command(BaseCommand):
             ts = time.time()
             cs = counter
 
-            package = {instance.pk: instance.cqrs_revision for instance in bqs}
-            counter += len(package.keys())
+            package = [[instance.pk, instance.cqrs_revision] for instance in bqs]
+            counter += len(package)
 
             self.stdout.write(self.serialize_package(package))
 

@@ -1,6 +1,7 @@
 import sys
 
 import ujson
+from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
 from dj_cqrs.registries import ReplicaRegistry
@@ -11,7 +12,8 @@ class Command(BaseCommand):
 
     @classmethod
     def deserialize_in(cls, package_line):
-        return ujson.loads(package_line)
+        data = ujson.loads(package_line)
+        return {d[0]: d[1] for d in data}
 
     @classmethod
     def serialize_out(cls, ids):
@@ -21,7 +23,7 @@ class Command(BaseCommand):
         with sys.stdin as f:
             first_line = f.read()
             model = self._get_model(first_line)
-            self.stdout.write(model.CQRS_ID)
+            self.stdout.write('{},{}'.format(first_line, settings.CQRS.get('queue')))
 
             for package_line in f:
                 master_data = self.deserialize_in(package_line)
@@ -36,16 +38,12 @@ class Command(BaseCommand):
                         diff_ids.add(pk)
 
                 if diff_ids:
-                    # TODO: Good output
-                    self.stderr.write(str(diff_ids))
-
                     self.stdout.write(self.serialize_out(diff_ids))
+                    self.stderr.write('PK to resync: {}'.format(str(diff_ids)))
 
     @staticmethod
     def _get_model(first_line):
-        # TODO: Error check
         cqrs_id = first_line.split(',')[0]
-
         model = ReplicaRegistry.get_model_by_cqrs_id(cqrs_id)
 
         if not model:
