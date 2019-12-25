@@ -16,17 +16,6 @@ services:
       POSTGRES_PASSWORD: pswd
       POSTGRES_DB: replica
 
-  mysql:
-    image: mysql:latest
-    command: --default-authentication-plugin=mysql_native_password
-    expose:
-      - '3306'
-    environment:
-      MYSQL_ROOT_PASSWORD: pswd
-      MYSQL_DATABASE: master
-      MYSQL_USER: user
-      MYSQL_PASSWORD: pswd
-
   replica:
     build:
       context: ..
@@ -52,17 +41,9 @@ services:
       context: ..
       dockerfile: integration_tests/Dockerfile.Master
     command:
-      bash -c "sleep 12 &&
-      python manage.py makemigrations --settings=integration_tests.master_settings &&
-      python manage.py makemigrations dj_master --settings=integration_tests.master_settings &&
-      python manage.py migrate --settings=integration_tests.master_settings &&
-      python manage.py runserver"
-#      pytest integration_tests/"
-    environment:
-      DJANGO_SETTINGS_MODULE: master_settings
+      bash -c "sleep 12 && pytest integration_tests/"
     container_name: django_cqrs_test_master
     depends_on:
-      - mysql
       - rabbit
       - replica
     volumes:

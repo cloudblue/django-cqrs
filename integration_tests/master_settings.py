@@ -35,12 +35,8 @@ ROOT_URLCONF = 'tests.dj.urls'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'master',
-        'USER': 'user',
-        'PASSWORD': 'pswd',
-        'HOST': 'mysql',
-        'PORT': '3306',
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'db/master_db.sqlite3'),
     },
 }
 

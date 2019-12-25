@@ -1,8 +1,8 @@
 import sys
 
-from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
 
+from dj_cqrs.management.commands.cqrs_sync import Command as SyncCommand
 from dj_cqrs.registries import MasterRegistry
 
 
@@ -11,20 +11,19 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         with sys.stdin as f:
-            first_line = f.read()
+            first_line = f.readline().strip()
             model = self._get_model(first_line)
             queue = self._get_queue(first_line)
 
             for pks_line in f:
-                sync_args = [
-                    'cqrs_sync',
-                    '--cqrs-id={}'.format(model.CQRS_ID),
-                    '-f={{"id__in": {}}}'.format(pks_line),
-                ]
+                sync_kwargs = {
+                    'cqrs_id': model.CQRS_ID,
+                    'filter': '{{"id__in": {}}}'.format(pks_line.strip()),
+                }
                 if queue:
-                    sync_args.append('--queue={}'.format(queue))
+                    sync_kwargs['queue'] = queue
 
-                call_command(*sync_args)
+                SyncCommand().handle(**sync_kwargs)
 
     @staticmethod
     def _get_model(first_line):

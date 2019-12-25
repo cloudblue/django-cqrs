@@ -21,7 +21,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         with sys.stdin as f:
-            first_line = f.read()
+            first_line = f.readline()
             model = self._get_model(first_line)
             self.stdout.write('{},{}'.format(first_line.strip(), settings.CQRS.get('queue')))
 

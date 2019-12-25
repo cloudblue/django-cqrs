@@ -5,8 +5,7 @@ ENV PYTHONPATH /master
 RUN mkdir /master
 COPY . /master/
 ADD integration_tests/setup.cfg /master/
-ADD integration_tests/manage.py /master/
 
-RUN pip install -r /master/requirements/dev.txt -r /master/requirements/test.txt && pip install psycopg2-binary mysqlclient
+RUN pip install -r /master/requirements/dev.txt -r /master/requirements/test.txt && pip install psycopg2-binary
 
 WORKDIR /master/
