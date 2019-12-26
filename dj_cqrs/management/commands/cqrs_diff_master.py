@@ -52,9 +52,7 @@ class Command(BaseCommand):
             except FieldError as e:
                 raise CommandError('Bad filter kwargs! {}'.format(str(e)))
 
-        counter = 0
-        db_count = qs.count()
-        if db_count == 0:
+        if not qs.exists():
             self.stderr.write('No objects found for filter!')
             return
 
@@ -63,8 +61,6 @@ class Command(BaseCommand):
 
         for bqs in batch_qs(qs, batch_size=batch_size):
             package = [[instance.pk, instance.cqrs_revision] for instance in bqs]
-            counter += len(package)
-
             self.stdout.write(self.serialize_package(package))
 
     @staticmethod

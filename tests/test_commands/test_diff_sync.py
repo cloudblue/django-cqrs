@@ -5,6 +5,7 @@ import pytest
 from django.core.management import CommandError, call_command
 from django.utils.timezone import now
 
+from dj_cqrs.constants import NO_QUEUE
 from dj_cqrs.management.commands import cqrs_sync
 from tests.dj_master.models import Author
 from tests.dj_replica.models import AuthorRef
@@ -89,7 +90,7 @@ def test_sync_batch(mocker, capsys):
 @pytest.mark.django_db
 def test_sync_no_queue(mocker):
     sync_mock = mocker.patch.object(cqrs_sync.Command, 'handle')
-    mocker.patch.object(sys, 'stdin', StringIO('author,dt,None\n[1]\n'))
+    mocker.patch.object(sys, 'stdin', StringIO('author,dt,{}\n[1]\n'.format(NO_QUEUE)))
     call_command(COMMAND_NAME)
 
     sync_mock.assert_called_once_with(**{'cqrs_id': 'author', 'filter': '{"id__in": [1]}'})

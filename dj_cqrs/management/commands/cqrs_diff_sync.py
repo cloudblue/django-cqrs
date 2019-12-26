@@ -2,6 +2,7 @@ import sys
 
 from django.core.management.base import BaseCommand, CommandError
 
+from dj_cqrs.constants import NO_QUEUE
 from dj_cqrs.management.commands.cqrs_sync import Command as SyncCommand
 from dj_cqrs.registries import MasterRegistry
 
@@ -38,5 +39,5 @@ class Command(BaseCommand):
     @staticmethod
     def _get_queue(first_line):
         queue = first_line.split(',')[-1]
-        if queue != 'None':
+        if queue != NO_QUEUE:
             return queue
