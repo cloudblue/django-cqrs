@@ -12,8 +12,7 @@ class Command(BaseCommand):
 
     @classmethod
     def deserialize_in(cls, package_line):
-        data = ujson.loads(package_line)
-        return {d[0]: d[1] for d in data}
+        return dict(ujson.loads(package_line))
 
     @classmethod
     def serialize_out(cls, ids):
