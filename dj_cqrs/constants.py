@@ -6,3 +6,6 @@ class SignalType(object):
     SAVE = 'SAVE'
 
     SYNC = 'SYNC'
+
+
+NO_QUEUE = 'None'

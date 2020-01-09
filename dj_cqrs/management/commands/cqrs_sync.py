@@ -85,6 +85,7 @@ class Command(BaseCommand):
                     print('\nSync record failed for pk={}: {}: {}'.format(
                         instance.pk, type(e).__name__, str(e),
                     ))
+
             if progress:
                 rate = (counter - cs) / (time.time() - ts)
                 percent = 100 * counter / db_count

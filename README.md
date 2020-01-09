@@ -134,6 +134,14 @@ Filter synchronizer over transport (usage example: sync some specific records to
 * To sync all replicas: `python manage.py cqrs_sync --cqrs-id=author -f={"id__in": [1, 2]}`
 * To sync all instances only with one replica: `python manage.py cqrs_sync --cqrs-id=author -f={} -q=replica`
 
+Set of diff synchronization tools ()
+* To get diff and synchronize master service with replica service in K8S: 
+```bash
+kubectl exec -i MASTER_CONTAINER python manage.py cqrs_diff_master --cqrs-id=author | 
+    kubectl exec -i REPLICA_CONTAINER python manage.py cqrs_diff_replica |
+    kubectl exec -i MASTER_CONTAINER python manage.py cqrs_diff_sync
+```
+
 Development
 ===========
 

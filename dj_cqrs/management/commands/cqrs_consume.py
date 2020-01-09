@@ -1,6 +1,5 @@
 from multiprocessing import Process
 
-
 from django.core.management.base import BaseCommand
 
 from dj_cqrs.transport import current_transport
