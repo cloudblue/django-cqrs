@@ -11,6 +11,10 @@ from dj_cqrs.management.commands.utils import batch_qs
 from dj_cqrs.registries import MasterRegistry
 
 
+DEFAULT_BATCH = 10000
+DEFAULT_PROGRESS = False
+
+
 class Command(BaseCommand):
     help = 'Filter synchronization of certain CQRS model rows over transport to replicas.'
 
@@ -37,7 +41,7 @@ class Command(BaseCommand):
             '--batch', '-b',
             help='Batch size',
             type=int,
-            default=10000,
+            default=DEFAULT_BATCH,
         )
         parser.add_argument(
             '--progress', '-p',
@@ -112,8 +116,8 @@ class Command(BaseCommand):
 
     @staticmethod
     def _get_batch_size(options):
-        return options['batch']
+        return options.get('batch', DEFAULT_BATCH)
 
     @staticmethod
     def _get_progress(options):
-        return bool(options['progress'])
+        return bool(options.get('progress', DEFAULT_PROGRESS))
