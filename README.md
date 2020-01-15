@@ -137,9 +137,9 @@ Filter synchronizer over transport (usage example: sync some specific records to
 Set of diff synchronization tools ()
 * To get diff and synchronize master service with replica service in K8S: 
 ```bash
-kubectl exec -i MASTER_CONTAINER python manage.py cqrs_diff_master --cqrs-id=author | 
-    kubectl exec -i REPLICA_CONTAINER python manage.py cqrs_diff_replica |
-    kubectl exec -i MASTER_CONTAINER python manage.py cqrs_diff_sync
+kubectl exec -i MASTER_CONTAINER -- python manage.py cqrs_diff_master --cqrs-id=author | 
+    kubectl exec -i REPLICA_CONTAINER -- python manage.py cqrs_diff_replica |
+    kubectl exec -i MASTER_CONTAINER -- python manage.py cqrs_diff_sync
 ```
 
 Development
