@@ -46,7 +46,6 @@ spec:
     stage('Install deps') {
       steps {
         container('python') {
-          sh 'pip install -U pip'
           sh 'pip install flake8'
         }
       }
