@@ -36,7 +36,7 @@ spec:
     stage('Init') {
       steps {
         script {
-          version = sh(script: 'git describe --always --abbrev=7', returnStdout: true).trim()
+          version = sh(script: 'python setup.py --version', returnStdout: true).trim()
           echo "Building version: ${version}"
           currentBuild.displayName = "${version}"
           projectVersion = version.tokenize('.')[0]
