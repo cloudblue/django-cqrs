@@ -64,7 +64,7 @@ spec:
         container('python') {
           sh 'pip install -U twine'
           sh 'git clean -fdx'
-          withCredentials([usernamePassword(credentialsId: 'connect-artifactory', usernameVariable: 'TWINE_USERNAME', passwordVariable: 'TWINE_PASSWORD')]) {
+          withCredentials([usernamePassword(credentialsId: 'connect-ci-artifactory', usernameVariable: 'TWINE_USERNAME', passwordVariable: 'TWINE_PASSWORD')]) {
             sh 'python setup.py sdist'
             sh 'twine upload --repository-url https://repo.int.zone/artifactory/api/pypi/pypi-local dist/*'
           }
