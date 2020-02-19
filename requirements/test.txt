@@ -5,3 +5,4 @@ pytest-cov
 pytest-django
 pytest-mock
 djangorestframework
+django-mptt

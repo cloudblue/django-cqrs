@@ -12,14 +12,19 @@ class MasterMeta(base.ModelBase):
         model_cls = super(MasterMeta, mcs).__new__(mcs, *args)
 
         if args[0] != 'MasterMixin':
-            _MetaUtils.check_cqrs_id(model_cls)
-            MasterMeta._check_correct_configuration(model_cls)
-            if model_cls.CQRS_SERIALIZER is None:
-                MasterMeta._check_cqrs_fields(model_cls)
+            mcs.register(model_cls)
 
-            MasterRegistry.register_model(model_cls)
-            MasterSignals.register_model(model_cls)
+        return model_cls
 
+    @staticmethod
+    def register(model_cls):
+        _MetaUtils.check_cqrs_id(model_cls)
+        MasterMeta._check_correct_configuration(model_cls)
+        if model_cls.CQRS_SERIALIZER is None:
+            MasterMeta._check_cqrs_fields(model_cls)
+
+        MasterRegistry.register_model(model_cls)
+        MasterSignals.register_model(model_cls)
         return model_cls
 
     @staticmethod
