@@ -472,3 +472,12 @@ def test_to_cqrs_dict_serializer_bad_related_function():
         models.BadQuerySetSerializationClassModel.objects.create()
 
     assert "Couldn't serialize CQRS class (bad_queryset)." in str(e)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_multiple_inheritance(mocker):
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+
+    models.NonMetaClassModel.objects.create(name='abc')
+
+    assert publisher_mock.call_count == 1

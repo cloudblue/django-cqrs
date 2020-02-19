@@ -23,7 +23,7 @@ Integration
 # models.py
 
 from django.db import models
-from dj_cqrs.mixins import MasterMixin
+from dj_cqrs.mixins import MasterMixin, RawMasterMixin
 
 
 class Account(MasterMixin, models.Model):
@@ -33,6 +33,16 @@ class Account(MasterMixin, models.Model):
 class Author(MasterMixin, models.Model):
     CQRS_ID = 'author'
     CQRS_SERIALIZER = 'app.api.AuthorSerializer'
+
+
+# For cases of Diamond Multiinheritance the following approach could be used:
+from mptt.models import MPTTModel
+from dj_cqrs.metas import MasterMeta
+
+class ComplexInheritanceModel(MPTTModel, RawMasterMixin):
+    pass
+
+MasterMeta.register(ComplexInheritanceModel)
 ```
 
 ```python

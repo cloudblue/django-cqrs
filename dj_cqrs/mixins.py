@@ -11,18 +11,7 @@ from dj_cqrs.metas import MasterMeta, ReplicaMeta
 from dj_cqrs.signals import MasterSignals, post_bulk_create, post_update
 
 
-class MasterMixin(six.with_metaclass(MasterMeta, Model)):
-    """
-    Mixin for the master CQRS model, that will send data updates to it's replicas.
-
-    CQRS_ID - Unique CQRS identifier for all microservices.
-    CQRS_FIELDS - Fields, that need to by synchronized between microservices.
-    CQRS_SERIALIZER - Serializer, that overrides common serialization logic.
-                      Can't be set together with non-default CQRS_FIELDS.
-                      DRF serializers are only supported now: Serializer(instance).data
-
-    cqrs - Manager, that adds needed CQRS queryset methods.
-    """
+class RawMasterMixin(Model):
     CQRS_ID = None
 
     CQRS_FIELDS = ALL_BASIC_FIELDS
@@ -46,7 +35,7 @@ class MasterMixin(six.with_metaclass(MasterMeta, Model)):
     def save(self, *args, **kwargs):
         if not self._state.adding:
             self.cqrs_revision = F('cqrs_revision') + 1
-        return super(MasterMixin, self).save(*args, **kwargs)
+        return super(RawMasterMixin, self).save(*args, **kwargs)
 
     def to_cqrs_dict(self, using=None):
         """ CQRS serialization for transport payload. """
@@ -165,6 +154,22 @@ class MasterMixin(six.with_metaclass(MasterMeta, Model)):
             return serializer
         except ImportError:
             raise ImportError("Model {}: CQRS_SERIALIZER can't be imported.".format(self.__class__))
+
+
+class MasterMixin(six.with_metaclass(MasterMeta, RawMasterMixin)):
+    """
+    Mixin for the master CQRS model, that will send data updates to it's replicas.
+
+    CQRS_ID - Unique CQRS identifier for all microservices.
+    CQRS_FIELDS - Fields, that need to by synchronized between microservices.
+    CQRS_SERIALIZER - Serializer, that overrides common serialization logic.
+                      Can't be set together with non-default CQRS_FIELDS.
+                      DRF serializers are only supported now: Serializer(instance).data
+
+    cqrs - Manager, that adds needed CQRS queryset methods.
+    """
+    class Meta:
+        abstract = True
 
 
 class ReplicaMixin(six.with_metaclass(ReplicaMeta, Model)):

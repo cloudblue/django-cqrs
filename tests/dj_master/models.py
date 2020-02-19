@@ -1,7 +1,9 @@
 from django.db import models
 
+from mptt.models import MPTTModel, TreeForeignKey
 from dj_cqrs.constants import ALL_BASIC_FIELDS
-from dj_cqrs.mixins import MasterMixin
+from dj_cqrs.metas import MasterMeta
+from dj_cqrs.mixins import MasterMixin, RawMasterMixin
 
 
 class BasicFieldsModel(MasterMixin, models.Model):
@@ -96,3 +98,15 @@ class BadQuerySetSerializationClassModel(MasterMixin, models.Model):
     @classmethod
     def relate_cqrs_serialization(cls, queryset):
         return queryset.none()
+
+
+class NonMetaClassModel(MPTTModel, RawMasterMixin):
+    CQRS_ID = 'non_meta'
+
+    name = models.CharField(max_length=50, unique=True)
+    parent = TreeForeignKey(
+        'self', on_delete=models.CASCADE, null=True, blank=True, related_name='children',
+    )
+
+
+MasterMeta.register(NonMetaClassModel)
