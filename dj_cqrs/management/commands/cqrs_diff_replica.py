@@ -37,7 +37,7 @@ class Command(BaseCommand):
                         diff_ids.add(pk)
 
                 if diff_ids:
-                    self.stdout.write(self.serialize_out(diff_ids))
+                    self.stdout.write(self.serialize_out(list(diff_ids)))
                     self.stderr.write('PK to resync: {}'.format(str(diff_ids)))
 
     @staticmethod
