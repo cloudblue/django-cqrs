@@ -50,6 +50,9 @@ def test_post_save_delete(mocker):
         SignalType.DELETE, models.SimplestModel.CQRS_ID, {'id': 1, 'cqrs_revision': 1}, 1,
     )
 
+    cqrs_updated = publisher_mock.call_args[0][0].to_dict()['instance_data']['cqrs_updated']
+    assert isinstance(cqrs_updated, str)
+
 
 @pytest.mark.django_db(transaction=True)
 def test_post_bulk_create(mocker):

@@ -63,7 +63,9 @@ class MasterSignals(object):
             return
 
         instance_data = {
-            'id': instance.pk, 'cqrs_revision': instance.cqrs_revision + 1, 'cqrs_updated': now(),
+            'id': instance.pk,
+            'cqrs_revision': instance.cqrs_revision + 1,
+            'cqrs_updated': str(now()),
         }
         signal_type = SignalType.DELETE
 
