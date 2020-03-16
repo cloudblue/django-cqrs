@@ -38,7 +38,7 @@ class Command(BaseCommand):
         model = self._get_model(options)
         batch_size = self._get_batch_size(options)
 
-        qs = model._default_manager.all().order_by().only('pk', 'cqrs_revision')
+        qs = model._default_manager.all().order_by()
         if options['filter']:
             try:
                 kwargs = ujson.loads(options['filter'])
@@ -60,7 +60,11 @@ class Command(BaseCommand):
         self.stdout.write('{},{}'.format(model.CQRS_ID, str(current_dt)))
 
         for bqs in batch_qs(qs, batch_size=batch_size):
-            package = [[instance.pk, instance.cqrs_revision] for instance in bqs]
+            package = [
+                [instance.pk, instance.cqrs_revision]
+                for instance in bqs
+                if instance.is_sync_instance()
+            ]
             self.stdout.write(self.serialize_package(package))
 
     @staticmethod
