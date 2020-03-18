@@ -24,8 +24,16 @@ class Command(BaseCommand):
             required=False,
             default=False,
         )
+        parser.add_argument(
+            '--batch', '-b',
+            help='Batch size',
+            type=int,
+            default=10000,
+        )
 
     def handle(self, *args, **options):
+        batch_size = self._get_batch_size(options)
+
         f_name = options['input']
         if f_name != '-' and not os.path.exists(f_name):
             raise CommandError("File {} doesn't exist!".format(f_name))
@@ -51,33 +59,47 @@ class Command(BaseCommand):
                     except DatabaseError:
                         raise CommandError("Delete operation fails!")
 
-                line_number = 2
-                for line in f:
+            line_number = 2
+            while True:
+                with transaction.atomic():
                     try:
-                        try:
-                            master_data = ujson.loads(line.strip())
-                        except ValueError:
-                            print(
-                                "Dump file can't be parsed: line {}!".format(line_number),
-                                file=sys.stderr
-                            )
-                            line_number += 1
-                            continue
+                        for _ in range(0, batch_size):
+                            line = f.readline()
 
-                        instance = model.cqrs_save(master_data)
-                        if not instance:
-                            print(
-                                "Instance can't be saved: line {}!".format(line_number),
-                                file=sys.stderr
-                            )
-                        else:
-                            success_counter += 1
-                    except Exception as e:
-                        print(
-                            'Unexpected error: line {}! {}'.format(line_number, str(e)),
-                            file=sys.stderr
-                        )
-                    finally:
-                        line_number += 1
+                            if not line:
+                                raise EOFError
+                            try:
+                                try:
+                                    master_data = ujson.loads(line.strip())
+                                except ValueError:
+                                    print(
+                                        "Dump file can't be parsed: line {}!".format(
+                                            line_number,
+                                        ),
+                                        file=sys.stderr
+                                    )
+                                    line_number += 1
+                                    continue
+
+                                instance = model.cqrs_save(master_data)
+                                if not instance:
+                                    print(
+                                        "Instance can't be saved: line {}!".format(line_number),
+                                        file=sys.stderr
+                                    )
+                                else:
+                                    success_counter += 1
+                            except Exception as e:
+                                print(
+                                    'Unexpected error: line {}! {}'.format(line_number, str(e)),
+                                    file=sys.stderr
+                                )
+                            line_number += 1
+                    except EOFError:
+                        break
 
             print('Done!\n{} instance(s) loaded.'.format(success_counter), file=sys.stderr)
+
+    @staticmethod
+    def _get_batch_size(options):
+        return options['batch']

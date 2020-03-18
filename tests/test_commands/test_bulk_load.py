@@ -107,3 +107,14 @@ def test_unexpected_error(mocker, capsys):
     assert 'Unexpected error: line 2!' in captured.err
     assert 'Unexpected error: line 3!' in captured.err
     assert '0 instance(s) loaded.' in captured.err
+
+
+@pytest.mark.django_db(transaction=True)
+def test_loaded_correctly_batch(capsys):
+    AuthorRef.objects.create(id=1, name='1', cqrs_revision=0, cqrs_updated=now())
+
+    call_command(COMMAND_NAME, '--input={}author.dump'.format(DUMPS_PATH), '--batch=1')
+    assert AuthorRef.objects.count() == 2
+
+    captured = capsys.readouterr()
+    assert '2 instance(s) loaded.' in captured.err
