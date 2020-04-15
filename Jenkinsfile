@@ -58,19 +58,6 @@ spec:
         }
       }
     }
-    stage('Upload') {
-      when { not { changeRequest() } }
-      steps {
-        container('python') {
-          sh 'pip install -U twine'
-          sh 'git clean -fdx'
-          withCredentials([usernamePassword(credentialsId: 'connect-ci-artifactory', usernameVariable: 'TWINE_USERNAME', passwordVariable: 'TWINE_PASSWORD')]) {
-            sh 'python setup.py sdist'
-            sh 'twine upload --repository-url https://repo.int.zone/artifactory/api/pypi/pypi-local dist/*'
-          }
-        }
-      }
-    }
     stage('Scan') {
       when { changeRequest() }
       steps {
@@ -90,6 +77,19 @@ spec:
         container('sonar-scanner') {
           sh """sonar-scanner \
             -Dsonar.projectVersion=${version}"""
+        }
+      }
+    }
+    stage('Upload') {
+      when { not { changeRequest() } }
+      steps {
+        container('python') {
+          sh 'pip install -U twine'
+          sh 'git clean -fdx'
+          withCredentials([usernamePassword(credentialsId: 'connect-ci-artifactory', usernameVariable: 'TWINE_USERNAME', passwordVariable: 'TWINE_PASSWORD')]) {
+            sh 'python setup.py sdist'
+            sh 'twine upload --repository-url https://repo.int.zone/artifactory/api/pypi/pypi-local dist/*'
+          }
         }
       }
     }
