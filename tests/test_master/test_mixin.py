@@ -481,3 +481,21 @@ def test_multiple_inheritance(mocker):
     models.NonMetaClassModel.objects.create(name='abc')
 
     assert publisher_mock.call_count == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_non_sent(mocker):
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+
+    m = models.NonSentModel.objects.create()
+    assert publisher_mock.call_count == 0
+    m.refresh_from_db()
+    assert m.cqrs_revision == 0
+
+    m.save()
+    assert publisher_mock.call_count == 0
+    m.refresh_from_db()
+    assert m.cqrs_revision == 1
+
+    m.delete()
+    assert publisher_mock.call_count == 0

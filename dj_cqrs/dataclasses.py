@@ -1,4 +1,4 @@
-class TransportPayload(object):
+class TransportPayload:
     def __init__(self, signal_type, cqrs_id, instance_data, instance_pk, queue=None):
         self.__signal_type = signal_type
         self.__cqrs_id = cqrs_id

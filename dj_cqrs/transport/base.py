@@ -1,10 +1,10 @@
-class BaseTransport(object):
+class BaseTransport:
     """
     CQRS pattern can be implemented over any transport (AMQP, HTTP, etc.)
     All transports need to inherit from this base class.
     Transport must be set in Django settings:
         CQRS = {
-            'transport': 'tests.dj.transport.TransportStub',
+            'transport': 'dj_cqrs.transport.rabbit_mq.RabbitMQTransport',
         }
     """
     consumers = {}

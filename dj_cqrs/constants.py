@@ -1,7 +1,7 @@
 ALL_BASIC_FIELDS = '__all__'
 
 
-class SignalType(object):
+class SignalType:
     DELETE = 'DELETE'
     SAVE = 'SAVE'
 
