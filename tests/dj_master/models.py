@@ -110,3 +110,8 @@ class NonMetaClassModel(MPTTModel, RawMasterMixin):
 
 
 MasterMeta.register(NonMetaClassModel)
+
+
+class NonSentModel(MasterMixin, models.Model):
+    CQRS_ID = 'non_sent'
+    CQRS_PRODUCE = False

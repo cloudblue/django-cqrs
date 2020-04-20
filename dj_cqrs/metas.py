@@ -76,7 +76,7 @@ class ReplicaMeta(base.ModelBase):
             _MetaUtils.check_cqrs_field_setting(model_cls, cqrs_field_names, 'CQRS_MAPPING')
 
 
-class _MetaUtils(object):
+class _MetaUtils:
     @classmethod
     def check_cqrs_field_setting(cls, model_cls, cqrs_field_names, cqrs_attr):
         cls._check_no_duplicate_names(model_cls, cqrs_field_names, cqrs_attr)

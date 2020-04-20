@@ -5,7 +5,7 @@ from django.conf import settings
 logger = logging.getLogger()
 
 
-class RegistryMixin(object):
+class RegistryMixin:
     @classmethod
     def register_model(cls, model_cls):
         """ Registration of CQRS model identifiers. """

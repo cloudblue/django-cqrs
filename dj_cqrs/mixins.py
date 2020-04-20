@@ -13,6 +13,7 @@ from dj_cqrs.signals import MasterSignals, post_bulk_create, post_update
 
 class RawMasterMixin(Model):
     CQRS_ID = None
+    CQRS_PRODUCE = True
 
     CQRS_FIELDS = ALL_BASIC_FIELDS
     CQRS_SERIALIZER = None  # It must be None or string, like: 'path.to.serializer'

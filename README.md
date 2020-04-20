@@ -28,6 +28,7 @@ from dj_cqrs.mixins import MasterMixin, RawMasterMixin
 
 class Account(MasterMixin, models.Model):
     CQRS_ID = 'account'
+    CQRS_PRODUCE = True  # set this to False to prevent sending instances to Transport
     
     
 class Author(MasterMixin, models.Model):

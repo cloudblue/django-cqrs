@@ -10,7 +10,7 @@ post_bulk_create = Signal(providing_args=['instances', 'using'])
 post_update = Signal(providing_args=['instances', 'using'])
 
 
-class MasterSignals(object):
+class MasterSignals:
     """ Signals registry and handlers for CQRS master models. """
     @classmethod
     def register_model(cls, model_cls):
@@ -28,6 +28,9 @@ class MasterSignals(object):
         """
         :param dj_cqrs.mixins.MasterMixin sender: Class or instance inherited from CQRS MasterMixin.
         """
+        if not sender.CQRS_PRODUCE:
+            return
+
         instance = kwargs['instance']
         if not instance.is_sync_instance():
             return
@@ -58,6 +61,9 @@ class MasterSignals(object):
         """
         :param dj_cqrs.mixins.MasterMixin sender: Class or instance inherited from CQRS MasterMixin.
         """
+        if not sender.CQRS_PRODUCE:
+            return
+
         instance = kwargs['instance']
         if not instance.is_sync_instance():
             return
