@@ -1,3 +1,5 @@
+#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+
 import pytest
 
 from dj_cqrs.metas import _MetaUtils

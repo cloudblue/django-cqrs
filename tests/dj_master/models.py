@@ -1,3 +1,5 @@
+#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+
 from django.db import models
 
 from mptt.models import MPTTModel, TreeForeignKey

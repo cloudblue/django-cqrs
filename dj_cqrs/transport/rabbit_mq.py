@@ -1,3 +1,5 @@
+#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+
 import logging
 import time
 from socket import gaierror

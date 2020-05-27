@@ -1,3 +1,5 @@
+#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+
 from django.conf import settings
 from django.utils.module_loading import import_string
 

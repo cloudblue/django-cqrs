@@ -1,3 +1,5 @@
+#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+
 from setuptools import find_packages, setup
 
 

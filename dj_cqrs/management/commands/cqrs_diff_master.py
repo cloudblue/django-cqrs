@@ -1,3 +1,5 @@
+#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+
 import ujson
 from django.core.exceptions import FieldError
 from django.core.management.base import BaseCommand, CommandError

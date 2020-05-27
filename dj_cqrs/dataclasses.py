@@ -1,3 +1,6 @@
+#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+
+
 class TransportPayload:
     def __init__(self, signal_type, cqrs_id, instance_data, instance_pk, queue=None):
         self.__signal_type = signal_type

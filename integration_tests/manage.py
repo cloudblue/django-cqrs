@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+
+#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+
 import os
 import sys
 

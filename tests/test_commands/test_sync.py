@@ -1,3 +1,5 @@
+#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+
 import pytest
 from django.core.management import CommandError, call_command
 from tests.utils import db_error

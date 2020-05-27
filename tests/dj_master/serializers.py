@@ -1,3 +1,5 @@
+#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+
 from rest_framework.serializers import CharField, ModelSerializer
 
 from tests.dj_master.models import Author, Book, Publisher

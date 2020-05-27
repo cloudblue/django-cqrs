@@ -1,3 +1,6 @@
+#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+
+
 class BaseTransport:
     """
     CQRS pattern can be implemented over any transport (AMQP, HTTP, etc.)

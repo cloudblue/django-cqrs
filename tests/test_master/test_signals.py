@@ -1,3 +1,5 @@
+#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+
 import pytest
 from django.db.models.signals import post_delete, post_save
 

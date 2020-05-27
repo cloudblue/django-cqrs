@@ -1,3 +1,5 @@
+#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+
 from django.db import models, transaction
 from django.dispatch import Signal
 from django.utils.timezone import now

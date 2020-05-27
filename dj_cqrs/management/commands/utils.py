@@ -1,3 +1,6 @@
+#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+
+
 def batch_qs(qs, batch_size=10000):
     """
     Helper function to manage RAM usage on big dataset iterations.
