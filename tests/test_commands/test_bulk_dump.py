@@ -64,7 +64,7 @@ def tests_dumps_several_rows(capsys):
         assert len(lines) == 3
         assert lines[0].strip() == 'author'
 
-        line_with_publisher = next(l for l in lines[1:] if '"name":"publisher"' in l)
+        line_with_publisher = next(ln for ln in lines[1:] if '"name":"publisher"' in ln)
         assert author.to_cqrs_dict() == ujson.loads(line_with_publisher)
 
     captured = capsys.readouterr()

@@ -1,0 +1,41 @@
+dist: bionic
+language: python
+matrix:
+  include:
+  - os: linux
+    python: 3.6
+    sudo: true
+    env: BUILD=PYPI
+  - os: linux
+    python: 3.7
+    sudo: true
+  - os: linux
+    python: 3.8
+    sudo: true
+install:
+- pip install -r requirements/dev.txt
+- pip install -r requirements/test.txt
+- pip install pytest-cov
+script:
+- flake8
+- python setup.py test
+- sonar-scanner
+after_success:
+- bash <(curl -s https://codecov.io/bash)
+addons:
+  sonarcloud:
+    organization: cloudbluesonarcube
+    token:
+      secure: SFqO8p9smZgff0tG2OnNzGQ7A0GCPVrkUhtss2+XE268wrikfwKoH85iobVPuI9u/qYM0ZTVujFhLXcBxaQhO+d1WHBkh1t9+z9UfLC3Ke+JJaNm1vnnI4L8u82s7xYcpZzu42zY6f9vdfe8M4P9xyDWKDaBY0uUkFv7EW21hFa0OKJ9Wb26L313dFNqawy/mEOLCiakBDUzmAK96M+i+C/m8bhGq1rQ/pst4uc53UNjJhGRz/OvdV1edceGW5qEpP+W6DeqxG5Ht4Y8TlZFUFS8xSbXU2J+ApfgZ8pqTNBYiSKy+QT1Z1dXEmB1tzuBJRVC0rdSZ5wCHvOrQN+gf8TU3ifUdoh2KztNuwRiRwoJY9K8XAVtGdewYHUBdUR+GWR0Q41kv6kAXaO1hnqcrwS3UqhiGqeqA6K9kvqgHOjDY6gpCEDpucypaQMijcUE3F0bHiiElnm6tLfQvnB6Is8ppYH2sQPQ1YePDTovUo1mcfKqvRUY362FvFaPQrgyJziSkqmcGmNTuQlC6foWX6qQaZUDvSTyWX2/C0Gc4QFyHq/xjRR3NrUnF3DvEjr439z29baQYX0OmQIZkU2WysE4ko94qmwOgV/Bxq7NNcrsyFgZEPbpeR1+8pLCw/d/Mespm9YTseZuBhX+lFKIMqzZIRDDiHJ9RzsjlH+2804=
+deploy:
+  skip_cleanup: true
+  skip_existing: true
+  provider: pypi
+  user: "__token__"
+  password:
+    secure: qW4MPrXOg19JlL+zhU43r8ZtNiFfNxACFSlcv5puCffiBpJOWoKES9ytTCCWLcxo0gepo8Y8tORVgyAGC0gnPrw5vzge0QjFYv+kWHOGAns7qW1xJ0npGiTf7lyTgKUOJLuH3E3X6JEdDJfKXUjeLbozaqz1bTl3yivMAZpTwOG9crlMkNM6vCaIKxuPI6cfcWd7M0P4ylKYHeDVGUSNaY2ckXBLJP0HfwR7CYvn2RsxNQDtiISULZPz8THOiG//kv/RYwOYad+9S7F4fMv9jFjMZtWMUiKOxp/t5eG9U8GOfpEr84sCSR+MtiQWA7PbvuBG12GXqe0xqpbvYQx0bLEO6up9MA3uTwVwKpKf8eYNVs9A+vzyxfX8oYs6eXgRS6ESqWB+03yo8dbtt8E7oGyzknI5oEqJOgRmxSLrkI7VklzPyj98y/d53ein6ExmWt1noJpEcoJ1FkWRlDiTBFQSU42kgTCXl2Lm2mUg9YAtF42dHDoKQ86Y9qcom+B7xQhoCC701RBweE1CPGo/lW8k7YKQ6vi4KFK4qWwn6dWfAe322t2V08z+tWnrHKtMJKLvQHw/QdH1jtyZ+4U9cA98aHxhtW1XITi/A2Bi2Wlh81k5aCsIpZqvrSVEt6PNf3//BVZdVePSxabFv9wZDNIGyBvSndA+glwT5wql80g=
+  on:
+    tags: true
+    all_branches: true
+    distributions: sdist
+    condition: "$BUILD = PYPI"
