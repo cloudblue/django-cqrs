@@ -11,8 +11,8 @@ def read_file(name):
 
 setup(
     name='django-cqrs',
-    author='Ingram Micro',
-    url='https://connect.cloud.im',
+    author='CloudBlue',
+    url='http://connect.cloudblue.com',
     description='Django CQRS data synchronisation',
     long_description=read_file('README.md'),
     long_description_content_type='text/markdown',
