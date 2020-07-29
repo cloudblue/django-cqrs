@@ -71,7 +71,7 @@ class AuthorRef(ReplicaMixin, models.Model):
     publisher = models.ForeignKey(Publisher, null=True, on_delete=models.CASCADE)
 
     @classmethod
-    def cqrs_create(cls, sync, **mapped_data):
+    def cqrs_create(cls, sync, mapped_data, previous_data=None):
         publisher_data, publisher = mapped_data.pop('publisher', None), None
         if publisher_data:
             publisher, _ = Publisher.objects.get_or_create(**publisher_data)
@@ -82,7 +82,7 @@ class AuthorRef(ReplicaMixin, models.Model):
         Book.objects.bulk_create(Book(author=author, **book_data) for book_data in books_data)
         return author
 
-    def cqrs_update(self, sync, **mapped_data):
+    def cqrs_update(self, sync, mapped_data, previous_data=None):
         # It's just an example, that doesn't make sense in real cases
         publisher_data, publisher = mapped_data.pop('publisher', None), None
         if publisher_data:

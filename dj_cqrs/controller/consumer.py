@@ -8,7 +8,7 @@ from dj_cqrs.constants import SignalType
 from dj_cqrs.registries import ReplicaRegistry
 
 
-logger = logging.getLogger()
+logger = logging.getLogger('django-cqrs')
 
 
 def consume(payload):
@@ -18,10 +18,11 @@ def consume(payload):
     """
     return route_signal_to_replica_model(
         payload.signal_type, payload.cqrs_id, payload.instance_data,
+        previous_data=payload.previous_data,
     )
 
 
-def route_signal_to_replica_model(signal_type, cqrs_id, instance_data):
+def route_signal_to_replica_model(signal_type, cqrs_id, instance_data, previous_data=None):
     """ Routes signal to model method to create/update/delete replica instance.
 
     :param dj_cqrs.constants.SignalType signal_type: Consumed signal type.
@@ -37,11 +38,15 @@ def route_signal_to_replica_model(signal_type, cqrs_id, instance_data):
 
         elif signal_type == SignalType.SAVE:
             with transaction.atomic():
-                return model_cls.cqrs_save(instance_data)
+                return model_cls.cqrs_save(instance_data, previous_data=previous_data)
 
         elif signal_type == SignalType.SYNC:
             with transaction.atomic():
-                return model_cls.cqrs_save(instance_data, sync=True)
+                return model_cls.cqrs_save(
+                    instance_data,
+                    previous_data=previous_data,
+                    sync=True,
+                )
 
         else:
             logger.error('Bad signal type "{}" for CQRS_ID "{}".'.format(signal_type, cqrs_id))

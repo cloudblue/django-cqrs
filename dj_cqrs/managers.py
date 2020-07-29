@@ -1,7 +1,6 @@
 #  Copyright © 2020 Ingram Micro Inc. All rights reserved.
 
 import logging
-from itertools import chain
 
 from django.core.exceptions import ValidationError
 from django.db import Error, IntegrityError, transaction
@@ -9,7 +8,7 @@ from django.db.models import Manager, F
 from django.utils import timezone
 
 
-logger = logging.getLogger()
+logger = logging.getLogger('django-cqrs')
 
 
 class MasterManager(Manager):
@@ -29,16 +28,18 @@ class MasterManager(Manager):
 
 
 class ReplicaManager(Manager):
-    def save_instance(self, master_data, sync=False):
+    def save_instance(self, master_data, previous_data=None, sync=False):
         """ This method saves (creates or updates) model instance from CQRS master instance data.
 
         :param dict master_data: CQRS master instance data.
+        :param dict previous_data: Previous values for tracked fields.
         :param bool sync: Sync package flag.
         :return: Model instance.
         :rtype: django.db.models.Model
         """
         mapped_data = self._map_save_data(master_data)
-
+        mapped_previous_data = self._map_previous_data(previous_data) \
+            if previous_data else None
         if mapped_data:
             pk_name = self._get_model_pk_name()
             pk_value = mapped_data[pk_name]
@@ -47,20 +48,34 @@ class ReplicaManager(Manager):
             instance = self.model._default_manager.filter(**f_kwargs).first()
 
             if instance:
-                return self.update_instance(instance, mapped_data, sync=sync)
+                return self.update_instance(
+                    instance,
+                    mapped_data,
+                    previous_data=mapped_previous_data,
+                    sync=sync,
+                )
 
-            return self.create_instance(mapped_data, sync=sync)
+            return self.create_instance(
+                mapped_data,
+                previous_data=mapped_previous_data,
+                sync=sync,
+            )
 
-    def create_instance(self, mapped_data, sync=False):
+    def create_instance(self, mapped_data, previous_data=None, sync=False):
         """ This method creates model instance from mapped CQRS master instance data.
 
         :param dict mapped_data: Mapped CQRS master instance data.
+        :param dict previous_data: Previous values for tracked fields.
         :param bool sync: Sync package flag.
         :return: ReplicaMixin model instance.
         :rtype: django.db.models.Model
         """
         try:
-            return self.model.cqrs_create(sync, **mapped_data)
+            return self.model.cqrs_create(
+                sync,
+                mapped_data,
+                previous_data=previous_data,
+            )
         except (Error, ValidationError) as e:
             pk_value = mapped_data[self._get_model_pk_name()]
             if isinstance(e, IntegrityError):
@@ -76,11 +91,12 @@ class ReplicaManager(Manager):
                 ),
             )
 
-    def update_instance(self, instance, mapped_data, sync=False):
+    def update_instance(self, instance, mapped_data, previous_data=None, sync=False):
         """ This method updates model instance from mapped CQRS master instance data.
 
         :param django.db.models.Model instance: ReplicaMixin model instance.
         :param dict mapped_data: Mapped CQRS master instance data.
+        :param dict previous_data: Previous values for tracked fields.
         :param bool sync: Sync package flag.
         :return: ReplicaMixin model instance.
         :rtype: django.db.models.Model
@@ -128,7 +144,11 @@ class ReplicaManager(Manager):
                 ))
 
         try:
-            return instance.cqrs_update(sync, **mapped_data)
+            return instance.cqrs_update(
+                sync,
+                mapped_data,
+                previous_data=previous_data,
+            )
         except (Error, ValidationError) as e:
             logger.error(
                 '{}\nCQRS update error: pk = {}, cqrs_revision = {} ({}).'.format(
@@ -159,6 +179,20 @@ class ReplicaManager(Manager):
                 )
 
         return False
+
+    def _map_previous_data(self, previous_data):
+        if self.model.CQRS_MAPPING is None:
+            return previous_data
+
+        mapped_previous_data = {}
+
+        for master_name, replica_name in self.model.CQRS_MAPPING.items():
+            if master_name not in previous_data:
+                continue
+
+            mapped_previous_data[replica_name] = previous_data[master_name]
+        mapped_previous_data = self._remove_excessive_data(mapped_previous_data)
+        return mapped_previous_data
 
     def _map_save_data(self, master_data):
         if not self._cqrs_fields_are_filled(master_data):
@@ -200,14 +234,16 @@ class ReplicaManager(Manager):
 
     def _remove_excessive_data(self, data):
         opts = self.model._meta
-        possible_field_names = {f.name for f in chain(opts.concrete_fields, opts.private_fields)}
+        possible_field_names = {
+            f.name for f in opts.fields
+        }
         return {k: v for k, v in data.items() if k in possible_field_names}
 
     def _all_required_fields_are_filled(self, mapped_data):
         opts = self.model._meta
 
         required_field_names = {
-            f.name for f in chain(opts.concrete_fields, opts.private_fields) if not f.null
+            f.name for f in opts.fields if not f.null
         }
         if not (required_field_names - set(mapped_data.keys())):
             return True

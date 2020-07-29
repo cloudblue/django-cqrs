@@ -11,3 +11,10 @@ dist/
 
 tests/reports/
 .coverage
+
+*.dump
+
+htmlcov
+.devcontainer
+
+docs/_build

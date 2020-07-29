@@ -14,7 +14,7 @@ from dj_cqrs.dataclasses import TransportPayload
 from dj_cqrs.registries import ReplicaRegistry
 from dj_cqrs.transport import BaseTransport
 
-logger = logging.getLogger()
+logger = logging.getLogger('django-cqrs')
 
 
 class RabbitMQTransport(BaseTransport):
@@ -80,6 +80,7 @@ class RabbitMQTransport(BaseTransport):
 
         payload = TransportPayload(
             dct['signal_type'], dct['cqrs_id'], dct['instance_data'], dct.get('instance_pk'),
+            previous_data=dct.get('previous_data'),
         )
 
         cls._log_consumed(payload)

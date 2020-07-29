@@ -18,6 +18,7 @@ def test_flow(replica_cursor):
         int_field=1,
         char_field='text',
         date_field=now().date(),
+        bool_field=False,
     )
     assert master_instance.cqrs_revision == 0
 
@@ -40,6 +41,12 @@ def test_flow(replica_cursor):
     # Update
     master_instance.bool_field = True
     master_instance.save()
+
+    if hasattr(master_instance, 'get_tracked_fields_data'):
+        previous_values = master_instance.get_tracked_fields_data()
+        assert 'bool_field' in previous_values
+        assert previous_values['bool_field'] is False
+
     master_instance.refresh_from_db()
     assert master_instance.cqrs_revision == 1
 

@@ -157,7 +157,7 @@ kubectl exec -i MASTER_CONTAINER -- python manage.py cqrs_diff_master --cqrs-id=
 Development
 ===========
 
-1. Python 3.5+
+1. Python 3.6+
 0. Install dependencies `requirements/dev.txt`
 
 Testing
@@ -165,7 +165,7 @@ Testing
 
 Unit testing
 ------
-1. Python 3.5+
+1. Python 3.6+
 0. Install dependencies `requirements/test.txt`
 0. `export PYTHONPATH=/your/path/to/django-cqrs/`
 

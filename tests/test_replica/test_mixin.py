@@ -444,3 +444,28 @@ def test_updates_were_lost(caplog):
     })
 
     assert 'Lost or filtered out 4 CQRS packages: pk = 1, cqrs_revision = 5 (basic)' in caplog.text
+
+
+@pytest.mark.django_db()
+def test_tracked_fields_mapped(mocker):
+    cqrs_update_mock = mocker.patch.object(models.MappedFieldsModelRef, 'cqrs_update')
+    first_payload = {
+        'int_field': 1,
+        'cqrs_revision': 0,
+        'cqrs_updated': now(),
+        'char_field': 'text',
+    }
+
+    second_payload = {
+        'int_field': 1,
+        'cqrs_revision': 1,
+        'cqrs_updated': now(),
+        'char_field': 'new_text',
+    }
+
+    models.MappedFieldsModelRef.cqrs_save(first_payload)
+    models.MappedFieldsModelRef.cqrs_save(second_payload, previous_data={'char_field': 'text'})
+    assert cqrs_update_mock.call_count == 1
+    _, kwargs = cqrs_update_mock.call_args
+    assert 'previous_data' in kwargs
+    assert kwargs['previous_data'] == {'name': 'text'}

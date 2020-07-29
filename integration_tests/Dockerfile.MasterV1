@@ -1,0 +1,15 @@
+FROM python:3.8
+ENV PYTHONUNBUFFERED 1
+ENV PYTHONPATH /master
+
+RUN mkdir /master
+
+COPY ./requirements /master/requirements
+COPY ./tests /master/tests
+COPY ./integration_tests /master/integration_tests
+ADD integration_tests/setup.cfg /master/
+
+RUN pip install -r /master/requirements/dev.txt -r /master/requirements/test.txt \
+    && pip install psycopg2-binary django-cqrs==1.3.1
+
+WORKDIR /master/
