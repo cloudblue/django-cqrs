@@ -2,7 +2,10 @@
 
 import logging
 import time
+
 from socket import gaierror
+from urllib.parse import unquote, urlparse
+
 
 import ujson
 from django.conf import settings
@@ -13,11 +16,12 @@ from dj_cqrs.controller import consumer
 from dj_cqrs.dataclasses import TransportPayload
 from dj_cqrs.registries import ReplicaRegistry
 from dj_cqrs.transport import BaseTransport
+from dj_cqrs.transport.mixins import LoggingMixin
 
 logger = logging.getLogger('django-cqrs')
 
 
-class RabbitMQTransport(BaseTransport):
+class RabbitMQTransport(LoggingMixin, BaseTransport):
     CONSUMER_RETRY_TIMEOUT = 5
 
     @classmethod
@@ -53,7 +57,7 @@ class RabbitMQTransport(BaseTransport):
             connection, channel = cls._get_producer_rmq_objects(*rmq_settings)
 
             cls._produce_message(channel, exchange, payload)
-            cls._log_produced(payload)
+            cls.log_produced(payload)
         except (exceptions.AMQPError, exceptions.ChannelError, exceptions.ReentrancyError):
             logger.error("CQRS couldn't be published: pk = {} ({}).".format(
                 payload.pk, payload.cqrs_id,
@@ -83,15 +87,15 @@ class RabbitMQTransport(BaseTransport):
             previous_data=dct.get('previous_data'),
         )
 
-        cls._log_consumed(payload)
+        cls.log_consumed(payload)
         instance = consumer.consume(payload)
 
         if instance:
             ch.basic_ack(delivery_tag=method.delivery_tag)
-            cls._log_consumed_accepted(payload)
+            cls.log_consumed_accepted(payload)
         else:
             ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
-            cls._log_consumed_denied(payload)
+            cls.log_consumed_denied(payload)
 
     @classmethod
     def _produce_message(cls, channel, exchange, payload):
@@ -168,11 +172,30 @@ class RabbitMQTransport(BaseTransport):
         )
 
     @staticmethod
-    def _get_common_settings():
-        host = settings.CQRS.get('host', ConnectionParameters.DEFAULT_HOST)
-        port = settings.CQRS.get('port', ConnectionParameters.DEFAULT_PORT)
-        user = settings.CQRS.get('user', ConnectionParameters.DEFAULT_USERNAME)
-        password = settings.CQRS.get('password', ConnectionParameters.DEFAULT_PASSWORD)
+    def _parse_url(url):
+        scheme = urlparse(url).scheme
+        schemeless = url[len(scheme) + 3:]
+        parts = urlparse('http://' + schemeless)
+        path = parts.path or ''
+        path = path[1:] if path and path[0] == '/' else path
+        assert scheme == 'amqp', \
+            'Scheme must be "amqp" for RabbitMQTransport.'
+        return (
+            unquote(parts.hostname or '') or ConnectionParameters.DEFAULT_HOST,
+            parts.port or ConnectionParameters.DEFAULT_PORT,
+            unquote(parts.username or '') or ConnectionParameters.DEFAULT_USERNAME,
+            unquote(parts.password or '') or ConnectionParameters.DEFAULT_PASSWORD,
+        )
+
+    @classmethod
+    def _get_common_settings(cls):
+        if 'url' in settings.CQRS:
+            host, port, user, password = cls._parse_url(settings.CQRS.get('url'))
+        else:
+            host = settings.CQRS.get('host', ConnectionParameters.DEFAULT_HOST)
+            port = settings.CQRS.get('port', ConnectionParameters.DEFAULT_PORT)
+            user = settings.CQRS.get('user', ConnectionParameters.DEFAULT_USERNAME)
+            password = settings.CQRS.get('password', ConnectionParameters.DEFAULT_PASSWORD)
         exchange = settings.CQRS.get('exchange', 'cqrs')
         return (
             host,
@@ -189,34 +212,3 @@ class RabbitMQTransport(BaseTransport):
             queue_name,
             consumer_prefetch_count,
         )
-
-    @staticmethod
-    def _log_consumed(payload):
-        """
-        :param dj_cqrs.dataclasses.TransportPayload payload: Transport payload from master model.
-        """
-        if payload.pk:
-            logger.info('CQRS is received: pk = {} ({}).'.format(payload.pk, payload.cqrs_id))
-
-    @staticmethod
-    def _log_consumed_accepted(payload):
-        """
-        :param dj_cqrs.dataclasses.TransportPayload payload: Transport payload from master model.
-        """
-        if payload.pk:
-            logger.info('CQRS is applied: pk = {} ({}).'.format(payload.pk, payload.cqrs_id))
-
-    @staticmethod
-    def _log_consumed_denied(payload):
-        """
-        :param dj_cqrs.dataclasses.TransportPayload payload: Transport payload from master model.
-        """
-        if payload.pk:
-            logger.info('CQRS is denied: pk = {} ({}).'.format(payload.pk, payload.cqrs_id))
-
-    @staticmethod
-    def _log_produced(payload):
-        """
-        :param dj_cqrs.dataclasses.TransportPayload payload: Transport payload from master model.
-        """
-        logger.info('CQRS is published: pk = {} ({}).'.format(payload.pk, payload.cqrs_id))

@@ -2,16 +2,24 @@ version: '3'
 
 services:
   master:
-      build:
-        context: ..
-        dockerfile: integration_tests/Dockerfile.MasterV1
-      image: django_cqrs_test_maste_v1
-      container_name: django_cqrs_test_masterV1
-      command: >
-        bash -c "
-        sleep 12 &&
-        echo '####################################################' &&
-        echo 'Running integration tests Master v1.3.1 - Replica v2' &&
-        echo '####################################################' &&
-        pytest integration_tests/
-        "
+    build:
+      context: ..
+      dockerfile: integration_tests/Dockerfile.Master
+    command: >
+      bash -c "
+      dockerize -wait tcp://mq:5672 -wait tcp://postgres:5432 -timeout 60s && 
+      echo '########################################################' &&
+      echo '   Running compat tests Master v1.3.1 - Replica latest  ' &&
+      echo '########################################################' &&
+      ./run_integration_tests.sh
+      "
+    depends_on:
+      - mq
+      - replica
+    volumes:
+      - ./tests/:/master/integration_tests/tests
+      - ../dj_cqrs:/master/dj_cqrs
+    environment:
+      - CQRS_MASTER_TRANSPORT=dj_cqrs.transport.RabbitMQTransport
+      - CQRS_BROKER_URL=amqp://mq:5672/
+

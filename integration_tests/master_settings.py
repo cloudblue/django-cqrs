@@ -53,6 +53,6 @@ USE_L10N = True
 USE_TZ = True
 
 CQRS = {
-    'transport': 'dj_cqrs.transport.rabbit_mq.RabbitMQTransport',
-    'host': 'rabbit',
+    'transport': os.getenv('CQRS_MASTER_TRANSPORT'),
+    'url': os.getenv('CQRS_BROKER_URL'),
 }

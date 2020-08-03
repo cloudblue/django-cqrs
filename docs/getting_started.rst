@@ -6,6 +6,7 @@ Getting started
 
     This guide assumes that you have at least a single instance of `RabbitMQ <https://www.rabbitmq.com/>`_
     up and running.
+    For other messaging brokers/transports please see :ref:`transports`.
 
 
 
@@ -16,6 +17,7 @@ Requirements
 
     * Django >= 1.11.20
     * pika 1.1.0
+    * kombu 4.6
     * ujson 3.0.0
     * django-model-utils 4.0.0
 
@@ -54,10 +56,7 @@ and add the `django-cqrs` configuration:
 
     CQRS = {
         'transport': 'dj_cqrs.transport.RabbitMQTransport',
-        'host': RABBITMQ_HOST,
-        'port': RABBITMQ_PORT,
-        'user': RABBITMQ_USERNAME,
-        'password': RABBITMQ_PASSWORD,
+        'url': 'amqp://guest:guest@rabbit:5672/'
     }
 
 
@@ -126,15 +125,12 @@ Add dj_cqrs to Django ``INSTALLED_APPS``:
 and add the `django-cqrs` configuration:
 
 .. code-block:: python
-    :emphasize-lines: 3
+    :emphasize-lines: 4
 
     CQRS = {
         'transport': 'dj_cqrs.transport.RabbitMQTransport',
+        'url': 'amqp://guest:guest@rabbit:5672/',
         'queue': 'my_replica', # Each replica service must have a unique queue.
-        'host': RABBITMQ_HOST,
-        'port': RABBITMQ_PORT,
-        'user': RABBITMQ_USERNAME,
-        'password': RABBITMQ_PASSWORD,
     }
 
 
