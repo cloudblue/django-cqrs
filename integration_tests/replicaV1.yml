@@ -1,0 +1,32 @@
+version: '3'
+
+services:
+
+  master:
+    command: >
+      bash -c "
+      sleep 12 &&
+      echo '####################################################' &&
+      echo 'Running integration tests Master v2 - Replica v1.3.1' &&
+      echo '####################################################' &&
+      pytest integration_tests/
+      "
+
+  replica:
+    build:
+      context: ..
+      dockerfile: integration_tests/Dockerfile.ReplicaV1
+    image: django_cqrs_test_replica_v1
+    restart: always
+    command: >
+      bash -c "
+      sleep 10 &&
+      python manage.py makemigrations --settings=integration_tests.replica_settings &&
+      python manage.py makemigrations dj_replica --settings=integration_tests.replica_settings &&
+      python manage.py migrate --settings=integration_tests.replica_settings &&
+      python manage.py cqrs_consume -w 2 --settings=integration_tests.replica_settings
+      "
+    container_name: django_cqrs_test_replicaV1
+    depends_on:
+      - rabbit
+      - postgres

@@ -23,3 +23,21 @@ def assert_publisher_once_called_with_args(publisher_mock, *args):
 
 def db_error(*args, **kwargs):
     raise DatabaseError()
+
+
+def assert_tracked_fields(model_cls, fields):
+    if model_cls.CQRS_TRACKED_FIELDS == '__all__':
+        fields_to_track = {
+            f.attname if f.is_relation else f.name
+            for f in model_cls._meta.concrete_fields
+        }
+    else:
+        fields_to_track = set()
+        for fname in model_cls.CQRS_TRACKED_FIELDS:
+            field = model_cls._meta.get_field(fname)
+            if field.is_relation:
+                fields_to_track.add(field.attname)
+            else:
+                fields_to_track.add(field.name)
+
+    assert fields_to_track == fields

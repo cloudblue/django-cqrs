@@ -3,15 +3,20 @@
 import pytest
 from uuid import uuid4
 
+from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
-from django.db.models import CharField, IntegerField
+from django.db.models import CharField, IntegerField, F
 from django.utils.timezone import now
 
-from dj_cqrs.constants import SignalType
+from dj_cqrs.constants import SignalType, FIELDS_TRACKER_FIELD_NAME
 from dj_cqrs.metas import MasterMeta
 from tests.dj_master import models
 from tests.dj_master.serializers import AuthorSerializer
-from tests.utils import assert_is_sub_dict, assert_publisher_once_called_with_args
+from tests.utils import (
+    assert_is_sub_dict,
+    assert_publisher_once_called_with_args,
+    assert_tracked_fields,
+)
 
 
 class MasterMetaTest(MasterMeta):
@@ -22,6 +27,10 @@ class MasterMetaTest(MasterMeta):
     @classmethod
     def check_correct_configuration(cls, model_cls):
         return cls._check_correct_configuration(model_cls)
+
+    @classmethod
+    def check_cqrs_tracked_fields(cls, model_cls):
+        return cls._check_cqrs_tracked_fields(model_cls)
 
 
 def test_cqrs_fields_non_existing_field(mocker):
@@ -501,3 +510,161 @@ def test_non_sent(mocker):
 
     m.delete()
     assert publisher_mock.call_count == 0
+
+
+def test_cqrs_tracked_fields_non_existing_field(mocker):
+    with pytest.raises(AssertionError) as e:
+
+        class Cls(object):
+            CQRD_ID = 'ID'
+            CQRS_TRACKED_FIELDS = ('char_field', 'integer_field')
+
+            char_field = CharField(max_length=100, primary_key=True)
+            int_field = IntegerField()
+
+            _meta = mocker.MagicMock(concrete_fields=(char_field, int_field), private_fields=())
+            _meta.pk.name = 'char_field'
+
+        MasterMetaTest.check_cqrs_tracked_fields(Cls)
+
+    assert str(e.value) == 'CQRS_TRACKED_FIELDS field is not correctly set for model Cls.'
+
+
+def test_cqrs_tracked_fields_duplicates(mocker):
+    with pytest.raises(AssertionError) as e:
+
+        class Cls(object):
+            CQRD_ID = 'ID'
+            CQRS_TRACKED_FIELDS = ('char_field', 'char_field')
+
+            char_field = CharField(max_length=100, primary_key=True)
+            int_field = IntegerField()
+
+            _meta = mocker.MagicMock(concrete_fields=(char_field, int_field), private_fields=())
+            _meta.pk.name = 'char_field'
+
+        MasterMetaTest.check_cqrs_tracked_fields(Cls)
+
+    assert str(e.value) == 'Duplicate names in CQRS_TRACKED_FIELDS field for model Cls.'
+
+
+def test_cqrs_tracked_fields_bad_configuration(mocker):
+    with pytest.raises(AssertionError) as e:
+
+        class Cls(object):
+            CQRD_ID = 'ID'
+            CQRS_TRACKED_FIELDS = 'bad_config'
+
+            char_field = CharField(max_length=100, primary_key=True)
+            int_field = IntegerField()
+
+            _meta = mocker.MagicMock(concrete_fields=(char_field, int_field), private_fields=())
+            _meta.pk.name = 'char_field'
+
+        MasterMetaTest.check_cqrs_tracked_fields(Cls)
+
+    assert str(e.value) == 'Model Cls: Invalid configuration for CQRS_TRACKED_FIELDS'
+
+
+def test_cqrs_tracked_fields_model_has_tracker(mocker):
+    instance = models.TrackedFieldsChildModel()
+    tracker = getattr(instance, FIELDS_TRACKER_FIELD_NAME)
+    assert tracker is not None
+
+
+def test_cqrs_tracked_fields_related_fields(mocker):
+    instance = models.TrackedFieldsChildModel()
+    tracker = getattr(instance, FIELDS_TRACKER_FIELD_NAME)
+    assert_tracked_fields(models.TrackedFieldsChildModel, tracker.fields)
+
+
+def test_cqrs_tracked_fields_all_related_fields(mocker):
+    instance = models.TrackedFieldsAllWithChildModel()
+    tracker = getattr(instance, FIELDS_TRACKER_FIELD_NAME)
+    assert_tracked_fields(models.TrackedFieldsAllWithChildModel, tracker.fields)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_cqrs_tracked_fields_tracking(mocker):
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+    instance = models.TrackedFieldsParentModel()
+    instance.char_field = 'Value'
+    instance.save()
+    tracked_data = instance.get_tracked_fields_data()
+    assert publisher_mock.call_args[0][0].previous_data == tracked_data
+    assert tracked_data is not None
+    assert 'char_field' in tracked_data
+    assert tracked_data['char_field'] is None
+    instance.char_field = 'New Value'
+    instance.save()
+    tracked_data = instance.get_tracked_fields_data()
+    assert 'char_field' in tracked_data
+    assert tracked_data['char_field'] == 'Value'
+    assert publisher_mock.call_args[0][0].previous_data == tracked_data
+
+
+def test_mptt_cqrs_tracked_fields_model_has_tracker():
+    instance = models.MPTTWithTrackingModel()
+    tracker = getattr(instance, FIELDS_TRACKER_FIELD_NAME)
+    assert tracker is not None
+
+
+def test_mptt_cqrs_tracked_fields_related_fields():
+    instance = models.MPTTWithTrackingModel()
+    tracker = getattr(instance, FIELDS_TRACKER_FIELD_NAME)
+    assert_tracked_fields(models.MPTTWithTrackingModel, tracker.fields)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_f_expr():
+    m = models.AllFieldsModel.objects.create(int_field=0, char_field='char')
+    m.int_field = F('int_field') + 1
+    m.save()
+
+    cqrs_data = m.to_cqrs_dict()
+    previous_data = m.get_tracked_fields_data()
+
+    assert 'int_field' in cqrs_data
+    assert cqrs_data['int_field'] == 1
+    assert 'int_field' in previous_data
+    assert previous_data['int_field'] == 0
+
+
+@pytest.mark.django_db(transaction=True)
+def test_generic_fk():
+    sm = models.SimplestModel.objects.create(id=1, name='char')
+    m = models.WithGenericFKModel.objects.create(content_object=sm)
+    ct = ContentType.objects.get_for_model(models.SimplestModel)
+    cqrs_data = m.to_cqrs_dict()
+    previous_data = m.get_tracked_fields_data()
+
+    assert 'content_object' not in cqrs_data
+    assert 'content_type' in cqrs_data
+    assert 'object_id' in cqrs_data
+    assert cqrs_data['object_id'] == sm.pk
+    assert cqrs_data['content_type'] == ct.pk
+
+    assert 'content_object' not in previous_data
+    assert 'content_type' in previous_data
+    assert 'object_id' in previous_data
+
+    sm1 = models.SimplestModel.objects.create(id=2, name='name')
+    m.content_object = sm1
+    m.save()
+    previous_data = m.get_tracked_fields_data()
+
+    assert 'content_object' not in previous_data
+    assert 'content_type' not in previous_data
+    assert previous_data['object_id'] == sm.pk
+
+
+@pytest.mark.django_db(transaction=True)
+def test_m2m_not_supported():
+    m1 = models.M2MModel.objects.create(id=1, name='name')
+    m2m = models.WithM2MModel.objects.create(char_field='test')
+    m2m.m2m_field.add(m1)
+    m2m.save()
+    cqrs_data = m2m.to_cqrs_dict()
+
+    assert 'm2m_field' not in cqrs_data
+    assert 'char_field' in cqrs_data

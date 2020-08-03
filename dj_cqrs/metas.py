@@ -1,19 +1,19 @@
 #  Copyright © 2020 Ingram Micro Inc. All rights reserved.
 
-from itertools import chain
-
 from django.db.models import base
 
 from dj_cqrs.constants import ALL_BASIC_FIELDS
 from dj_cqrs.registries import MasterRegistry, ReplicaRegistry
 from dj_cqrs.signals import MasterSignals
+from dj_cqrs.tracker import CQRSTracker
 
 
 class MasterMeta(base.ModelBase):
-    def __new__(mcs, *args):
-        model_cls = super(MasterMeta, mcs).__new__(mcs, *args)
+    def __new__(mcs, name, bases, attrs, **kwargs):
 
-        if args[0] != 'MasterMixin':
+        model_cls = super(MasterMeta, mcs).__new__(mcs, name, bases, attrs, **kwargs)
+
+        if name != 'MasterMixin':
             mcs.register(model_cls)
 
         return model_cls
@@ -22,12 +22,37 @@ class MasterMeta(base.ModelBase):
     def register(model_cls):
         _MetaUtils.check_cqrs_id(model_cls)
         MasterMeta._check_correct_configuration(model_cls)
+
+        if model_cls.CQRS_TRACKED_FIELDS is not None:
+            MasterMeta._check_cqrs_tracked_fields(model_cls)
+            CQRSTracker.add_to_model(model_cls)
+
         if model_cls.CQRS_SERIALIZER is None:
             MasterMeta._check_cqrs_fields(model_cls)
 
         MasterRegistry.register_model(model_cls)
         MasterSignals.register_model(model_cls)
         return model_cls
+
+    @staticmethod
+    def _check_cqrs_tracked_fields(model_cls):
+        """Check that the CQRS_TRACKED_FIELDS has correct configuration.
+
+        :param dj_cqrs.mixins.MasterMixin model_cls: CQRS Master Model.
+        :raises: AssertionError
+        """
+        tracked_fields = model_cls.CQRS_TRACKED_FIELDS
+        if isinstance(tracked_fields, (list, tuple)):
+            _MetaUtils._check_no_duplicate_names(
+                model_cls,
+                tracked_fields,
+                'CQRS_TRACKED_FIELDS',
+            )
+            _MetaUtils._check_unexisting_names(model_cls, tracked_fields, 'CQRS_TRACKED_FIELDS')
+            return
+
+        assert isinstance(tracked_fields, str) and tracked_fields == ALL_BASIC_FIELDS, \
+            "Model {}: Invalid configuration for CQRS_TRACKED_FIELDS".format(model_cls.__name__)
 
     @staticmethod
     def _check_correct_configuration(model_cls):
@@ -39,7 +64,7 @@ class MasterMeta(base.ModelBase):
         if model_cls.CQRS_FIELDS != ALL_BASIC_FIELDS:
             assert model_cls.CQRS_SERIALIZER is None, \
                 "Model {}: CQRS_FIELDS can't be set together with CQRS_SERIALIZER.".format(
-                    model_cls,
+                    model_cls.__name__,
                 )
 
     @staticmethod
@@ -61,7 +86,6 @@ class ReplicaMeta(base.ModelBase):
         if args[0] != 'ReplicaMixin':
             _MetaUtils.check_cqrs_id(model_cls)
             ReplicaMeta._check_cqrs_mapping(model_cls)
-
             ReplicaRegistry.register_model(model_cls)
 
         return model_cls
@@ -102,7 +126,7 @@ class _MetaUtils:
         opts = model_cls._meta
         model_name = model_cls.__name__
 
-        model_field_names = {f.name for f in chain(opts.concrete_fields, opts.private_fields)}
+        model_field_names = {f.name for f in opts.fields}
         assert not set(cqrs_field_names) - model_field_names, \
             '{} field is not correctly set for model {}.'.format(cqrs_attr, model_name)
 

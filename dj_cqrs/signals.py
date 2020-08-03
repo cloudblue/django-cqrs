@@ -8,8 +8,18 @@ from dj_cqrs.controller import producer
 from dj_cqrs.constants import SignalType
 from dj_cqrs.dataclasses import TransportPayload
 
+
 post_bulk_create = Signal(providing_args=['instances', 'using'])
+"""
+Signal sent after a bulk create.
+See dj_cqrs.mixins.RawMasterMixin.call_post_bulk_create.
+"""
+
 post_update = Signal(providing_args=['instances', 'using'])
+"""
+Signal sent after a bulk update.
+See dj_cqrs.mixins.RawMasterMixin.call_post_update.
+"""
 
 
 class MasterSignals:
@@ -17,8 +27,12 @@ class MasterSignals:
     @classmethod
     def register_model(cls, model_cls):
         """
-        :param dj_cqrs.mixins.MasterMixin model_cls: Class inherited from CQRS MasterMixin.
+        Registers signals for a model.
+
+        :param model_cls:  Model class inherited from CQRS MasterMixin.
+        :type model_cls: dj_cqrs.mixins.MasterMixin
         """
+
         models.signals.post_save.connect(cls.post_save, sender=model_cls)
         models.signals.post_delete.connect(cls.post_delete, sender=model_cls)
 
@@ -44,10 +58,11 @@ class MasterSignals:
 
         if not transaction.get_connection(using).in_atomic_block:
             instance_data = instance.to_cqrs_dict(using)
-
+            previous_data = instance.get_tracked_fields_data()
             signal_type = SignalType.SYNC if sync else SignalType.SAVE
             payload = TransportPayload(
                 signal_type, sender.CQRS_ID, instance_data, instance.pk, queue,
+                previous_data,
             )
             producer.produce(payload)
 

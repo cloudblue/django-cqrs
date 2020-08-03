@@ -1,3 +1,4 @@
 Django >= 1.11.20
-pika
-ujson
+pika>=1.0.0
+ujson==3.0.0
+django-model-utils==4.0.0

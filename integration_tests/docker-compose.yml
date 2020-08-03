@@ -21,7 +21,7 @@ services:
       context: ..
       dockerfile: integration_tests/Dockerfile.Replica
     restart: always
-    command:
+    command: >
       bash -c "
       sleep 10 &&
       python manage.py makemigrations --settings=integration_tests.replica_settings &&
@@ -40,8 +40,14 @@ services:
     build:
       context: ..
       dockerfile: integration_tests/Dockerfile.Master
-    command:
-      bash -c "sleep 12 && pytest integration_tests/"
+    command: >
+        bash -c "
+        sleep 12 &&
+        echo '####################################################' &&
+        echo 'Running integration tests for current version (v2)  ' &&
+        echo '####################################################' &&
+        pytest integration_tests/
+        "
     container_name: django_cqrs_test_master
     depends_on:
       - rabbit

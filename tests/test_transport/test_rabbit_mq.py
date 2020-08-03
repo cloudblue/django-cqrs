@@ -132,7 +132,9 @@ def test_produce_ok(rabbit_transport, mocker, caplog):
 
 def test_produce_message_ok(mocker):
     channel = mocker.MagicMock()
-    payload = TransportPayload(SignalType.SAVE, 'cqrs_id', {}, 'id')
+    payload = TransportPayload(
+        SignalType.SAVE, 'cqrs_id', {}, 'id', previous_data={'e': 'f'},
+    )
 
     PublicRabbitMQTransport.produce_message(channel, 'exchange', payload)
 
@@ -145,6 +147,7 @@ def test_produce_message_ok(mocker):
             'cqrs_id': 'cqrs_id',
             'instance_data': {},
             'instance_pk': 'id',
+            'previous_data': {'e': 'f'},
         }
     assert basic_publish_kwargs['exchange'] == 'exchange'
     assert basic_publish_kwargs['mandatory']
@@ -166,6 +169,7 @@ def test_produce_sync_message_no_queue(mocker):
             'cqrs_id': 'cqrs_id',
             'instance_data': {},
             'instance_pk': None,
+            'previous_data': None,
         }
     assert basic_publish_kwargs['routing_key'] == 'cqrs_id'
 
@@ -183,6 +187,7 @@ def test_produce_sync_message_queue(mocker):
             'cqrs_id': 'cqrs_id',
             'instance_data': {},
             'instance_pk': 'id',
+            'previous_data': None,
         }
     assert basic_publish_kwargs['routing_key'] == 'cqrs.queue.cqrs_id'
 
@@ -219,7 +224,8 @@ def test_consume_message_ack(mocker, caplog):
         mocker.MagicMock(),
         mocker.MagicMock(),
         None,
-        '{"signal_type":"signal","cqrs_id":"cqrs_id","instance_data":{},"instance_pk":1}',
+        '{"signal_type":"signal","cqrs_id":"cqrs_id","instance_data":{},'
+        '"instance_pk":1, "previous_data":{}}',
     )
 
     assert consumer_mock.call_count == 1
@@ -228,6 +234,7 @@ def test_consume_message_ack(mocker, caplog):
     assert payload.signal_type == 'signal'
     assert payload.cqrs_id == 'cqrs_id'
     assert payload.instance_data == {}
+    assert payload.previous_data == {}
     assert payload.pk == 1
 
     assert 'CQRS is received: pk = 1 (cqrs_id).' in caplog.text
@@ -242,7 +249,8 @@ def test_consume_message_ack_deprecated_structure(mocker, caplog):
         mocker.MagicMock(),
         mocker.MagicMock(),
         None,
-        '{"signal_type":"signal","cqrs_id":"cqrs_id","instance_data":{}}',
+        '{"signal_type":"signal","cqrs_id":"cqrs_id",'
+        '"instance_data":{},"previous_data":null}',
     )
 
     assert consumer_mock.call_count == 1
@@ -266,7 +274,8 @@ def test_consume_message_nack(mocker, caplog):
         mocker.MagicMock(),
         mocker.MagicMock(),
         None,
-        '{"signal_type":"signal","cqrs_id":"cqrs_id","instance_data":{},"instance_pk":1}',
+        '{"signal_type":"signal","cqrs_id":"cqrs_id","instance_data":{},'
+        '"instance_pk":1,"previous_data":null}',
     )
 
     assert 'CQRS is received: pk = 1 (cqrs_id).' in caplog.text
@@ -293,7 +302,7 @@ def test_consume_message_json_parsing_error(mocker, caplog):
         mocker.MagicMock(), mocker.MagicMock(), None, '{bad_payload:',
     )
 
-    assert "CQRS couldn't be parsed: {bad_payload:." in caplog.text
+    assert ": {bad_payload:." in caplog.text
 
 
 def test_consume_message_package_structure_error(mocker, caplog):

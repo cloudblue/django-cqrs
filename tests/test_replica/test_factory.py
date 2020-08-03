@@ -20,9 +20,9 @@ def test_bad_signal(caplog):
 @pytest.mark.django_db
 def test_save_model(mocker):
     cqrs_save_mock = mocker.patch.object(ReplicaMixin, 'cqrs_save')
-    route_signal_to_replica_model(SignalType.SAVE, 'basic', {})
+    route_signal_to_replica_model(SignalType.SAVE, 'basic', {}, {})
 
-    cqrs_save_mock.assert_called_once_with({})
+    cqrs_save_mock.assert_called_once_with({}, previous_data={})
 
 
 @pytest.mark.django_db

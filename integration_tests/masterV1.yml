@@ -1,0 +1,17 @@
+version: '3'
+
+services:
+  master:
+      build:
+        context: ..
+        dockerfile: integration_tests/Dockerfile.MasterV1
+      image: django_cqrs_test_maste_v1
+      container_name: django_cqrs_test_masterV1
+      command: >
+        bash -c "
+        sleep 12 &&
+        echo '####################################################' &&
+        echo 'Running integration tests Master v1.3.1 - Replica v2' &&
+        echo '####################################################' &&
+        pytest integration_tests/
+        "
