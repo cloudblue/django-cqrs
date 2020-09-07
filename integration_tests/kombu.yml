@@ -3,10 +3,14 @@ version: '3'
 services:
 
   mq:
-    image: rabbitmq:latest
+    image: redis:latest
+    expose:
+      - '6379'
 
   postgres:
     image: postgres:latest
+    expose:
+      - '5432'
     environment:
       - POSTGRES_HOST=postgres
       - POSTGRES_USER=user
@@ -20,12 +24,13 @@ services:
     restart: always
     command: >
       bash -c "
-      dockerize -wait tcp://mq:5672 -wait tcp://postgres:5432 -timeout 60s && 
+      dockerize -wait tcp://mq:6379 -wait tcp://postgres:5432 -timeout 60s && 
       python manage.py makemigrations --settings=integration_tests.replica_settings &&
       python manage.py makemigrations dj_replica --settings=integration_tests.replica_settings &&
       python manage.py migrate --settings=integration_tests.replica_settings &&
       python manage.py cqrs_consume -w 2 --settings=integration_tests.replica_settings
       "
+    container_name: django_cqrs_test_replica
     depends_on:
       - mq
       - postgres
@@ -36,8 +41,8 @@ services:
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=pswd
       - POSTGRES_DB=replica
-      - CQRS_REPLICA_TRANSPORT=tests.dj.transport.RabbitMQTransportWithEvents
-      - CQRS_BROKER_URL=amqp://mq:5672/
+      - CQRS_REPLICA_TRANSPORT=tests.dj.transport.KombuTransportWithEvents
+      - CQRS_BROKER_URL=redis://mq:6379/
 
   master:
     build:
@@ -45,9 +50,11 @@ services:
       dockerfile: integration_tests/Dockerfile.Master
     command: >
       bash -c "
-      dockerize -wait tcp://mq:5672 -wait tcp://postgres:5432 -timeout 60s && 
+      dockerize -wait tcp://mq:6379 -wait tcp://postgres:5432 -timeout 60s && 
       ./run_integration_tests.sh
       "
+      
+    container_name: django_cqrs_test_master
     depends_on:
       - mq
       - replica
@@ -55,5 +62,5 @@ services:
       - ./tests/:/master/integration_tests/tests
       - ../dj_cqrs:/master/dj_cqrs
     environment:
-      - CQRS_MASTER_TRANSPORT=dj_cqrs.transport.RabbitMQTransport
-      - CQRS_BROKER_URL=amqp://mq:5672/
+      - CQRS_MASTER_TRANSPORT=dj_cqrs.transport.KombuTransport
+      - CQRS_BROKER_URL=redis://mq:6379/

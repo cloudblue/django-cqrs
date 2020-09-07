@@ -38,10 +38,10 @@ ROOT_URLCONF = 'tests.dj.urls'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'HOST': 'postgres',
-        'NAME': 'replica',
-        'USER': 'user',
-        'PASSWORD': 'pswd',
+        'HOST': os.getenv('POSTGRES_HOST', 'postgres'),
+        'NAME': os.getenv('POSTGRES_DB', 'replica'),
+        'USER': os.getenv('POSTGRES_USER', 'user'),
+        'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'pswd'),
     }
 }
 
@@ -56,8 +56,8 @@ USE_L10N = True
 USE_TZ = True
 
 CQRS = {
-    'transport': 'tests.dj.transport.RabbitMQTransportWithEvents',
-    'host': 'rabbit',
+    'transport': os.getenv('CQRS_REPLICA_TRANSPORT'),
+    'url': os.getenv('CQRS_BROKER_URL'),
     'consumer_prefetch_count': 2,
     'queue': 'replica',
 }

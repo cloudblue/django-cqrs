@@ -1,15 +1,22 @@
 FROM python:3.8
+
+ENV DOCKERIZE_VERSION v0.6.1
+RUN wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
+    && tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
+    && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
+
+
 ENV PYTHONUNBUFFERED 1
 ENV PYTHONPATH /master
 
 RUN mkdir /master
+COPY ./requirements/ /master/requirements
 
-COPY ./requirements /master/requirements
-COPY ./tests /master/tests
-COPY ./integration_tests /master/integration_tests
+RUN pip install -r /master/requirements/dev.txt -r /master/requirements/test.txt && pip install psycopg2-binary redis django-cqrs==1.3.1
+
+COPY . /master/
 ADD integration_tests/setup.cfg /master/
-
-RUN pip install -r /master/requirements/dev.txt -r /master/requirements/test.txt \
-    && pip install psycopg2-binary django-cqrs==1.3.1
+ADD integration_tests/run_integration_tests.sh /master/
+RUN chmod +x /master/run_integration_tests.sh
 
 WORKDIR /master/

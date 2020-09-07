@@ -43,10 +43,13 @@ Signals
 Transports
 ----------
 
-.. autoclass:: dj_cqrs.transport.base.BaseTransport
+.. autoclass:: dj_cqrs.transport.BaseTransport
    :members:
 
-.. autoclass:: dj_cqrs.transport.rabbit_mq.RabbitMQTransport
+.. autoclass:: dj_cqrs.transport.RabbitMQTransport
+   :members:
+
+.. autoclass:: dj_cqrs.transport.KombuTransport
    :members:
 
 .. autoclass:: dj_cqrs.constants.SignalType
