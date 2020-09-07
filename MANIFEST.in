@@ -3,3 +3,4 @@ include VERSION
 include README.md
 include requirements/dev.txt
 include requirements/test.txt
+prune tests
