@@ -88,7 +88,12 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         )
 
         cls.log_consumed(payload)
-        instance = consumer.consume(payload)
+
+        instance = None
+        try:
+            instance = consumer.consume(payload)
+        except Exception:
+            logger.error('CQRS service exception', exc_info=True)
 
         if instance:
             ch.basic_ack(delivery_tag=method.delivery_tag)

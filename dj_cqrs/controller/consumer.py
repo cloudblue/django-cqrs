@@ -33,15 +33,15 @@ def route_signal_to_replica_model(signal_type, cqrs_id, instance_data, previous_
 
     if model_cls:
         if signal_type == SignalType.DELETE:
-            with transaction.atomic():
+            with transaction.atomic(savepoint=False):
                 return model_cls.cqrs_delete(instance_data)
 
         elif signal_type == SignalType.SAVE:
-            with transaction.atomic():
+            with transaction.atomic(savepoint=False):
                 return model_cls.cqrs_save(instance_data, previous_data=previous_data)
 
         elif signal_type == SignalType.SYNC:
-            with transaction.atomic():
+            with transaction.atomic(savepoint=False):
                 return model_cls.cqrs_save(
                     instance_data,
                     previous_data=previous_data,
