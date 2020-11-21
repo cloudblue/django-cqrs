@@ -2,11 +2,10 @@
 
 import logging
 import ujson
-from importlib import import_module
+from importlib import import_module, reload
 
 import pytest
 from kombu.exceptions import KombuError
-from six.moves import reload_module
 
 from dj_cqrs.constants import SignalType
 from dj_cqrs.dataclasses import TransportPayload
@@ -79,7 +78,7 @@ def kombu_transport(settings):
         'transport': 'dj_cqrs.transport.kombu.KombuTransport',
         'queue': 'replica',
     }
-    module = reload_module(import_module('dj_cqrs.transport'))
+    module = reload(import_module('dj_cqrs.transport'))
     yield module.current_transport
 
 
