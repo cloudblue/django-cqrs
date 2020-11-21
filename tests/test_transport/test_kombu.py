@@ -58,7 +58,6 @@ def test_non_default_settings(settings, caplog):
 
 def test_consumer_default_settings():
     s = PublicKombuTransport.get_consumer_settings()
-    assert s[0] is None
     assert s[1] == 10
 
 

@@ -96,7 +96,6 @@ def test_invalid_url_settings(settings):
 
 def test_consumer_default_settings():
     s = PublicRabbitMQTransport.get_consumer_settings()
-    assert s[0] is None
     assert s[1] == 10
 
 

@@ -6,3 +6,4 @@ pytest-django
 pytest-mock
 djangorestframework
 django-mptt
+pytest-random-order
