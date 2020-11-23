@@ -1,11 +1,10 @@
 #  Copyright © 2020 Ingram Micro Inc. All rights reserved.
 
-import six
 from django.db import DatabaseError
 
 
 def assert_is_sub_dict(dict1, dict2):
-    assert six.viewitems(dict1) <= six.viewitems(dict2)
+    assert dict1.items() <= dict2.items()
 
 
 def assert_publisher_once_called_with_args(publisher_mock, *args):

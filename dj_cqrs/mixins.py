@@ -1,6 +1,5 @@
 #  Copyright © 2020 Ingram Micro Inc. All rights reserved.
 
-import six
 from django.db.models import DateField, DateTimeField, F, IntegerField, Manager, Model
 from django.db.models.expressions import CombinedExpression
 from django.utils.module_loading import import_string
@@ -179,7 +178,7 @@ class RawMasterMixin(Model):
     def _common_serialization(self, using):
         opts = self._meta
 
-        if isinstance(self.CQRS_FIELDS, six.string_types) and self.CQRS_FIELDS == ALL_BASIC_FIELDS:
+        if isinstance(self.CQRS_FIELDS, str) and self.CQRS_FIELDS == ALL_BASIC_FIELDS:
             included_fields = None
         else:
             included_fields = self.CQRS_FIELDS
@@ -221,7 +220,7 @@ class RawMasterMixin(Model):
         if isinstance(self.cqrs_revision, CombinedExpression):
             fields_to_refresh.append('cqrs_revision')
 
-        if isinstance(self.CQRS_FIELDS, six.string_types) and self.CQRS_FIELDS == ALL_BASIC_FIELDS:
+        if isinstance(self.CQRS_FIELDS, str) and self.CQRS_FIELDS == ALL_BASIC_FIELDS:
             included_fields = None
         else:
             included_fields = self.CQRS_FIELDS
@@ -252,7 +251,7 @@ class RawMasterMixin(Model):
             raise ImportError("Model {}: CQRS_SERIALIZER can't be imported.".format(self.__class__))
 
 
-class MasterMixin(six.with_metaclass(MasterMeta, RawMasterMixin)):
+class MasterMixin(RawMasterMixin, metaclass=MasterMeta):
     """
     Mixin for the master CQRS model, that will send data updates to it's replicas.
     """
@@ -260,7 +259,7 @@ class MasterMixin(six.with_metaclass(MasterMeta, RawMasterMixin)):
         abstract = True
 
 
-class ReplicaMixin(six.with_metaclass(ReplicaMeta, Model)):
+class ReplicaMixin(Model, metaclass=ReplicaMeta):
     """
     Mixin for the replica CQRS model, that will receive data updates from master. Models, using
     this mixin should be readonly, but this is not enforced (f.e. for admin).
