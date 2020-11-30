@@ -45,7 +45,11 @@ class ReplicaManager(Manager):
             pk_value = mapped_data[pk_name]
             f_kwargs = {pk_name: pk_value}
 
-            instance = self.model._default_manager.filter(**f_kwargs).first()
+            qs = self.model._default_manager.filter(**f_kwargs)
+            if self.model.CQRS_SELECT_FOR_UPDATE:
+                qs = qs.select_for_update()
+
+            instance = qs.first()
 
             if instance:
                 return self.update_instance(
