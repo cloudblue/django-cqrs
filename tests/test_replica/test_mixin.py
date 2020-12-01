@@ -2,7 +2,7 @@
 
 import pytest
 
-from django.db.models import CharField, IntegerField
+from django.db.models import CharField, IntegerField, QuerySet
 from django.utils.timezone import now
 
 from dj_cqrs.metas import ReplicaMeta
@@ -469,3 +469,19 @@ def test_tracked_fields_mapped(mocker):
     _, kwargs = cqrs_update_mock.call_args
     assert 'previous_data' in kwargs
     assert kwargs['previous_data'] == {'name': 'text'}
+
+
+@pytest.mark.django_db
+def test_select_for_update_lock(mocker):
+    m = mocker.patch.object(
+        QuerySet, 'select_for_update', return_value=models.LockModelRef.objects.all(),
+    )
+
+    instance = models.LockModelRef.cqrs_save({
+        'id': 1,
+        'cqrs_revision': 0,
+        'cqrs_updated': now(),
+    })
+
+    assert instance.id == 1
+    m.assert_called_once()

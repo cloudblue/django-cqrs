@@ -273,6 +273,9 @@ class ReplicaMixin(Model, metaclass=ReplicaMeta):
     CQRS_CUSTOM_SERIALIZATION = False
     """Set it to True to skip default data check."""
 
+    CQRS_SELECT_FOR_UPDATE = False
+    """Set it to True to acquire lock on instance creation/update."""
+
     objects = Manager()
 
     cqrs = ReplicaManager()

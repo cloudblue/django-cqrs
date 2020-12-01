@@ -48,6 +48,13 @@ class BadMappingModelRef(ReplicaMixin, models.Model):
     name = models.CharField(max_length=200)
 
 
+class LockModelRef(ReplicaMixin, models.Model):
+    CQRS_ID = 'lock'
+    CQRS_SELECT_FOR_UPDATE = True
+
+    id = models.IntegerField(primary_key=True)
+
+
 class Event(models.Model):
     pid = models.IntegerField()
     cqrs_id = models.CharField(max_length=20)
