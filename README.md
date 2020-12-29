@@ -109,24 +109,10 @@ CQRS = {
 Notes
 -----
 
-When there are master models with related entities in CQRS_SERIALIZER, it's important to have operations within atomic transactions.
-CQRS sync will happen on transaction commit. Please, avoid saving master model within transaction more then once to reduce syncing and potential racing on replica side.
-Updating of related model won't trigger CQRS automatic synchronization for master model. This needs to be done manually.
-
-Example:
-```python
-with transaction.atomic():
-    publisher = models.Publisher.objects.create(id=1, name='publisher')
-    author = models.Author.objects.create(id=1, name='author', publisher=publisher)
-
-with transaction.atomic():
-    publisher.name = 'new'
-    publisher.save()
-
-    author.save()
-```
-
-When only needed instances need to be synchronized, there is a method `is_sync_instance` to set filtering rule. 
+* When there are master models with related entities in CQRS_SERIALIZER, it's important to have operations within atomic transactions. CQRS sync will happen on transaction commit. 
+* Please, avoid saving different instances of the same entity within transaction to reduce syncing and potential racing on replica side.
+* Updating of related model won't trigger CQRS automatic synchronization for master model. This needs to be done manually.
+* When only needed instances need to be synchronized, there is a method `is_sync_instance` to set filtering rule. 
 It's important to understand, that CQRS counting works even without syncing and rule is applied every time model is updated.
 
 Example:

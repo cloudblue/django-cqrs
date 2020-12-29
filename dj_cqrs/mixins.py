@@ -1,5 +1,6 @@
 #  Copyright © 2020 Ingram Micro Inc. All rights reserved.
 
+from django.db import router, transaction
 from django.db.models import DateField, DateTimeField, F, IntegerField, Manager, Model
 from django.db.models.expressions import CombinedExpression
 from django.utils.module_loading import import_string
@@ -64,10 +65,39 @@ class RawMasterMixin(Model):
     class Meta:
         abstract = True
 
+    @property
+    def cqrs_saves_count(self):
+        """Shows how many times this instance has been saved within the transaction."""
+        return getattr(self, '_cqrs_saves_count', 0)
+
+    @property
+    def is_initial_cqrs_save(self):
+        """This flag is used to check if instance has already been registered for CQRS update."""
+        return self.cqrs_saves_count < 2
+
+    def reset_cqrs_saves_count(self):
+        """This method is used to automatically reset instance CQRS counters on transaction commit.
+        But this can also be used to control custom behaviour within transaction
+        or in case of rollback,
+        when several sequential transactions are used to change the same instance.
+        """
+        if hasattr(self, '_cqrs_saves_count'):
+            self._cqrs_saves_count = 0
+
     def save(self, *args, **kwargs):
-        if not self._state.adding:
+        using = kwargs.get('using') or router.db_for_write(self.__class__, instance=self)
+        connection = transaction.get_connection(using)
+        if connection.in_atomic_block:
+            _cqrs_saves_count = self.cqrs_saves_count
+            self._cqrs_saves_count = _cqrs_saves_count + 1
+        else:
+            self.reset_cqrs_saves_count()
+
+        if self.is_initial_cqrs_save and (not self._state.adding):
             self.cqrs_revision = F('cqrs_revision') + 1
+
         self._save_tracked_fields()
+
         return super(RawMasterMixin, self).save(*args, **kwargs)
 
     def _save_tracked_fields(self):
