@@ -12,6 +12,7 @@ def test_bad_model(caplog):
     assert 'No model with such CQRS_ID: invalid.' in caplog.text
 
 
+@pytest.mark.django_db
 def test_bad_signal(caplog):
     route_signal_to_replica_model('invalid', 'basic', {})
     assert 'Bad signal type "invalid" for CQRS_ID "basic".' in caplog.text

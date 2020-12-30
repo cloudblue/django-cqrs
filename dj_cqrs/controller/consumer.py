@@ -2,7 +2,7 @@
 
 import logging
 
-from django.db import transaction
+from django.db import close_old_connections, transaction
 
 from dj_cqrs.constants import SignalType
 from dj_cqrs.registries import ReplicaRegistry
@@ -32,6 +32,8 @@ def route_signal_to_replica_model(signal_type, cqrs_id, instance_data, previous_
     model_cls = ReplicaRegistry.get_model_by_cqrs_id(cqrs_id)
 
     if model_cls:
+        close_old_connections()
+
         if signal_type == SignalType.DELETE:
             with transaction.atomic(savepoint=False):
                 return model_cls.cqrs_delete(instance_data)
