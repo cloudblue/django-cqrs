@@ -135,7 +135,7 @@ class TrackedFieldsChildModel(MasterMixin):
     CQRS_TRACKED_FIELDS = ('char_field', 'parent')
 
     char_field = models.CharField(max_length=10)
-    parent = models.ForeignKey(TrackedFieldsParentModel, on_delete=models.CASCADE)
+    parent = models.ForeignKey(TrackedFieldsParentModel, on_delete=models.CASCADE, null=True)
 
 
 class TrackedFieldsAllWithChildModel(MasterMixin):

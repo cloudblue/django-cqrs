@@ -10,6 +10,7 @@ from django.utils.timezone import now
 
 from dj_cqrs.constants import SignalType, FIELDS_TRACKER_FIELD_NAME
 from dj_cqrs.metas import MasterMeta
+
 from tests.dj_master import models
 from tests.dj_master.serializers import AuthorSerializer
 from tests.utils import (
@@ -268,7 +269,7 @@ def test_create():
         assert m.cqrs_updated is not None
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_update():
     m = models.AutoFieldsModel.objects.create()
     cqrs_updated = m.cqrs_updated
@@ -668,3 +669,126 @@ def test_m2m_not_supported():
 
     assert 'm2m_field' not in cqrs_data
     assert 'char_field' in cqrs_data
+
+
+@pytest.mark.django_db(transaction=True)
+def test_transaction_instance_saved_once_simple_case(mocker):
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+
+    i0 = models.TrackedFieldsChildModel.objects.create(char_field='old')
+    with transaction.atomic():
+        i1 = models.TrackedFieldsParentModel.objects.create(char_field='1')
+        i1.char_field = '2'
+        i1.save()
+
+        i2 = models.TrackedFieldsParentModel(char_field='a')
+        i2.save()
+
+        i3 = models.TrackedFieldsChildModel.objects.create(char_field='.')
+
+        i0.char_field = 'new'
+        i0.save()
+
+    assert publisher_mock.call_count == 5
+
+    for i in [i0, i1, i2, i3]:
+        i.refresh_from_db()
+    assert i0.cqrs_revision == 1
+    assert i1.cqrs_revision == 0
+    assert i2.cqrs_revision == 0
+    assert i3.cqrs_revision == 0
+
+    mapper = (
+        (i0.pk, 0, 'old', None),
+        (i1.pk, 0, '2', '1'),
+        (i2.pk, 0, 'a', None),
+        (i3.pk, 0, '.', None),
+        (i0.pk, 1, 'new', 'old'),
+    )
+    for index, call in enumerate(publisher_mock.call_args_list):
+        payload = call[0][0]
+        expected_data = mapper[index]
+
+        assert payload.pk == expected_data[0]
+        assert payload.instance_data['cqrs_revision'] == expected_data[1]
+        assert payload.instance_data['char_field'] == expected_data[2]
+        assert payload.previous_data['char_field'] == expected_data[3]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_cqrs_saves_count_lifecycle():
+    instance = models.TrackedFieldsParentModel(char_field='1')
+    instance.reset_cqrs_saves_count()
+    assert instance.cqrs_saves_count == 0
+    assert instance.is_initial_cqrs_save
+
+    instance.save()
+    assert instance.cqrs_saves_count == 0
+    assert instance.is_initial_cqrs_save
+
+    instance.save()
+    assert instance.cqrs_saves_count == 0
+    assert instance.is_initial_cqrs_save
+
+    instance.refresh_from_db()
+    assert instance.cqrs_saves_count == 0
+    assert instance.is_initial_cqrs_save
+
+    with transaction.atomic():
+        instance.save()
+        assert instance.cqrs_saves_count == 1
+        assert instance.is_initial_cqrs_save
+
+        instance.save()
+        assert instance.cqrs_saves_count == 2
+        assert not instance.is_initial_cqrs_save
+
+        instance.refresh_from_db()
+        assert instance.cqrs_saves_count == 2
+        assert not instance.is_initial_cqrs_save
+
+        same_db_object_other_instance = models.TrackedFieldsParentModel.objects.first()
+        assert same_db_object_other_instance.pk == instance.pk
+        assert same_db_object_other_instance.cqrs_saves_count == 0
+        assert same_db_object_other_instance.is_initial_cqrs_save
+
+        same_db_object_other_instance.save()
+        assert same_db_object_other_instance.cqrs_saves_count == 1
+        assert same_db_object_other_instance.is_initial_cqrs_save
+
+        same_db_object_other_instance.reset_cqrs_saves_count()
+        assert same_db_object_other_instance.cqrs_saves_count == 0
+        assert same_db_object_other_instance.is_initial_cqrs_save
+
+        same_db_object_other_instance.save()
+        assert same_db_object_other_instance.cqrs_saves_count == 1
+        assert same_db_object_other_instance.is_initial_cqrs_save
+
+    assert instance.cqrs_saves_count == 0
+    assert same_db_object_other_instance.cqrs_saves_count == 0
+
+
+@pytest.mark.django_db(transaction=True)
+def test_sequential_transactions(mocker):
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+
+    with transaction.atomic():
+        instance = models.TrackedFieldsParentModel.objects.create(char_field='1')
+
+    with transaction.atomic():
+        instance.char_field = '3'
+        instance.save()
+
+        transaction.set_rollback(True)
+        instance.reset_cqrs_saves_count()
+
+    with transaction.atomic():
+        instance.char_field = '2'
+        instance.save()
+
+    instance.refresh_from_db()
+
+    assert publisher_mock.call_count == 2
+    assert instance.cqrs_revision == 1
+    assert publisher_mock.call_args_list[0][0][0].instance_data['char_field'] == '1'
+    assert publisher_mock.call_args_list[1][0][0].instance_data['char_field'] == '2'

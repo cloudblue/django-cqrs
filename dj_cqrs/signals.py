@@ -56,7 +56,9 @@ class MasterSignals:
         sync = kwargs.get('sync', False)
         queue = kwargs.get('queue', None)
 
-        if not transaction.get_connection(using).in_atomic_block:
+        connection = transaction.get_connection(using)
+        if not connection.in_atomic_block:
+            instance.reset_cqrs_saves_count()
             instance_data = instance.to_cqrs_dict(using)
             previous_data = instance.get_tracked_fields_data()
             signal_type = SignalType.SYNC if sync else SignalType.SAVE
@@ -66,7 +68,7 @@ class MasterSignals:
             )
             producer.produce(payload)
 
-        else:
+        elif instance.is_initial_cqrs_save:
             transaction.on_commit(
                 lambda: MasterSignals.post_save(
                     sender, instance=instance, using=using, sync=sync, queue=queue,
