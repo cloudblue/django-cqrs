@@ -1,6 +1,9 @@
 #  Copyright © 2020 Ingram Micro Inc. All rights reserved.
 
-from dj_cqrs.controller.consumer import consume
+import pytest
+
+from dj_cqrs.constants import SignalType
+from dj_cqrs.controller.consumer import consume, route_signal_to_replica_model
 from dj_cqrs.controller.producer import produce
 from dj_cqrs.dataclasses import TransportPayload
 
@@ -24,3 +27,14 @@ def test_consumer(mocker):
     consume(TransportPayload('a', 'b', {}, 'c', previous_data={'e': 'f'}))
 
     factory_mock.assert_called_once_with('a', 'b', {}, previous_data={'e': 'f'})
+
+
+@pytest.mark.django_db(transaction=True)
+def test_route_signal_to_replica_model_with_db(django_assert_num_queries):
+    with django_assert_num_queries(1):
+        route_signal_to_replica_model(SignalType.SAVE, 'lock', {})
+
+
+def test_route_signal_to_replica_model_without_db():
+    with pytest.raises(NotImplementedError):
+        route_signal_to_replica_model(SignalType.SAVE, 'no_db', {})

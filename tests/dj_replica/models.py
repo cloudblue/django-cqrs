@@ -55,6 +55,16 @@ class LockModelRef(ReplicaMixin, models.Model):
     id = models.IntegerField(primary_key=True)
 
 
+class NoDBModelRef(ReplicaMixin):
+    CQRS_ID = 'no_db'
+    CQRS_NO_DB_OPERATIONS = True
+
+    id = models.IntegerField(primary_key=True)
+
+    class Meta:
+        abstract = True
+
+
 class Event(models.Model):
     pid = models.IntegerField()
     cqrs_id = models.CharField(max_length=20)

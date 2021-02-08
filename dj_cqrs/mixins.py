@@ -306,6 +306,9 @@ class ReplicaMixin(Model, metaclass=ReplicaMeta):
     CQRS_SELECT_FOR_UPDATE = False
     """Set it to True to acquire lock on instance creation/update."""
 
+    CQRS_NO_DB_OPERATIONS = False
+    """Set it to True to disable any default DB operations for this model."""
+
     objects = Manager()
 
     cqrs = ReplicaManager()
@@ -328,6 +331,9 @@ class ReplicaMixin(Model, metaclass=ReplicaMeta):
         :return: Model instance.
         :rtype: django.db.models.Model
         """
+        if cls.CQRS_NO_DB_OPERATIONS:
+            raise NotImplementedError
+
         return cls.cqrs.save_instance(master_data, previous_data, sync)
 
     @classmethod
@@ -367,4 +373,7 @@ class ReplicaMixin(Model, metaclass=ReplicaMeta):
         :return: Flag, if delete operation is successful (even if nothing was deleted).
         :rtype: bool
         """
+        if cls.CQRS_NO_DB_OPERATIONS:
+            raise NotImplementedError
+
         return cls.cqrs.delete_instance(master_data)

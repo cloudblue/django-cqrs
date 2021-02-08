@@ -485,3 +485,12 @@ def test_select_for_update_lock(mocker):
 
     assert instance.id == 1
     m.assert_called_once()
+
+
+@pytest.mark.django_db
+def test_nodb(mocker):
+    with pytest.raises(NotImplementedError):
+        models.NoDBModelRef.cqrs_save(None)
+
+    with pytest.raises(NotImplementedError):
+        models.NoDBModelRef.cqrs_delete(None)
