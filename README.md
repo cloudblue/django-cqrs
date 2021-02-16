@@ -146,6 +146,13 @@ kubectl exec -i MASTER_CONTAINER -- python manage.py cqrs_diff_master --cqrs-id=
     kubectl exec -i MASTER_CONTAINER -- python manage.py cqrs_diff_sync
 ```
 
+* If it's important to check sync and clean up deleted objects within replica service in K8S:
+```bash
+kubectl exec -i REPLICA_CONTAINER -- python manage.py cqrs_deleted_diff_replica --cqrs-id=author | 
+    kubectl exec -i MASTER_CONTAINER -- python manage.py cqrs_deleted_diff_master |
+    kubectl exec -i REPLICA_CONTAINER -- python manage.py cqrs_deleted_sync_replica
+```
+
 Development
 ===========
 
