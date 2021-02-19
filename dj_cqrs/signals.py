@@ -92,6 +92,11 @@ class MasterSignals:
             'cqrs_revision': instance.cqrs_revision + 1,
             'cqrs_updated': str(now()),
         }
+
+        data = instance.get_custom_cqrs_delete_data()
+        if data:
+            instance_data['custom'] = data
+
         signal_type = SignalType.DELETE
 
         payload = TransportPayload(signal_type, sender.CQRS_ID, instance_data, instance.pk)

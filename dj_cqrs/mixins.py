@@ -280,6 +280,10 @@ class RawMasterMixin(Model):
         except ImportError:
             raise ImportError("Model {}: CQRS_SERIALIZER can't be imported.".format(self.__class__))
 
+    def get_custom_cqrs_delete_data(self):
+        """ This method should be overridden when additional data is needed in DELETE payload. """
+        pass
+
 
 class MasterMixin(RawMasterMixin, metaclass=MasterMeta):
     """

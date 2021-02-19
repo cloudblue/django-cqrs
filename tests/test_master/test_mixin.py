@@ -792,3 +792,18 @@ def test_sequential_transactions(mocker):
     assert instance.cqrs_revision == 1
     assert publisher_mock.call_args_list[0][0][0].instance_data['char_field'] == '1'
     assert publisher_mock.call_args_list[1][0][0].instance_data['char_field'] == '2'
+
+
+@pytest.mark.django_db(transaction=True)
+def test_get_custom_cqrs_delete_data(mocker):
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+
+    m = models.SimplestModel.objects.create(id=1)
+    m.get_custom_cqrs_delete_data = lambda *args: {'1': '2'}
+    m.delete()
+
+    payload = publisher_mock.call_args_list[1][0][0]
+    assert payload.signal_type == SignalType.DELETE
+    assert payload.instance_data['id'] == 1
+    assert payload.instance_data['cqrs_revision'] == 1
+    assert payload.instance_data['custom'] == {'1': '2'}
