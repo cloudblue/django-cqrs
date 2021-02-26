@@ -30,3 +30,8 @@ class BaseTransport:
     def consume(*args, **kwargs):
         """Receive data from master model."""
         raise NotImplementedError
+
+    @staticmethod
+    def clean_connection(*args, **kwargs):
+        """Clean transport connection. Here you can close all connections that you have"""
+        raise NotImplementedError

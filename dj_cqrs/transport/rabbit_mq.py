@@ -6,7 +6,6 @@ import time
 from socket import gaierror
 from urllib.parse import unquote, urlparse
 
-
 import ujson
 from django.conf import settings
 from pika import exceptions, BasicProperties, BlockingConnection, ConnectionParameters, credentials
@@ -23,6 +22,16 @@ logger = logging.getLogger('django-cqrs')
 
 class RabbitMQTransport(LoggingMixin, BaseTransport):
     CONSUMER_RETRY_TIMEOUT = 5
+
+    _producer_connection = None
+    _producer_channel = None
+
+    @classmethod
+    def clean_connection(cls):
+        if cls._producer_connection and not cls._producer_connection.is_closed:
+            cls._producer_connection.close()
+            cls._producer_connection = None
+            cls._producer_channel = None
 
     @classmethod
     def consume(cls):
@@ -43,18 +52,19 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
                 logger.error('AMQP connection error. Reconnecting...')
                 time.sleep(cls.CONSUMER_RETRY_TIMEOUT)
             finally:
-                if connection:
+                if connection and not connection.is_closed:
                     connection.close()
 
     @classmethod
     def produce(cls, payload):
+        # TODO: try to produce and reconnect several times, now leave as before
+        # if cannot publish message - drop it and try to reconnect on next event
         rmq_settings = cls._get_common_settings()
         exchange = rmq_settings[-1]
 
-        connection = None
         try:
             # Decided not to create context-manager to stay within the class
-            connection, channel = cls._get_producer_rmq_objects(*rmq_settings)
+            _, channel = cls._get_producer_rmq_objects(*rmq_settings)
 
             cls._produce_message(channel, exchange, payload)
             cls.log_produced(payload)
@@ -62,9 +72,9 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
             logger.error("CQRS couldn't be published: pk = {} ({}).".format(
                 payload.pk, payload.cqrs_id,
             ))
-        finally:
-            if connection:
-                connection.close()
+
+            # in case of any error - close connection and try to reconnect
+            cls.clean_connection()
 
     @classmethod
     def _consume_message(cls, ch, method, properties, body):
@@ -114,7 +124,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
             properties=BasicProperties(
                 content_type='text/plain',
                 delivery_mode=2,  # make message persistent
-                expiration='60000',  # milliseconds
+                expiration=settings.CQRS.get('MESSAGE_TTL', '60000'),  # milliseconds
             )
         )
 
@@ -159,18 +169,22 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
 
     @classmethod
     def _get_producer_rmq_objects(cls, host, port, creds, exchange):
-        connection = BlockingConnection(
-            ConnectionParameters(
-                host=host,
-                port=port,
-                credentials=creds,
-                blocked_connection_timeout=10,
-            ),
-        )
-        channel = connection.channel()
-        cls._declare_exchange(channel, exchange)
+        if cls._producer_connection is None:
+            connection = BlockingConnection(
+                ConnectionParameters(
+                    host=host,
+                    port=port,
+                    credentials=creds,
+                    blocked_connection_timeout=10,
+                ),
+            )
+            channel = connection.channel()
+            cls._declare_exchange(channel, exchange)
 
-        return connection, channel
+            cls._producer_connection = connection
+            cls._producer_channel = channel
+
+        return cls._producer_connection, cls._producer_channel
 
     @staticmethod
     def _declare_exchange(channel, exchange):
