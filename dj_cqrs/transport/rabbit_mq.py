@@ -99,7 +99,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
             ch.basic_ack(delivery_tag=method.delivery_tag)
             cls.log_consumed_accepted(payload)
         else:
-            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+            ch.basic_nack(delivery_tag=method.delivery_tag)
             cls.log_consumed_denied(payload)
 
     @classmethod
@@ -111,7 +111,11 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
             routing_key=routing_key,
             body=ujson.dumps(payload.to_dict()),
             mandatory=True,
-            properties=BasicProperties(content_type='text/plain', delivery_mode=2)
+            properties=BasicProperties(
+                content_type='text/plain',
+                delivery_mode=2,  # make message persistent
+                expiration='60000',  # milliseconds
+            )
         )
 
     @staticmethod

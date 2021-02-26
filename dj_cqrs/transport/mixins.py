@@ -28,7 +28,7 @@ class LoggingMixin:
         :param dj_cqrs.dataclasses.TransportPayload payload: Transport payload from master model.
         """
         if payload.pk:
-            logger.info('CQRS is denied: pk = {} ({}).'.format(payload.pk, payload.cqrs_id))
+            logger.warning('CQRS is denied: pk = {} ({}).'.format(payload.pk, payload.cqrs_id))
 
     @staticmethod
     def log_produced(payload):
