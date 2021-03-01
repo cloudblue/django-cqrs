@@ -70,6 +70,11 @@ class KombuTransport(LoggingMixin, BaseTransport):
     CONSUMER_RETRY_TIMEOUT = 5
 
     @classmethod
+    def clean_connection(cls):
+        """Nothing to do here"""
+        pass
+
+    @classmethod
     def consume(cls):
         queue_name, prefetch_count = cls._get_consumer_settings()
         url, exchange_name = cls._get_common_settings()

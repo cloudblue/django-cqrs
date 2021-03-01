@@ -5,6 +5,8 @@ import pytest
 
 from integration_tests.tests.utils import REPLICA_TABLES
 
+from dj_cqrs.transport import current_transport
+
 
 @pytest.fixture
 def replica_cursor():
@@ -21,3 +23,10 @@ def replica_cursor():
 
     cursor.close()
     connection.close()
+
+
+@pytest.fixture
+def clean_rabbit_transport_connection():
+    current_transport.clean_connection()
+
+    yield
