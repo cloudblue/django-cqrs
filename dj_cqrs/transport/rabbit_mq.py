@@ -30,8 +30,9 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
     def clean_connection(cls):
         if cls._producer_connection and not cls._producer_connection.is_closed:
             cls._producer_connection.close()
-            cls._producer_connection = None
-            cls._producer_channel = None
+
+        cls._producer_connection = None
+        cls._producer_channel = None
 
     @classmethod
     def consume(cls):
@@ -57,24 +58,32 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
 
     @classmethod
     def produce(cls, payload):
-        # TODO: try to produce and reconnect several times, now leave as before
-        # if cannot publish message - drop it and try to reconnect on next event
-        rmq_settings = cls._get_common_settings()
-        exchange = rmq_settings[-1]
-
         try:
-            # Decided not to create context-manager to stay within the class
-            _, channel = cls._get_producer_rmq_objects(*rmq_settings)
-
-            cls._produce_message(channel, exchange, payload)
-            cls.log_produced(payload)
+            cls._produce(payload)
         except (exceptions.AMQPError, exceptions.ChannelError, exceptions.ReentrancyError):
-            logger.error("CQRS couldn't be published: pk = {} ({}).".format(
+            logger.error("CQRS couldn't be published: pk = {} ({}). Reconnect...".format(
                 payload.pk, payload.cqrs_id,
             ))
 
             # in case of any error - close connection and try to reconnect
             cls.clean_connection()
+            # reconnect at least 1 time
+            try:
+                cls._produce(payload)
+            except (exceptions.AMQPError, exceptions.ChannelError, exceptions.ReentrancyError):
+                logger.error("CQRS couldn't be published: pk = {} ({}).".format(
+                    payload.pk, payload.cqrs_id,
+                ))
+
+    @classmethod
+    def _produce(cls, payload):
+        rmq_settings = cls._get_common_settings()
+        exchange = rmq_settings[-1]
+        # Decided not to create context-manager to stay within the class
+        _, channel = cls._get_producer_rmq_objects(*rmq_settings)
+
+        cls._produce_message(channel, exchange, payload)
+        cls.log_produced(payload)
 
     @classmethod
     def _consume_message(cls, ch, method, properties, body):
