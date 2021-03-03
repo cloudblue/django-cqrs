@@ -202,6 +202,28 @@ def test_cqrs_sync(mocker):
 
 
 @pytest.mark.django_db(transaction=True)
+def test_cqrs_sync_optimized_for_class_serialization(mocker, django_assert_num_queries):
+    models.Author.objects.create(
+        id=5,
+        name='hi',
+        publisher=models.Publisher.objects.create(id=1, name='pub'),
+    )
+    m = models.Author.relate_cqrs_serialization(models.Author.objects.all()).first()
+
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+    with django_assert_num_queries(0):
+        assert m.cqrs_sync()
+
+    assert_publisher_once_called_with_args(
+        publisher_mock,
+        SignalType.SYNC,
+        models.Author.CQRS_ID,
+        {'id': 5, 'name': 'hi', 'publisher': {'id': 1, 'name': 'pub'}},
+        5,
+    )
+
+
+@pytest.mark.django_db(transaction=True)
 def test_is_sync_instance(mocker):
     publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
 

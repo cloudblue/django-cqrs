@@ -59,7 +59,7 @@ class MasterSignals:
         connection = transaction.get_connection(using)
         if not connection.in_atomic_block:
             instance.reset_cqrs_saves_count()
-            instance_data = instance.to_cqrs_dict(using)
+            instance_data = instance.to_cqrs_dict(using, sync=sync)
             previous_data = instance.get_tracked_fields_data()
             signal_type = SignalType.SYNC if sync else SignalType.SAVE
             payload = TransportPayload(

@@ -105,17 +105,18 @@ class RawMasterMixin(Model):
             tracker = getattr(self, FIELDS_TRACKER_FIELD_NAME)
             setattr(self, TRACKED_FIELDS_ATTR_NAME, tracker.changed())
 
-    def to_cqrs_dict(self, using=None):
+    def to_cqrs_dict(self, using=None, sync=False):
         """CQRS serialization for transport payload.
 
         :param using: The using argument can be used to force the database
                       to use, defaults to None
         :type using: str, optional
+        :type sync: bool, optional
         :return: The serialized instance data.
         :rtype: dict
         """
         if self.CQRS_SERIALIZER:
-            data = self._class_serialization(using)
+            data = self._class_serialization(using, sync=sync)
         else:
             self._refresh_f_expr_values(using)
             data = self._common_serialization(using)
@@ -230,13 +231,16 @@ class RawMasterMixin(Model):
 
         return data
 
-    def _class_serialization(self, using):
-        db = using if using is not None else self._state.db
-        qs = self.__class__._default_manager.using(db).filter(pk=self.pk)
+    def _class_serialization(self, using, sync=False):
+        if sync:
+            instance = self
+        else:
+            db = using if using is not None else self._state.db
+            qs = self.__class__._default_manager.using(db).filter(pk=self.pk)
 
-        instance = self.relate_cqrs_serialization(qs).first()
-        if not instance:
-            raise RuntimeError("Couldn't serialize CQRS class ({}).".format(self.CQRS_ID))
+            instance = self.relate_cqrs_serialization(qs).first()
+            if not instance:
+                raise RuntimeError("Couldn't serialize CQRS class ({}).".format(self.CQRS_ID))
 
         data = self._cqrs_serializer_cls(instance).data
         data['cqrs_revision'] = instance.cqrs_revision
@@ -264,8 +268,8 @@ class RawMasterMixin(Model):
             if value is not None and isinstance(value, CombinedExpression):
                 fields_to_refresh.append(f.name)
 
-            if fields_to_refresh:
-                self.refresh_from_db(fields=fields_to_refresh)
+        if fields_to_refresh:
+            self.refresh_from_db(fields=fields_to_refresh)
 
     @property
     def _cqrs_serializer_cls(self):
