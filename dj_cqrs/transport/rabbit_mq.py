@@ -28,8 +28,12 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
 
     @classmethod
     def clean_connection(cls):
-        if cls._producer_connection and not cls._producer_connection.is_closed:
-            cls._producer_connection.close()
+        connection = cls._producer_connection
+        if connection and not connection.is_closed:
+            try:
+                connection.close()
+            except (exceptions.StreamLostError, exceptions.ConnectionClosed, ConnectionError):
+                logger.warning("Connection was closed or is closing. Skip it...")
 
         cls._producer_connection = None
         cls._producer_channel = None
