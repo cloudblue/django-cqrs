@@ -144,6 +144,7 @@ def test_sync_exists(mocker):
     author.save()
     mocker.stopall()
 
+    author.refresh_from_db()
     author.cqrs_sync()
 
     assert replica_models.AuthorRef.objects.count() == 1
