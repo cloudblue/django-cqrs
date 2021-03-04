@@ -86,7 +86,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         rmq_settings = cls._get_common_settings()
         exchange = rmq_settings[-1]
         # Decided not to create context-manager to stay within the class
-        _, channel = cls._get_producer_rmq_objects(*rmq_settings)
+        _, channel = cls._get_producer_rmq_objects(*rmq_settings, signal_type=payload.signal_type)
 
         cls._produce_message(channel, exchange, payload)
         cls.log_produced(payload)
@@ -183,23 +183,36 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         return connection, channel
 
     @classmethod
-    def _get_producer_rmq_objects(cls, host, port, creds, exchange):
-        if cls._producer_connection is None:
-            connection = BlockingConnection(
-                ConnectionParameters(
-                    host=host,
-                    port=port,
-                    credentials=creds,
-                    blocked_connection_timeout=10,
-                ),
-            )
-            channel = connection.channel()
-            cls._declare_exchange(channel, exchange)
+    def _get_producer_rmq_objects(cls, host, port, creds, exchange, signal_type=None):
+        """
+        Use shared connection in case of sync mode, otherwise create new connection for each
+        message
+        """
+        if signal_type == SignalType.SYNC:
+            if cls._producer_connection is None:
+                connection, channel = cls._create_connection(host, port, creds, exchange)
 
-            cls._producer_connection = connection
-            cls._producer_channel = channel
+                cls._producer_connection = connection
+                cls._producer_channel = channel
 
-        return cls._producer_connection, cls._producer_channel
+            return cls._producer_connection, cls._producer_channel
+        else:
+            return cls._create_connection(host, port, creds, exchange)
+
+    @classmethod
+    def _create_connection(cls, host, port, creds, exchange):
+        connection = BlockingConnection(
+            ConnectionParameters(
+                host=host,
+                port=port,
+                credentials=creds,
+                blocked_connection_timeout=10,
+            ),
+        )
+        channel = connection.channel()
+        cls._declare_exchange(channel, exchange)
+
+        return connection, channel
 
     @staticmethod
     def _declare_exchange(channel, exchange):

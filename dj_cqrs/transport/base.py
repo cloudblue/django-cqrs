@@ -21,8 +21,7 @@ class BaseTransport:
         """
         Send data from master model to replicas.
 
-        :param payload: Transport payload from master model.
-        :type payload: dj_cqrs.dataclasses.TransportPayload
+        :param dj_cqrs.dataclasses.TransportPayload payload: Transport payload from master model.
         """
         raise NotImplementedError
 
