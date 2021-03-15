@@ -55,6 +55,15 @@ class SimplestModel(MasterMixin, models.Model):
     name = models.CharField(max_length=200, null=True)
 
 
+class SimplestTrackedModel(MasterMixin):
+    CQRS_ID = 'pk_tracked'
+    CQRS_TRACKED_FIELDS = ('status', 'description')
+
+    id = models.IntegerField(primary_key=True)
+    status = models.CharField(max_length=200, null=True)
+    description = models.CharField(max_length=200, null=True)
+
+
 class FilteredSimplestModel(MasterMixin, models.Model):
     CQRS_ID = 'filter'
 

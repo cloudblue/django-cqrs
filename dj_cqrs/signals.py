@@ -63,7 +63,11 @@ class MasterSignals:
             previous_data = instance.get_tracked_fields_data()
             signal_type = SignalType.SYNC if sync else SignalType.SAVE
             payload = TransportPayload(
-                signal_type, sender.CQRS_ID, instance_data, instance.pk, queue,
+                signal_type,
+                sender.CQRS_ID,
+                instance_data,
+                instance.pk,
+                queue,
                 previous_data,
             )
             producer.produce(payload)

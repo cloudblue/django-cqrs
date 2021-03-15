@@ -12,8 +12,24 @@ logger = logging.getLogger('django-cqrs')
 
 
 class MasterManager(Manager):
+    def bulk_create(self, objs, **kwargs):
+        """
+        Custom bulk create method to support sending of create signals.
+        This can be used only in cases, when IDs are generated on client or DB returns IDs.
+
+        :param django.db.models.Model objs: List of objects for creation
+        :param kwargs: Bulk create kwargs
+        """
+        for obj in objs:
+            obj.save_tracked_fields()
+        objs = super().bulk_create(objs, **kwargs)
+
+        if objs:
+            model = type(objs[0])
+            model.call_post_bulk_create(objs, using=self.db)
+
     def bulk_update(self, queryset, **kwargs):
-        """ Custom update method to support sending update signals.
+        """ Custom update method to support sending of update signals.
 
         :param django.db.models.QuerySet queryset: Django Queryset (f.e. filter)
         :param kwargs: Update kwargs

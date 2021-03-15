@@ -13,14 +13,13 @@ def test_flow(replica_cursor, clean_rabbit_transport_connection):
     assert count_replica_rows(replica_cursor, REPLICA_BASIC_TABLE) == 0
 
     # Create
-    master_instances = BasicFieldsModel.objects.bulk_create([
+    BasicFieldsModel.cqrs.bulk_create([
         BasicFieldsModel(
             int_field=index,
             char_field='text',
         )
         for index in range(1, 4)
     ])
-    BasicFieldsModel.call_post_bulk_create(master_instances)
 
     transport_delay()
     assert count_replica_rows(replica_cursor, REPLICA_BASIC_TABLE) == 3
