@@ -15,14 +15,13 @@ def test_both_consumers_consume(settings, replica_cursor, clean_rabbit_transport
     assert count_replica_rows(replica_cursor, REPLICA_BASIC_TABLE) == 0
     assert count_replica_rows(replica_cursor, REPLICA_EVENT_TABLE) == 0
 
-    master_instances = BasicFieldsModel.objects.bulk_create([
+    BasicFieldsModel.cqrs.bulk_create([
         BasicFieldsModel(
             int_field=index,
             char_field='text',
         )
         for index in range(1, 10)
     ])
-    BasicFieldsModel.call_post_bulk_create(master_instances)
 
     transport_delay(5)
     assert count_replica_rows(replica_cursor, REPLICA_BASIC_TABLE) == 9

@@ -71,9 +71,16 @@ def test_manual_post_bulk_create(mocker):
 def test_automatic_post_bulk_create(mocker):
     publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
 
-    models.SimplestTrackedModel.cqrs.bulk_create([
+    instances = models.SimplestTrackedModel.cqrs.bulk_create([
         models.SimplestTrackedModel(id=i, status='new') for i in range(1, 4)
     ])
+
+    assert len(instances) == 3
+    for index in range(3):
+        instance = instances[index]
+        assert instance.id == index + 1
+        assert instance.status == 'new'
+        assert instance.cqrs_revision == 0
 
     assert publisher_mock.call_count == 3
 
