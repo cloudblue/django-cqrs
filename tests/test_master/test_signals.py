@@ -1,4 +1,4 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 import pytest
 from django.db.models.signals import post_delete, post_save
@@ -32,7 +32,7 @@ def test_post_save_update(mocker):
 
     publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
     m.name = 'new'
-    m.save(update_fields=['name'])
+    m.save()
 
     assert_publisher_once_called_with_args(
         publisher_mock,

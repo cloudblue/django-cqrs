@@ -1,4 +1,4 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 from django.db import models, transaction
 from django.dispatch import Signal
@@ -45,6 +45,10 @@ class MasterSignals:
         :param dj_cqrs.mixins.MasterMixin sender: Class or instance inherited from CQRS MasterMixin.
         """
         if not sender.CQRS_PRODUCE:
+            return
+
+        update_fields = kwargs.get('update_fields')
+        if update_fields and ('cqrs_revision' not in update_fields):
             return
 
         instance = kwargs['instance']
