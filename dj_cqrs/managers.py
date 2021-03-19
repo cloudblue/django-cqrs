@@ -28,6 +28,8 @@ class MasterManager(Manager):
             model = type(objs[0])
             model.call_post_bulk_create(objs, using=self.db)
 
+        return objs
+
     def bulk_update(self, queryset, **kwargs):
         """ Custom update method to support sending of update signals.
 
