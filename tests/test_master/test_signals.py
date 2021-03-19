@@ -57,7 +57,7 @@ def test_post_save_delete(mocker):
 
 
 @pytest.mark.django_db(transaction=True)
-def test_post_bulk_create(mocker):
+def test_manual_post_bulk_create(mocker):
     models.AutoFieldsModel.objects.bulk_create([models.AutoFieldsModel() for _ in range(3)])
     created_models = list(models.AutoFieldsModel.objects.all())
 
@@ -65,6 +65,25 @@ def test_post_bulk_create(mocker):
     models.AutoFieldsModel.call_post_bulk_create(created_models)
 
     assert publisher_mock.call_count == 3
+
+
+@pytest.mark.django_db(transaction=True)
+def test_automatic_post_bulk_create(mocker):
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+
+    models.SimplestTrackedModel.cqrs.bulk_create([
+        models.SimplestTrackedModel(id=i, status='new') for i in range(1, 4)
+    ])
+
+    assert publisher_mock.call_count == 3
+
+    for index, call in enumerate(publisher_mock.call_args_list, start=1):
+        payload = call[0][0]
+        assert payload.signal_type == SignalType.SAVE
+        assert payload.instance_data['id'] == index
+        assert payload.instance_data['status'] == 'new'
+        assert payload.instance_data['description'] is None
+        assert payload.previous_data == {'status': None}
 
 
 @pytest.mark.django_db(transaction=True)

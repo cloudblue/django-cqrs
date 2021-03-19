@@ -22,6 +22,9 @@ class _CQRSTrackerInstance(FieldInstanceTracker):
             for k, v in changed_fields.items()
         }
 
+    def changed_initial(self):
+        return {field: None for field in self.fields if self.get_field_value(field) is not None}
+
 
 class CQRSTracker(FieldTracker):
 

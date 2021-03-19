@@ -96,14 +96,18 @@ class RawMasterMixin(Model):
         if self.is_initial_cqrs_save and (not self._state.adding):
             self.cqrs_revision = F('cqrs_revision') + 1
 
-        self._save_tracked_fields()
+        self.save_tracked_fields()
 
         return super(RawMasterMixin, self).save(*args, **kwargs)
 
-    def _save_tracked_fields(self):
+    def save_tracked_fields(self):
         if hasattr(self, FIELDS_TRACKER_FIELD_NAME):
             tracker = getattr(self, FIELDS_TRACKER_FIELD_NAME)
-            setattr(self, TRACKED_FIELDS_ATTR_NAME, tracker.changed())
+            if self._state.adding:
+                data = tracker.changed_initial()
+            else:
+                data = tracker.changed()
+            setattr(self, TRACKED_FIELDS_ATTR_NAME, data)
 
     def to_cqrs_dict(self, using=None, sync=False):
         """CQRS serialization for transport payload.
@@ -182,15 +186,18 @@ class RawMasterMixin(Model):
         """
         return queryset
 
+    def get_custom_cqrs_delete_data(self):
+        """ This method should be overridden when additional data is needed in DELETE payload. """
+        pass
+
     @classmethod
     def call_post_bulk_create(cls, instances, using=None):
         """ Post bulk create signal caller (django doesn't support it by default).
 
         .. code-block:: python
 
-            # On PostgreSQL
-            instances = model.objects.bulk_create(instances)
-            model.call_post_bulk_create(instances)
+            # Used automatically by cqrs.bulk_create()
+            instances = model.cqrs.bulk_create(instances)
         """
         post_bulk_create.send(cls, instances=instances, using=using)
 
@@ -283,10 +290,6 @@ class RawMasterMixin(Model):
             return serializer
         except ImportError:
             raise ImportError("Model {}: CQRS_SERIALIZER can't be imported.".format(self.__class__))
-
-    def get_custom_cqrs_delete_data(self):
-        """ This method should be overridden when additional data is needed in DELETE payload. """
-        pass
 
 
 class MasterMixin(RawMasterMixin, metaclass=MasterMeta):

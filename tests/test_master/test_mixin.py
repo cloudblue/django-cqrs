@@ -615,15 +615,18 @@ def test_cqrs_tracked_fields_tracking(mocker):
     instance.save()
     tracked_data = instance.get_tracked_fields_data()
     assert publisher_mock.call_args[0][0].previous_data == tracked_data
+    assert tracked_data == {'cqrs_revision': None, 'char_field': None}
     assert tracked_data is not None
     assert 'char_field' in tracked_data
     assert tracked_data['char_field'] is None
+
     instance.char_field = 'New Value'
     instance.save()
     tracked_data = instance.get_tracked_fields_data()
     assert 'char_field' in tracked_data
     assert tracked_data['char_field'] == 'Value'
     assert publisher_mock.call_args[0][0].previous_data == tracked_data
+    assert tracked_data == {'cqrs_revision': 0, 'char_field': 'Value'}
 
 
 def test_mptt_cqrs_tracked_fields_model_has_tracker():
@@ -668,8 +671,10 @@ def test_generic_fk():
     assert cqrs_data['content_type'] == ct.pk
 
     assert 'content_object' not in previous_data
-    assert 'content_type' in previous_data
-    assert 'object_id' in previous_data
+    assert 'content_type' not in previous_data
+
+    for prev_data_key in ('object_id', 'cqrs_revision', 'content_type_id'):
+        assert previous_data[prev_data_key] is None
 
     sm1 = models.SimplestModel.objects.create(id=2, name='name')
     m.content_object = sm1
