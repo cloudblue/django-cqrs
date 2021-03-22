@@ -1,5 +1,6 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
+from django.conf import settings
 from django.db import router, transaction
 from django.db.models import DateField, DateTimeField, F, IntegerField, Manager, Model
 from django.db.models.expressions import CombinedExpression
@@ -85,6 +86,9 @@ class RawMasterMixin(Model):
             self._cqrs_saves_count = 0
 
     def save(self, *args, **kwargs):
+        update_fields = kwargs.pop('update_fields', None)
+        update_cqrs_fields = kwargs.pop('update_cqrs_fields', self._update_cqrs_fields_default)
+
         using = kwargs.get('using') or router.db_for_write(self.__class__, instance=self)
         connection = transaction.get_connection(using)
         if connection.in_atomic_block:
@@ -93,8 +97,14 @@ class RawMasterMixin(Model):
         else:
             self.reset_cqrs_saves_count()
 
-        if self.is_initial_cqrs_save and (not self._state.adding):
+        if (not update_fields) and self.is_initial_cqrs_save and (not self._state.adding):
             self.cqrs_revision = F('cqrs_revision') + 1
+        elif update_fields and update_cqrs_fields:
+            self.cqrs_revision = F('cqrs_revision') + 1
+            update_fields = set(update_fields)
+            update_fields.update({'cqrs_revision', 'cqrs_updated'})
+
+        kwargs['update_fields'] = update_fields
 
         self.save_tracked_fields()
 
@@ -108,6 +118,12 @@ class RawMasterMixin(Model):
             else:
                 data = tracker.changed()
             setattr(self, TRACKED_FIELDS_ATTR_NAME, data)
+
+    @property
+    def _update_cqrs_fields_default(self):
+        return bool(
+            getattr(settings, 'CQRS', {}).get('master', {}).get('CQRS_AUTO_UPDATE_FIELDS', False),
+        )
 
     def to_cqrs_dict(self, using=None, sync=False):
         """CQRS serialization for transport payload.

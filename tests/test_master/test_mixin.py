@@ -1,6 +1,7 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 import pytest
+from time import sleep
 from uuid import uuid4
 
 from django.contrib.contenttypes.models import ContentType
@@ -834,3 +835,103 @@ def test_get_custom_cqrs_delete_data(mocker):
     assert payload.instance_data['id'] == 1
     assert payload.instance_data['cqrs_revision'] == 1
     assert payload.instance_data['custom'] == {'1': '2'}
+
+
+@pytest.mark.django_db(transaction=True)
+def test_save_update_fields_no_cqrs_fields_default_behavior(mocker):
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+    instance = models.SimplestModel.objects.create(id=1)
+    publisher_mock.reset_mock()
+
+    instance.name = 'New'
+    instance.save(update_fields=['name'])
+    instance.refresh_from_db()
+
+    assert publisher_mock.call_count == 0
+    assert instance.cqrs_revision == 0
+    assert instance.name == 'New'
+
+
+@pytest.mark.django_db(transaction=True)
+def test_save_update_fields_no_cqrs_fields_global_flag_changed(mocker, settings):
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+    instance = models.SimplestModel.objects.create(id=1)
+    previous_cqrs_updated = instance.cqrs_updated
+    publisher_mock.reset_mock()
+
+    sleep(0.1)
+
+    settings.CQRS = {
+        'transport': 'tests.dj.transport.TransportStub',
+        'master': {
+            'CQRS_AUTO_UPDATE_FIELDS': True,
+        },
+    }
+    instance.name = 'New'
+    instance.save(update_fields=['name'])
+
+    assert_publisher_once_called_with_args(
+        publisher_mock,
+        SignalType.SAVE,
+        models.SimplestModel.CQRS_ID,
+        {'id': 1, 'name': 'New', 'cqrs_revision': 1},
+        1,
+    )
+
+    assert instance.cqrs_updated > previous_cqrs_updated
+
+    instance.refresh_from_db()
+    assert instance.name == 'New'
+
+
+@pytest.mark.django_db(transaction=True)
+def test_save_update_fields_with_cqrs_fields(mocker):
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+    instance = models.SimplestModel.objects.create(id=1, name='Old')
+    previous_cqrs_updated = instance.cqrs_updated
+    publisher_mock.reset_mock()
+
+    sleep(0.1)
+
+    instance.name = 'New'
+    instance.cqrs_revision = F('cqrs_revision') + 1
+    instance.save(update_fields=['name', 'cqrs_revision', 'cqrs_updated'], update_cqrs_fields=False)
+
+    assert_publisher_once_called_with_args(
+        publisher_mock,
+        SignalType.SAVE,
+        models.SimplestModel.CQRS_ID,
+        {'id': 1, 'name': 'New', 'cqrs_revision': 1},
+        1,
+    )
+
+    assert instance.cqrs_updated > previous_cqrs_updated
+
+    instance.refresh_from_db()
+    assert instance.name == 'New'
+
+
+@pytest.mark.django_db(transaction=True)
+def test_save_update_fields_with_update_cqrs_fields_flag(mocker):
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+    instance = models.SimplestModel.objects.create(id=1)
+    previous_cqrs_updated = instance.cqrs_updated
+    publisher_mock.reset_mock()
+
+    sleep(0.1)
+
+    instance.name = 'New'
+    instance.save(update_fields=['name'], update_cqrs_fields=True)
+
+    assert_publisher_once_called_with_args(
+        publisher_mock,
+        SignalType.SAVE,
+        models.SimplestModel.CQRS_ID,
+        {'id': 1, 'name': 'New', 'cqrs_revision': 1},
+        1,
+    )
+
+    assert instance.cqrs_updated > previous_cqrs_updated
+
+    instance.refresh_from_db()
+    assert instance.name == 'New'
