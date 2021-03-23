@@ -63,7 +63,7 @@ class ReplicaManager(Manager):
             pk_value = mapped_data[pk_name]
             f_kwargs = {pk_name: pk_value}
 
-            qs = self.model._default_manager.filter(**f_kwargs)
+            qs = self.model._default_manager.filter(**f_kwargs).order_by()
             if self.model.CQRS_SELECT_FOR_UPDATE:
                 qs = qs.select_for_update()
 
