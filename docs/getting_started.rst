@@ -148,7 +148,7 @@ For example:
     from dj_cqrs.mixins import ReplicaMixin
 
 
-    class MyReplicaModel(MasterMixin, models.Model):
+    class MyReplicaModel(ReplicaMixin, models.Model):
 
         CQRS_ID = 'my_model' 
 
@@ -179,4 +179,4 @@ Run consumer process
 And that's all!
 
 Now every time you modify your master model, changes are replicated to
-all the service that have a replica model with the same CQRS_ID.
+all services that have a replica model with the same CQRS_ID.
