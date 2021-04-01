@@ -22,7 +22,7 @@ But, some services are working too slowly with API JOINS, so another pattern nee
 
 The pattern, that solves this issue is called `CQRS - Command Query Responsibility Segregation <https://microservices.io/patterns/data/cqrs.html>`_. 
 Core idea behind this pattern is that view databases (replicas) are defined for efficient querying and DB joins. 
-Applications keep their replicas up to data by subscribing to `Domain events <https://microservices.io/patterns/data/domain-event.html>`_ 
+Applications keep their replicas up to date by subscribing to `Domain events <https://microservices.io/patterns/data/domain-event.html>`_ 
 published by the service that owns the data. Data is `eventually consistent <https://en.wikipedia.org/wiki/Eventual_consistency>`_ 
 and that's okay for non-critical business transactions.
 
