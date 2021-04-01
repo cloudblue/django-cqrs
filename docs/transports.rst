@@ -48,6 +48,6 @@ To configure the ``KombuTransport`` you must provide the rabbitmq connection url
         'url': 'redis://redis:6379/'
     }
 
-Please read `https://kombu.readthedocs.io/en/master/introduction.html#transport-comparison <https://kombu.readthedocs.io/en/master/introduction.html#transport-comparison>`_
-and `https://kombu.readthedocs.io/en/master/userguide/connections.html#urls <https://kombu.readthedocs.io/en/master/userguide/connections.html#urls>`_ for 
+Please read `Transport Comparison <https://kombu.readthedocs.io/en/master/introduction.html#transport-comparison>`_
+and `URLs <https://kombu.readthedocs.io/en/master/userguide/connections.html#urls>`_ articles for Kombu to get 
 more information on supported brokers and configuration urls.
