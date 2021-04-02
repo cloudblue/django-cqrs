@@ -31,10 +31,10 @@ based o tracked fields before accessing your database:
 
         CQRS_ID = 'my_model'
 
-    @classmethod
-    def cqrs_save(cls, master_data, previous_data=None, sync=False):
-        # Custom logic based on previous_data here.
-        pass
+        @classmethod
+        def cqrs_save(cls, master_data, previous_data=None, sync=False):
+            # Custom logic based on previous_data here.
+            pass
     
 
 .. note::
