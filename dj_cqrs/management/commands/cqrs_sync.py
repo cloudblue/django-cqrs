@@ -56,20 +56,7 @@ class Command(BaseCommand):
         progress = self._get_progress(options)
         batch_size = self._get_batch_size(options)
 
-        qs = model._default_manager.none()
-        if options['filter']:
-            try:
-                kwargs = ujson.loads(options['filter'])
-                if not isinstance(kwargs, dict):
-                    raise ValueError
-            except ValueError:
-                raise CommandError('Bad filter kwargs!')
-
-            try:
-                qs = model._default_manager.filter(**kwargs).order_by()
-            except FieldError as e:
-                raise CommandError('Bad filter kwargs! {}'.format(str(e)))
-
+        qs = self._prepare_qs(model, options)
         db_count = qs.count()
         if db_count == 0:
             print('No objects found for filter!')
@@ -105,6 +92,24 @@ class Command(BaseCommand):
         print('Done!\n{} instance(s) synced.\n{} instance(s) processed.'.format(
             success_counter, counter,
         ))
+
+    @staticmethod
+    def _prepare_qs(model, options):
+        qs = model._default_manager.none()
+        if options['filter']:
+            try:
+                kwargs = ujson.loads(options['filter'])
+                if not isinstance(kwargs, dict):
+                    raise ValueError
+            except ValueError:
+                raise CommandError('Bad filter kwargs!')
+
+            try:
+                qs = model._default_manager.filter(**kwargs).order_by()
+            except FieldError as e:
+                raise CommandError('Bad filter kwargs! {}'.format(str(e)))
+
+        return qs
 
     @staticmethod
     def _get_model(options):
