@@ -1,4 +1,4 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 from multiprocessing import Process
 
@@ -19,7 +19,7 @@ class Command(BaseCommand):
         else:
             pool = []
 
-            for i in range(options['workers']):
+            for _ in range(options['workers']):
                 p = Process(target=current_transport.consume)
                 pool.append(p)
                 p.start()

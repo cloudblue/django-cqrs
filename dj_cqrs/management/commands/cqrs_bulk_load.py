@@ -1,4 +1,4 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 import os
 import sys
@@ -53,7 +53,6 @@ class Command(BaseCommand):
             if not model:
                 raise CommandError('Wrong CQRS ID: {}!'.format(cqrs_id))
 
-            success_counter = 0
             with transaction.atomic():
                 if options['clear']:
                     try:
@@ -61,46 +60,57 @@ class Command(BaseCommand):
                     except DatabaseError:
                         raise CommandError("Delete operation fails!")
 
-            line_number = 2
-            while True:
-                with transaction.atomic():
-                    try:
-                        for _ in range(0, batch_size):
-                            line = f.readline()
+            self._process(f, model, batch_size)
 
-                            if not line:
-                                raise EOFError
-                            try:
-                                try:
-                                    master_data = ujson.loads(line.strip())
-                                except ValueError:
-                                    print(
-                                        "Dump file can't be parsed: line {}!".format(
-                                            line_number,
-                                        ),
-                                        file=sys.stderr
-                                    )
-                                    line_number += 1
-                                    continue
+    @classmethod
+    def _process(cls, stream, model, batch_size):
+        success_counter = 0
+        line_number = 2
 
-                                instance = model.cqrs_save(master_data)
-                                if not instance:
-                                    print(
-                                        "Instance can't be saved: line {}!".format(line_number),
-                                        file=sys.stderr
-                                    )
-                                else:
-                                    success_counter += 1
-                            except Exception as e:
-                                print(
-                                    'Unexpected error: line {}! {}'.format(line_number, str(e)),
-                                    file=sys.stderr
-                                )
-                            line_number += 1
-                    except EOFError:
-                        break
+        while True:
+            with transaction.atomic():
+                try:
+                    for _ in range(0, batch_size):
+                        line = stream.readline()
 
-            print('Done!\n{} instance(s) loaded.'.format(success_counter), file=sys.stderr)
+                        success = cls._process_line(line_number, line, model)
+
+                        success_counter += int(bool(success))
+                        line_number += 1
+                except EOFError:
+                    break
+
+        print('Done!\n{} instance(s) loaded.'.format(success_counter), file=sys.stderr)
+
+    @staticmethod
+    def _process_line(line_number, line, model):
+        if not line:
+            raise EOFError
+        try:
+            try:
+                master_data = ujson.loads(line.strip())
+            except ValueError:
+                print(
+                    "Dump file can't be parsed: line {}!".format(line_number),
+                    file=sys.stderr
+                )
+                return False
+
+            instance = model.cqrs_save(master_data)
+            if not instance:
+                print(
+                    "Instance can't be saved: line {}!".format(line_number),
+                    file=sys.stderr
+                )
+            else:
+                return True
+        except Exception as e:
+            print(
+                'Unexpected error: line {}! {}'.format(line_number, str(e)),
+                file=sys.stderr
+            )
+
+        return False
 
     @staticmethod
     def _get_batch_size(options):

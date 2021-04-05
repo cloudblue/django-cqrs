@@ -116,13 +116,16 @@ class MasterSignals:
         """
         :param dj_cqrs.mixins.MasterMixin sender: Class or instance inherited from CQRS MasterMixin.
         """
-        for instance in kwargs['instances']:
-            cls.post_save(sender, instance=instance, using=kwargs['using'])
+        cls._post_bulk(sender, **kwargs)
 
     @classmethod
     def post_bulk_update(cls, sender, **kwargs):
         """
         :param dj_cqrs.mixins.MasterMixin sender: Class or instance inherited from CQRS MasterMixin.
         """
+        cls._post_bulk(sender, **kwargs)
+
+    @classmethod
+    def _post_bulk(cls, sender, **kwargs):
         for instance in kwargs['instances']:
             cls.post_save(sender, instance=instance, using=kwargs['using'])
