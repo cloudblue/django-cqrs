@@ -1,4 +1,4 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 import logging
 import ujson
@@ -182,6 +182,7 @@ def test_produce_message_ok(mocker):
             'instance_data': {},
             'instance_pk': 'id',
             'previous_data': {'e': 'f'},
+            'correlation_id': None,
         }
     assert basic_publish_kwargs['exchange'] == 'exchange'
     assert basic_publish_kwargs['mandatory']
@@ -204,6 +205,7 @@ def test_produce_sync_message_no_queue(mocker):
             'instance_data': {},
             'instance_pk': None,
             'previous_data': None,
+            'correlation_id': None,
         }
     assert basic_publish_kwargs['routing_key'] == 'cqrs_id'
 
@@ -222,6 +224,7 @@ def test_produce_sync_message_queue(mocker):
             'instance_data': {},
             'instance_pk': 'id',
             'previous_data': None,
+            'correlation_id': None,
         }
     assert basic_publish_kwargs['routing_key'] == 'cqrs.queue.cqrs_id'
 
@@ -259,7 +262,7 @@ def test_consume_message_ack(mocker, caplog):
         mocker.MagicMock(),
         None,
         '{"signal_type":"signal","cqrs_id":"cqrs_id","instance_data":{},'
-        '"instance_pk":1, "previous_data":{}}',
+        '"instance_pk":1, "previous_data":{}, "correlation_id":"abc"}',
     )
 
     assert consumer_mock.call_count == 1
@@ -270,6 +273,7 @@ def test_consume_message_ack(mocker, caplog):
     assert payload.instance_data == {}
     assert payload.previous_data == {}
     assert payload.pk == 1
+    assert payload.correlation_id == 'abc'
 
     assert 'CQRS is received: pk = 1 (cqrs_id).' in caplog.text
     assert 'CQRS is applied: pk = 1 (cqrs_id).' in caplog.text

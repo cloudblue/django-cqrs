@@ -1,4 +1,4 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 import pytest
 
@@ -19,6 +19,7 @@ def test_producer(mocker):
         'instance_data': {},
         'instance_pk': 'c',
         'previous_data': {'e': 'f'},
+        'correlation_id': None,
     }
 
 

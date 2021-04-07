@@ -1,4 +1,6 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+
+from dj_cqrs.correlation import get_correlation_id
 
 
 class TransportPayload:
@@ -11,22 +13,37 @@ class TransportPayload:
     :param instance_data: Serialized data of the instance that
                             generates the event.
     :type instance_data: dict
-    :param instance_pk: Primary key of the instance
-    :param queue: Queue to syncronize, defaults to None
+    :param instance_pk: Primary key of the instance.
+    :param queue: Queue to synchronize, defaults to None.
     :type queue: str, optional
     :param previous_data: Previous values for fields tracked for changes,
-                                defaults to None
+                                defaults to None.
     :type previous_data: dict, optional
+    :param correlation_id: Correlation ID of process, where this payload is used.
+    :type correlation_id: str, optional
     """
 
-    def __init__(self, signal_type, cqrs_id, instance_data, instance_pk, queue=None,
-                 previous_data=None):
+    def __init__(
+            self,
+            signal_type,
+            cqrs_id,
+            instance_data,
+            instance_pk,
+            queue=None,
+            previous_data=None,
+            correlation_id=None,
+    ):
         self.__signal_type = signal_type
         self.__cqrs_id = cqrs_id
         self.__instance_data = instance_data
         self.__instance_pk = instance_pk
         self.__queue = queue
         self.__previous_data = previous_data
+
+        if correlation_id:
+            self.__correlation_id = correlation_id
+        else:
+            self.__correlation_id = get_correlation_id(signal_type, cqrs_id, instance_pk, queue)
 
     @property
     def signal_type(self):
@@ -52,6 +69,10 @@ class TransportPayload:
     def previous_data(self):
         return self.__previous_data
 
+    @property
+    def correlation_id(self):
+        return self.__correlation_id
+
     def to_dict(self):
         """
         Return the payload as a dictionary.
@@ -65,4 +86,5 @@ class TransportPayload:
             'instance_data': self.__instance_data,
             'previous_data': self.__previous_data,
             'instance_pk': self.__instance_pk,
+            'correlation_id': self.__correlation_id,
         }
