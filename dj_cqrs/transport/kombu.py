@@ -1,4 +1,4 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 import logging
 
@@ -124,8 +124,12 @@ class KombuTransport(LoggingMixin, BaseTransport):
             return
 
         payload = TransportPayload(
-            dct['signal_type'], dct['cqrs_id'], dct['instance_data'], dct.get('instance_pk'),
+            dct['signal_type'],
+            dct['cqrs_id'],
+            dct['instance_data'],
+            dct.get('instance_pk'),
             previous_data=dct.get('previous_data'),
+            correlation_id=dct.get('correlation_id'),
         )
 
         cls.log_consumed(payload)
