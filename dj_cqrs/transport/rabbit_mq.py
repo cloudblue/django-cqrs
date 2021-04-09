@@ -13,6 +13,7 @@ from pika import exceptions, BasicProperties, BlockingConnection, ConnectionPara
 from dj_cqrs.constants import SignalType
 from dj_cqrs.controller import consumer
 from dj_cqrs.dataclasses import TransportPayload
+from dj_cqrs.delay import DelayMessage, DelayQueue
 from dj_cqrs.registries import ReplicaRegistry
 from dj_cqrs.transport import BaseTransport
 from dj_cqrs.transport.mixins import LoggingMixin
@@ -46,10 +47,17 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         while True:
             connection = None
             try:
-                connection, channel = cls._get_consumer_rmq_objects(
+                delay_queue = DelayQueue()
+                connection, channel, consumer_generator = cls._get_consumer_rmq_objects(
                     *(common_rabbit_settings + consumer_rabbit_settings)
                 )
-                channel.start_consuming()
+
+                for method_frame, properties, body in consumer_generator:
+                    if method_frame is not None:
+                        cls._consume_message(
+                            channel, method_frame, properties, body, delay_queue,
+                        )
+                    cls._process_delay_messages(channel, delay_queue)
             except (exceptions.AMQPError,
                     exceptions.ChannelError,
                     exceptions.ReentrancyError,
@@ -92,7 +100,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         cls.log_produced(payload)
 
     @classmethod
-    def _consume_message(cls, ch, method, properties, body):
+    def _consume_message(cls, ch, method, properties, body, delay_queue):
         try:
             dct = ujson.loads(body)
             for key in ('signal_type', 'cqrs_id', 'instance_data'):
@@ -100,36 +108,62 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
                     raise ValueError
 
             if 'instance_pk' not in dct:
-                logger.warning('CQRS deprecated package structure.')
+                logger.warning("CQRS deprecated package structure.")
 
         except ValueError:
             logger.error("CQRS couldn't be parsed: {}.".format(body))
             ch.basic_reject(delivery_tag=method.delivery_tag, requeue=False)
             return
 
-        payload = TransportPayload(
-            dct['signal_type'],
-            dct['cqrs_id'],
-            dct['instance_data'],
-            dct.get('instance_pk'),
-            previous_data=dct.get('previous_data'),
-            correlation_id=dct.get('correlation_id'),
-        )
-
+        payload = TransportPayload.from_message(dct)
         cls.log_consumed(payload)
 
-        instance = None
+        delivery_tag = method.delivery_tag
+        if payload.is_expired():
+            cls._nack(ch, delivery_tag, payload)
+            return
+
+        instance, exception = None, None
         try:
             instance = consumer.consume(payload)
-        except Exception:
-            logger.error('CQRS service exception', exc_info=True)
+        except Exception as e:
+            exception = e
+            logger.error("CQRS service exception", exc_info=True)
 
-        if instance:
-            ch.basic_ack(delivery_tag=method.delivery_tag)
-            cls.log_consumed_accepted(payload)
+        if instance and exception is None:
+            cls._ack(ch, delivery_tag, payload)
         else:
-            ch.basic_nack(delivery_tag=method.delivery_tag)
-            cls.log_consumed_denied(payload)
+            cls._fail_message(
+                ch, delivery_tag, payload, exception, delay_queue,
+            )
+
+    @classmethod
+    def _fail_message(cls, channel, delivery_tag, payload, exception, delay_queue):
+        cls.log_consumed_failed(payload)
+        model_cls = ReplicaRegistry.get_model_by_cqrs_id(payload.cqrs_id)
+        if model_cls is None:
+            logger.error("Model for cqrs_id {} is not found.".format(payload.cqrs_id))
+            cls._nack(channel, delivery_tag)
+            return
+
+        if model_cls.should_retry_cqrs(payload.retries, exception):
+            delay = model_cls.get_cqrs_retry_delay(payload.retries)
+            delayed_message = DelayMessage(delivery_tag, payload, delay)
+            delay_queue.put(delayed_message)
+            cls.log_delayed(payload, delay, delayed_message.eta)
+        else:
+            cls._nack(channel, delivery_tag, payload)
+
+    @classmethod
+    def _process_delay_messages(cls, channel, delay_queue):
+        for delay_message in delay_queue.get_ready():
+            requeue_payload = delay_message.payload
+            requeue_payload.retries += 1
+
+            # Requeuing
+            cls.produce(requeue_payload)
+            cls._nack(channel, delay_message.delivery_tag)
+            cls.log_requeued(requeue_payload)
 
     @classmethod
     def _produce_message(cls, channel, exchange, payload):
@@ -143,7 +177,6 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
             properties=BasicProperties(
                 content_type='text/plain',
                 delivery_mode=2,  # make message persistent
-                expiration=settings.CQRS.get('MESSAGE_TTL', '60000'),  # milliseconds
             )
         )
 
@@ -157,12 +190,11 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         return routing_key
 
     @classmethod
-    def _get_consumer_rmq_objects(cls, host, port, creds, exchange, queue_name, prefetch_count):
+    def _get_consumer_rmq_objects(cls, host, port, creds, exchange, queue_name):
         connection = BlockingConnection(
             ConnectionParameters(host=host, port=port, credentials=creds),
         )
         channel = connection.channel()
-        channel.basic_qos(prefetch_count=prefetch_count)
 
         cls._declare_exchange(channel, exchange)
         channel.queue_declare(queue_name, durable=True, exclusive=False)
@@ -177,14 +209,14 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
                 routing_key='cqrs.{}.{}'.format(queue_name, cqrs_id),
             )
 
-        channel.basic_consume(
+        delay_queue_check_timeout = 1  # seconds
+        consumer_generator = channel.consume(
             queue=queue_name,
-            on_message_callback=cls._consume_message,
             auto_ack=False,
             exclusive=False,
+            inactivity_timeout=delay_queue_check_timeout,
         )
-
-        return connection, channel
+        return connection, channel, consumer_generator
 
     @classmethod
     def _get_producer_rmq_objects(cls, host, port, creds, exchange, signal_type=None):
@@ -262,8 +294,23 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
     @staticmethod
     def _get_consumer_settings():
         queue_name = settings.CQRS['queue']
-        consumer_prefetch_count = settings.CQRS.get('consumer_prefetch_count', 10)
+        if 'consumer_prefetch_count' in settings.CQRS:
+            logger.warning(
+                "The 'consumer_prefetch_count' setting is ignored for RabbitMQTransport."
+            )
+
         return (
             queue_name,
-            consumer_prefetch_count,
         )
+
+    @classmethod
+    def _ack(cls, channel, delivery_tag, payload=None):
+        channel.basic_ack(delivery_tag)
+        if payload is not None:
+            cls.log_consumed_accepted(payload)
+
+    @classmethod
+    def _nack(cls, channel, delivery_tag, payload=None):
+        channel.basic_nack(delivery_tag, requeue=False)
+        if payload is not None:
+            cls.log_consumed_denied(payload)

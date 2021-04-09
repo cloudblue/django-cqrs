@@ -147,6 +147,8 @@ def test_produce_message_ok(mocker):
             'instance_pk': 'id',
             'previous_data': {'e': 'f'},
             'correlation_id': None,
+            'expires': None,
+            'retries': 0,
         }
 
     assert prepare_message_args[2] == 'text/plain'
@@ -176,6 +178,8 @@ def test_produce_sync_message_no_queue(mocker):
             'instance_pk': None,
             'previous_data': None,
             'correlation_id': None,
+            'expires': None,
+            'retries': 0,
         }
     assert basic_publish_kwargs['routing_key'] == 'cqrs_id'
 
@@ -198,6 +202,8 @@ def test_produce_sync_message_queue(mocker):
             'instance_pk': 'id',
             'previous_data': None,
             'correlation_id': None,
+            'expires': None,
+            'retries': 0,
         }
     assert basic_publish_kwargs['routing_key'] == 'cqrs.queue.cqrs_id'
 
@@ -209,7 +215,8 @@ def test_consume_message_ack(mocker, caplog):
 
     PublicKombuTransport.consume_message(
         '{"signal_type":"signal","cqrs_id":"cqrs_id","instance_data":{},'
-        '"instance_pk":1, "previous_data":{}, "correlation_id":"zyx"}',
+        '"instance_pk":1, "previous_data":{}, "correlation_id":"zyx",'
+        '"expires":"2100-01-01T00:00:00+00:00", "retries":1}',
         message_mock,
     )
 
@@ -223,6 +230,8 @@ def test_consume_message_ack(mocker, caplog):
     assert payload.previous_data == {}
     assert payload.pk == 1
     assert payload.correlation_id == 'zyx'
+    assert payload.expires is None
+    assert payload.retries == 0
 
     assert 'CQRS is received: pk = 1 (cqrs_id).' in caplog.text
     assert 'CQRS is applied: pk = 1 (cqrs_id).' in caplog.text

@@ -494,3 +494,50 @@ def test_nodb(mocker):
 
     with pytest.raises(NotImplementedError):
         models.NoDBModelRef.cqrs_delete(None)
+
+
+@pytest.mark.parametrize(
+    'max_retries, current_retry, expected_result', [
+        (5, 0, True),
+        (5, 5, False),
+        (-1, 0, True),  # For invalid max_retries=10
+        (-1, 10, False),
+        ('test', 9, True),
+        (0, 0, False),  # Disabled
+        (None, 10000, True),  # Infinite
+    ],
+)
+def test_should_retry_cqrs(settings, max_retries, current_retry, expected_result):
+    settings.CQRS['max_retries'] = max_retries
+
+    result = models.BasicFieldsModelRef.should_retry_cqrs(current_retry)
+
+    assert result is expected_result
+
+
+@pytest.mark.parametrize(
+    'current_retry, expected_result', [(0, True), (10, False)],
+)
+def test_should_retry_cqrs_no_setting_field(settings, current_retry, expected_result):
+    settings.CQRS.pop('max_retries', None)
+
+    result = models.BasicFieldsModelRef.should_retry_cqrs(current_retry)
+
+    assert result is expected_result
+
+
+@pytest.mark.parametrize(
+    'retry_delay, expected_result', [
+        (5, 5),
+        (-1, 60),  # For invalid retry_delay=60
+        (0, 60),
+        ('test', 60),
+        (None, 60),
+    ],
+)
+def test_get_cqrs_retry_delay(settings, retry_delay, expected_result):
+    settings.CQRS['retry_delay'] = retry_delay
+
+    result = models.BasicFieldsModelRef.get_cqrs_retry_delay(current_retry=0)
+
+    assert result is expected_result

@@ -1,6 +1,8 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 import logging
+from datetime import datetime, timezone
+
 import ujson
 from importlib import import_module, reload
 
@@ -8,6 +10,7 @@ import pytest
 from django.db import DatabaseError
 from pika.exceptions import AMQPError
 
+from dj_cqrs.delay import DelayQueue, DelayMessage
 from dj_cqrs.constants import SignalType
 from dj_cqrs.dataclasses import TransportPayload
 from dj_cqrs.transport.rabbit_mq import RabbitMQTransport
@@ -26,6 +29,14 @@ class PublicRabbitMQTransport(RabbitMQTransport):
     @classmethod
     def consume_message(cls, *args):
         return cls._consume_message(*args)
+
+    @classmethod
+    def fail_message(cls, *args):
+        return cls._fail_message(*args)
+
+    @classmethod
+    def process_delay_messages(cls, *args):
+        return cls._process_delay_messages(*args)
 
     @classmethod
     def produce_message(cls, *args):
@@ -93,12 +104,7 @@ def test_invalid_url_settings(settings):
     assert ei.match('Scheme must be "amqp" for RabbitMQTransport.')
 
 
-def test_consumer_default_settings():
-    s = PublicRabbitMQTransport.get_consumer_settings()
-    assert s[1] == 10
-
-
-def test_consumer_non_default_settings(settings):
+def test_consumer_non_default_settings(settings, caplog):
     settings.CQRS = {
         'transport': 'dj_cqrs.transport.rabbit_mq.RabbitMQTransport',
         'queue': 'q',
@@ -107,7 +113,7 @@ def test_consumer_non_default_settings(settings):
 
     s = PublicRabbitMQTransport.get_consumer_settings()
     assert s[0] == 'q'
-    assert s[1] == 2
+    assert "The 'consumer_prefetch_count' setting is ignored for RabbitMQTransport." in caplog.text
 
 
 @pytest.fixture
@@ -165,9 +171,18 @@ def test_produce_ok(rabbit_transport, mocker, caplog):
 
 
 def test_produce_message_ok(mocker):
+    expires = datetime(2100, 1, 1, tzinfo=timezone.utc)
+    expected_expires = '2100-01-01T00:00:00+00:00'
+
     channel = mocker.MagicMock()
     payload = TransportPayload(
-        SignalType.SAVE, 'cqrs_id', {}, 'id', previous_data={'e': 'f'},
+        SignalType.SAVE,
+        cqrs_id='cqrs_id',
+        instance_data={},
+        instance_pk='id',
+        previous_data={'e': 'f'},
+        expires=expires,
+        retries=2,
     )
 
     PublicRabbitMQTransport.produce_message(channel, 'exchange', payload)
@@ -183,6 +198,8 @@ def test_produce_message_ok(mocker):
             'instance_pk': 'id',
             'previous_data': {'e': 'f'},
             'correlation_id': None,
+            'expires': expected_expires,
+            'retries': 2,
         }
     assert basic_publish_kwargs['exchange'] == 'exchange'
     assert basic_publish_kwargs['mandatory']
@@ -206,6 +223,8 @@ def test_produce_sync_message_no_queue(mocker):
             'instance_pk': None,
             'previous_data': None,
             'correlation_id': None,
+            'expires': None,
+            'retries': 0,
         }
     assert basic_publish_kwargs['routing_key'] == 'cqrs_id'
 
@@ -225,6 +244,8 @@ def test_produce_sync_message_queue(mocker):
             'instance_pk': 'id',
             'previous_data': None,
             'correlation_id': None,
+            'expires': None,
+            'retries': 0,
         }
     assert basic_publish_kwargs['routing_key'] == 'cqrs.queue.cqrs_id'
 
@@ -242,11 +263,14 @@ def test_consume_connection_error(rabbit_transport, mocker, caplog):
 
 
 def test_consume_ok(rabbit_transport, mocker):
-    channel_mock = mocker.MagicMock()
-    channel_mock.start_consuming = db_error
-
+    consumer_generator = (v for v in [(1, None, None)])
     mocker.patch.object(
-        RabbitMQTransport, '_get_consumer_rmq_objects', return_value=(None, channel_mock),
+        RabbitMQTransport,
+        '_get_consumer_rmq_objects',
+        return_value=(None, None, consumer_generator),
+    )
+    mocker.patch.object(
+        RabbitMQTransport, '_consume_message', db_error,
     )
 
     with pytest.raises(DatabaseError):
@@ -262,7 +286,9 @@ def test_consume_message_ack(mocker, caplog):
         mocker.MagicMock(),
         None,
         '{"signal_type":"signal","cqrs_id":"cqrs_id","instance_data":{},'
-        '"instance_pk":1, "previous_data":{}, "correlation_id":"abc"}',
+        '"instance_pk":1, "previous_data":{}, "correlation_id":"abc",'
+        '"expires":"2100-01-01T00:00:00+00:00", "retries":1}',
+        mocker.MagicMock(),
     )
 
     assert consumer_mock.call_count == 1
@@ -274,12 +300,21 @@ def test_consume_message_ack(mocker, caplog):
     assert payload.previous_data == {}
     assert payload.pk == 1
     assert payload.correlation_id == 'abc'
+    assert payload.expires == datetime(2100, 1, 1, tzinfo=timezone.utc)
+    assert payload.retries == 1
 
     assert 'CQRS is received: pk = 1 (cqrs_id).' in caplog.text
     assert 'CQRS is applied: pk = 1 (cqrs_id).' in caplog.text
 
 
-def test_consume_message_ack_deprecated_structure(mocker, caplog):
+def test_consume_message_ack_deprecated_structure(settings, mocker, caplog):
+    fake_now = datetime(2020, 1, 1, second=0, tzinfo=timezone.utc)
+    mocker.patch('dj_cqrs.utils.utc_now', return_value=fake_now)
+    mocker.patch('dj_cqrs.dataclasses.utc_now', return_value=fake_now)
+
+    settings.CQRS['message_ttl'] = 10
+    expected_expires = datetime(2020, 1, 1, second=10, tzinfo=timezone.utc)
+
     caplog.set_level(logging.INFO)
     consumer_mock = mocker.patch('dj_cqrs.controller.consumer.consume')
 
@@ -289,6 +324,7 @@ def test_consume_message_ack_deprecated_structure(mocker, caplog):
         None,
         '{"signal_type":"signal","cqrs_id":"cqrs_id",'
         '"instance_data":{},"previous_data":null}',
+        mocker.MagicMock(),
     )
 
     assert consumer_mock.call_count == 1
@@ -298,6 +334,8 @@ def test_consume_message_ack_deprecated_structure(mocker, caplog):
     assert payload.cqrs_id == 'cqrs_id'
     assert payload.instance_data == {}
     assert payload.pk is None
+    assert payload.retries == 0
+    assert payload.expires == expected_expires
 
     assert 'CQRS deprecated package structure.' in caplog.text
     assert 'CQRS is received: pk = None (cqrs_id).' not in caplog.text
@@ -312,12 +350,14 @@ def test_consume_message_nack(mocker, caplog):
         mocker.MagicMock(),
         mocker.MagicMock(),
         None,
-        '{"signal_type":"signal","cqrs_id":"cqrs_id","instance_data":{},'
-        '"instance_pk":1,"previous_data":null}',
+        '{"signal_type":"signal","cqrs_id":"basic","instance_data":{},'
+        '"instance_pk":1,"previous_data":null,'
+        '"expires":"2100-01-01T00:00:00+00:00", "retries":0}',
+        mocker.MagicMock(),
     )
 
-    assert 'CQRS is received: pk = 1 (cqrs_id).' in caplog.text
-    assert 'CQRS is denied: pk = 1 (cqrs_id).' in caplog.text
+    assert 'CQRS is received: pk = 1 (basic).' in caplog.text
+    assert 'CQRS is failed: pk = 1 (basic), retries = 0.' in caplog.text
 
 
 def test_consume_message_nack_deprecated_structure(mocker, caplog):
@@ -329,15 +369,35 @@ def test_consume_message_nack_deprecated_structure(mocker, caplog):
         mocker.MagicMock(),
         None,
         '{"signal_type":"signal","cqrs_id":"cqrs_id","instance_data":{}}',
+        mocker.MagicMock(),
     )
 
     assert 'CQRS is received: pk = 1 (cqrs_id).' not in caplog.text
     assert 'CQRS is denied: pk = 1 (cqrs_id).' not in caplog.text
 
 
+def test_consume_message_expired(mocker, caplog):
+    caplog.set_level(logging.INFO)
+    channel = mocker.MagicMock()
+
+    PublicRabbitMQTransport.consume_message(
+        channel,
+        mocker.MagicMock(),
+        None,
+        '{"signal_type":"signal","cqrs_id":"cqrs_id","instance_data":{},'
+        '"instance_pk":1,"previous_data":null,'
+        '"expires":"2000-01-01T00:00:00+00:00", "retries":0}',
+        mocker.MagicMock(),
+    )
+
+    assert channel.basic_nack.call_count == 1
+    assert 'CQRS is received: pk = 1 (cqrs_id).' in caplog.text
+    assert 'CQRS is denied: pk = 1 (cqrs_id).' in caplog.text
+
+
 def test_consume_message_json_parsing_error(mocker, caplog):
     PublicRabbitMQTransport.consume_message(
-        mocker.MagicMock(), mocker.MagicMock(), None, '{bad_payload:',
+        mocker.MagicMock(), mocker.MagicMock(), None, '{bad_payload:', mocker.MagicMock(),
     )
 
     assert ": {bad_payload:." in caplog.text
@@ -345,7 +405,59 @@ def test_consume_message_json_parsing_error(mocker, caplog):
 
 def test_consume_message_package_structure_error(mocker, caplog):
     PublicRabbitMQTransport.consume_message(
-        mocker.MagicMock(), mocker.MagicMock(), None, '{"pk":"1"}',
+        mocker.MagicMock(), mocker.MagicMock(), None, '{"pk":"1"}', mocker.MagicMock(),
     )
 
     assert """CQRS couldn't be parsed: {"pk":"1"}""" in caplog.text
+
+
+def test_fail_message_with_retry(mocker):
+    payload = TransportPayload(SignalType.SAVE, 'basic', {'id': 1}, 1)
+    delay_queue = DelayQueue()
+
+    PublicRabbitMQTransport.fail_message(mocker.MagicMock(), 100, payload, None, delay_queue)
+
+    assert delay_queue.qsize() == 1
+
+    delay_message = delay_queue.get()
+    assert delay_message.delivery_tag == 100
+    assert delay_message.payload is payload
+
+
+def test_fail_message_without_retry(settings, mocker, caplog):
+    settings.CQRS['max_retries'] = 1
+
+    channel = mocker.MagicMock()
+    payload = TransportPayload(SignalType.SAVE, 'basic', {'id': 1}, 1, retries=2)
+    delay_queue = DelayQueue()
+
+    PublicRabbitMQTransport.fail_message(channel, 1, payload, None, delay_queue)
+
+    assert delay_queue.qsize() == 0
+    assert channel.basic_nack.call_count == 1
+
+    assert 'CQRS is failed: pk = 1 (basic), retries = 2.' in caplog.text
+    assert 'CQRS is denied: pk = 1 (basic).' in caplog.text
+
+
+def test_process_delay_messages(mocker, caplog):
+    channel = mocker.MagicMock()
+    produce = mocker.patch('dj_cqrs.transport.rabbit_mq.RabbitMQTransport.produce')
+
+    payload = TransportPayload(SignalType.SAVE, 'CQRS_ID', {'id': 1}, 1)
+    delay_queue = DelayQueue()
+    delay_queue.put(
+        DelayMessage(delivery_tag=1, payload=payload, delay=0)
+    )
+
+    PublicRabbitMQTransport.process_delay_messages(channel, delay_queue)
+
+    assert delay_queue.qsize() == 0
+    assert channel.basic_nack.call_count == 1
+    assert produce.call_count == 1
+
+    produce_payload = produce.call_args[0][0]
+    assert produce_payload is payload
+    assert produce_payload.retries == 1
+
+    assert 'CQRS is requeued: pk = 1 (CQRS_ID)' in caplog.text

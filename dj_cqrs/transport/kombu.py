@@ -116,7 +116,7 @@ class KombuTransport(LoggingMixin, BaseTransport):
                     raise ValueError
 
             if 'instance_pk' not in dct:
-                logger.warning('CQRS deprecated package structure.')
+                logger.warning("CQRS deprecated package structure.")
 
         except ValueError:
             logger.error("CQRS couldn't be parsed: {}.".format(body))
