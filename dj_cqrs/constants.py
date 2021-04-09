@@ -1,4 +1,4 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 ALL_BASIC_FIELDS = '__all__'
 
@@ -20,3 +20,7 @@ class SignalType:
 
 
 NO_QUEUE = 'None'
+
+DEFAULT_MAX_RETRIES = 10
+DEFAULT_MESSAGE_TTL = 86400  # 1 day
+DEFAULT_RETRY_DELAY = 60  # 1 minute

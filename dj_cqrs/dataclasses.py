@@ -1,6 +1,10 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
+from dateutil.parser import parse as dateutil_parse
+from django.utils import timezone
+
 from dj_cqrs.correlation import get_correlation_id
+from dj_cqrs.utils import get_expires_datetime
 
 
 class TransportPayload:
@@ -21,17 +25,23 @@ class TransportPayload:
     :type previous_data: dict, optional
     :param correlation_id: Correlation ID of process, where this payload is used.
     :type correlation_id: str, optional
+    :param retries: Current number of message retries.
+    :type retries: int, optional
+    :param expires: Message expiration datetime, infinite if None
+    :type expires: datetime, optional
     """
 
     def __init__(
-            self,
-            signal_type,
-            cqrs_id,
-            instance_data,
-            instance_pk,
-            queue=None,
-            previous_data=None,
-            correlation_id=None,
+        self,
+        signal_type,
+        cqrs_id,
+        instance_data,
+        instance_pk,
+        queue=None,
+        previous_data=None,
+        correlation_id=None,
+        expires=None,
+        retries=0,
     ):
         self.__signal_type = signal_type
         self.__cqrs_id = cqrs_id
@@ -44,6 +54,37 @@ class TransportPayload:
             self.__correlation_id = correlation_id
         else:
             self.__correlation_id = get_correlation_id(signal_type, cqrs_id, instance_pk, queue)
+
+        self.__expires = expires
+        self.__retries = retries
+
+    @classmethod
+    def from_message(cls, dct):
+        """Builds payload from message data.
+
+        :param dct: Deserialized message body data.
+        :type dct: dict
+        :return: TransportPayload instance.
+        :rtype: TransportPayload
+        """
+        if 'expires' in dct:
+            expires = dct['expires']
+            if dct['expires'] is not None:
+                expires = dateutil_parse(dct['expires'])
+        else:
+            # Backward compatibility for old messages otherwise they are infinite by default.
+            expires = get_expires_datetime()
+
+        return cls(
+            dct['signal_type'],
+            dct['cqrs_id'],
+            dct['instance_data'],
+            dct.get('instance_pk'),
+            previous_data=dct.get('previous_data'),
+            correlation_id=dct.get('correlation_id'),
+            expires=expires,
+            retries=dct.get('retries') or 0,
+        )
 
     @property
     def signal_type(self):
@@ -73,13 +114,29 @@ class TransportPayload:
     def correlation_id(self):
         return self.__correlation_id
 
+    @property
+    def expires(self):
+        return self.__expires
+
+    @property
+    def retries(self):
+        return self.__retries
+
+    @retries.setter
+    def retries(self, value):
+        assert value >= 0, "Payload retries field should be a positive integer."
+        self.__retries = value
+
     def to_dict(self):
-        """
-        Return the payload as a dictionary.
+        """Return the payload as a dictionary.
 
         :return: This payload.
         :rtype: dict
         """
+        expires = self.__expires
+        if expires:
+            expires = expires.replace(microsecond=0).isoformat()
+
         return {
             'signal_type': self.__signal_type,
             'cqrs_id': self.__cqrs_id,
@@ -87,4 +144,17 @@ class TransportPayload:
             'previous_data': self.__previous_data,
             'instance_pk': self.__instance_pk,
             'correlation_id': self.__correlation_id,
+            'retries': self.__retries,
+            'expires': expires,
         }
+
+    def is_expired(self):
+        """Checks if this payload is expired.
+
+        :return: True if payload is expired, False otherwise.
+        :rtype: bool
+        """
+        return (
+            self.__expires is not None
+            and self.__expires <= timezone.now()
+        )

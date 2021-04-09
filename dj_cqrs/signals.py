@@ -7,7 +7,7 @@ from django.utils.timezone import now
 from dj_cqrs.controller import producer
 from dj_cqrs.constants import SignalType
 from dj_cqrs.dataclasses import TransportPayload
-
+from dj_cqrs.utils import get_expires_datetime
 
 post_bulk_create = Signal(providing_args=['instances', 'using'])
 """
@@ -73,6 +73,7 @@ class MasterSignals:
                 instance.pk,
                 queue,
                 previous_data,
+                expires=get_expires_datetime(),
             )
             producer.produce(payload)
 
@@ -107,7 +108,13 @@ class MasterSignals:
 
         signal_type = SignalType.DELETE
 
-        payload = TransportPayload(signal_type, sender.CQRS_ID, instance_data, instance.pk)
+        payload = TransportPayload(
+            signal_type,
+            sender.CQRS_ID,
+            instance_data,
+            instance.pk,
+            expires=get_expires_datetime(),
+        )
         # Delete is always in transaction!
         transaction.on_commit(lambda: producer.produce(payload))
 

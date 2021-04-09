@@ -1,5 +1,7 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
+from datetime import datetime, timezone
+
 import pytest
 from django.db.models.signals import post_delete, post_save
 
@@ -24,6 +26,24 @@ def test_post_save_create(mocker):
         publisher_mock,
         SignalType.SAVE, models.SimplestModel.CQRS_ID, {'id': 1, 'name': None}, 1,
     )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_post_save_create_with_retry_fields(settings, mocker):
+    fake_now = datetime(2020, 1, 1, second=0, tzinfo=timezone.utc)
+    mocker.patch('django.utils.timezone.now', return_value=fake_now)
+
+    settings.CQRS['message_ttl'] = 10
+    expected_expires = datetime(2020, 1, 1, second=10, tzinfo=timezone.utc)
+
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+    models.SimplestModel.objects.create(id=1)
+
+    assert publisher_mock.call_count == 1
+
+    call_t_payload = publisher_mock.call_args[0][0]
+    assert call_t_payload.expires == expected_expires
+    assert call_t_payload.retries == 0
 
 
 @pytest.mark.django_db(transaction=True)
@@ -54,6 +74,26 @@ def test_post_save_delete(mocker):
 
     cqrs_updated = publisher_mock.call_args[0][0].to_dict()['instance_data']['cqrs_updated']
     assert isinstance(cqrs_updated, str)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_post_save_delete_with_retry_fields(settings, mocker):
+    m = models.SimplestModel.objects.create(id=1)
+
+    fake_now = datetime(2020, 1, 1, second=0, tzinfo=timezone.utc)
+    mocker.patch('django.utils.timezone.now', return_value=fake_now)
+
+    settings.CQRS['message_ttl'] = 10
+    expected_expires = datetime(2020, 1, 1, second=10, tzinfo=timezone.utc)
+
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+    m.delete()
+
+    assert publisher_mock.call_count == 1
+
+    call_t_payload = publisher_mock.call_args[0][0]
+    assert call_t_payload.expires == expected_expires
+    assert call_t_payload.retries == 0
 
 
 @pytest.mark.django_db(transaction=True)

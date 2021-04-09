@@ -1,5 +1,7 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
+import logging
+
 from django.conf import settings
 from django.db import router, transaction
 from django.db.models import DateField, DateTimeField, F, IntegerField, Manager, Model
@@ -8,12 +10,17 @@ from django.utils.module_loading import import_string
 
 from dj_cqrs.constants import (
     ALL_BASIC_FIELDS,
+    DEFAULT_MAX_RETRIES,
+    DEFAULT_RETRY_DELAY,
     FIELDS_TRACKER_FIELD_NAME,
     TRACKED_FIELDS_ATTR_NAME,
 )
 from dj_cqrs.managers import MasterManager, ReplicaManager
 from dj_cqrs.metas import MasterMeta, ReplicaMeta
 from dj_cqrs.signals import MasterSignals, post_bulk_create, post_update
+
+
+logger = logging.getLogger('django-cqrs')
 
 
 class RawMasterMixin(Model):
@@ -404,3 +411,52 @@ class ReplicaMixin(Model, metaclass=ReplicaMeta):
             raise NotImplementedError
 
         return cls.cqrs.delete_instance(master_data)
+
+    @staticmethod
+    def should_retry_cqrs(current_retry, exception=None):
+        """Checks if we should retry the message after current attempt.
+
+        :param current_retry: Current number of message retries.
+        :type current_retry: int
+        :param exception: Exception instance raised during message consume.
+        :type exception: Exception, optional
+        :return: True if message should be retried, False otherwise.
+        :rtype: bool
+        """
+        max_retries = settings.CQRS.get('max_retries', DEFAULT_MAX_RETRIES)
+        if max_retries is None:
+            # Infinite
+            return True
+
+        min_value = 0
+        if not isinstance(max_retries, int) or max_retries < min_value:
+            logger.warning(
+                "Settings max_retries={} is invalid, using default {}".format(
+                    max_retries, DEFAULT_MAX_RETRIES,
+                )
+            )
+            max_retries = DEFAULT_MAX_RETRIES
+
+        return current_retry < max_retries
+
+    @staticmethod
+    def get_cqrs_retry_delay(current_retry):
+        """Returns number of seconds to wait before requeuing the message.
+
+        :param current_retry: Current number of message retries.
+        :type current_retry: int
+        :return: Delay in seconds.
+        :rtype: int
+        """
+        retry_delay = settings.CQRS.get('retry_delay', DEFAULT_RETRY_DELAY)
+
+        min_value = 1
+        if not isinstance(retry_delay, int) or retry_delay < min_value:
+            logger.warning(
+                "Settings retry_delay={} is invalid, using default {}".format(
+                    retry_delay, DEFAULT_RETRY_DELAY,
+                )
+            )
+            retry_delay = DEFAULT_RETRY_DELAY
+
+        return retry_delay

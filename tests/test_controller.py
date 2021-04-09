@@ -20,6 +20,8 @@ def test_producer(mocker):
         'instance_pk': 'c',
         'previous_data': {'e': 'f'},
         'correlation_id': None,
+        'expires': None,
+        'retries': 0,
     }
 
 
