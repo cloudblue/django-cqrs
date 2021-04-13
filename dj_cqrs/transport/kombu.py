@@ -111,17 +111,18 @@ class KombuTransport(LoggingMixin, BaseTransport):
     def _consume_message(cls, body, message):
         try:
             dct = ujson.loads(body)
-            for key in ('signal_type', 'cqrs_id', 'instance_data'):
-                if key not in dct:
-                    raise ValueError
-
-            if 'instance_pk' not in dct:
-                logger.warning("CQRS deprecated package structure.")
-
         except ValueError:
             logger.error("CQRS couldn't be parsed: {}.".format(body))
             message.reject()
             return
+
+        required_keys = {'instance_pk', 'signal_type', 'cqrs_id', 'instance_data'}
+        for key in required_keys:
+            if key not in dct:
+                msg = "CQRS couldn't proceed, %s isn't found in body: %s."
+                logger.error(msg, key, body)
+                message.reject()
+                return
 
         payload = TransportPayload(
             dct['signal_type'],

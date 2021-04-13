@@ -12,7 +12,7 @@ from django.conf import settings
 from django.utils import timezone
 from pika import exceptions, BasicProperties, BlockingConnection, ConnectionParameters, credentials
 
-from dj_cqrs.constants import SignalType
+from dj_cqrs.constants import SignalType, DEFAULT_DEAD_MESSAGE_TTL
 from dj_cqrs.controller import consumer
 from dj_cqrs.dataclasses import TransportPayload
 from dj_cqrs.delay import DelayMessage, DelayQueue
@@ -64,7 +64,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
                     exceptions.ChannelError,
                     exceptions.ReentrancyError,
                     gaierror):
-                logger.error('AMQP connection error. Reconnecting...')
+                logger.error('AMQP connection error. Reconnecting...', exc_info=True)
                 time.sleep(cls.CONSUMER_RETRY_TIMEOUT)
             finally:
                 if connection and not connection.is_closed:
@@ -105,24 +105,26 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
     def _consume_message(cls, ch, method, properties, body, delay_queue):
         try:
             dct = ujson.loads(body)
-            for key in ('signal_type', 'cqrs_id', 'instance_data'):
-                if key not in dct:
-                    raise ValueError
-
-            if 'instance_pk' not in dct:
-                logger.warning("CQRS deprecated package structure.")
-
         except ValueError:
             logger.error("CQRS couldn't be parsed: {}.".format(body))
             ch.basic_reject(delivery_tag=method.delivery_tag, requeue=False)
             return
+
+        required_keys = {'instance_pk', 'signal_type', 'cqrs_id', 'instance_data'}
+        for key in required_keys:
+            if key not in dct:
+                msg = "CQRS couldn't proceed, %s isn't found in body: %s."
+                logger.error(msg, key, body)
+                ch.basic_reject(delivery_tag=method.delivery_tag, requeue=False)
+                return
 
         payload = TransportPayload.from_message(dct)
         cls.log_consumed(payload)
 
         delivery_tag = method.delivery_tag
         if payload.is_expired():
-            cls._nack(ch, delivery_tag, payload)
+            cls._add_to_dead_letter_queue(ch, payload)
+            cls._nack(ch, delivery_tag)
             return
 
         instance, exception = None, None
@@ -156,7 +158,20 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
             delay_queue.put(delayed_message)
             cls.log_delayed(payload, delay, delayed_message.eta)
         else:
-            cls._nack(channel, delivery_tag, payload)
+            cls._add_to_dead_letter_queue(channel, payload)
+            cls._nack(channel, delivery_tag)
+
+    @classmethod
+    def _add_to_dead_letter_queue(cls, channel, payload):
+        dead_message_ttl = settings.CQRS.get('dead_message_ttl', DEFAULT_DEAD_MESSAGE_TTL)
+        expiration = None
+        if dead_message_ttl is not None:
+            expiration = str(dead_message_ttl * 1000)  # milliseconds
+
+        payload.is_dead_letter = True
+        exchange = cls._get_common_settings()[-1]
+        cls._produce_message(channel, exchange, payload, expiration)
+        cls.log_dead_letter(payload)
 
     @classmethod
     def _process_delay_messages(cls, channel, delay_queue):
@@ -170,7 +185,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
             cls.log_requeued(requeue_payload)
 
     @classmethod
-    def _produce_message(cls, channel, exchange, payload):
+    def _produce_message(cls, channel, exchange, payload, expiration=None):
         routing_key = cls._get_produced_message_routing_key(payload)
 
         channel.basic_publish(
@@ -181,27 +196,34 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
             properties=BasicProperties(
                 content_type='text/plain',
                 delivery_mode=2,  # make message persistent
+                expiration=expiration,
             )
         )
 
-    @staticmethod
-    def _get_produced_message_routing_key(payload):
+    @classmethod
+    def _get_produced_message_routing_key(cls, payload):
         routing_key = payload.cqrs_id
 
         if payload.signal_type == SignalType.SYNC and payload.queue:
             routing_key = 'cqrs.{}.{}'.format(payload.queue, routing_key)
+        elif getattr(payload, 'is_dead_letter', False):
+            dead_letter_queue_name = cls._get_consumer_settings()[-1]
+            routing_key = 'cqrs.{}.{}'.format(dead_letter_queue_name, routing_key)
 
         return routing_key
 
     @classmethod
-    def _get_consumer_rmq_objects(cls, host, port, creds, exchange, queue_name):
+    def _get_consumer_rmq_objects(
+        cls, host, port, creds, exchange, queue_name, dead_letter_queue_name,
+    ):
         connection = BlockingConnection(
             ConnectionParameters(host=host, port=port, credentials=creds),
         )
         channel = connection.channel()
-
         cls._declare_exchange(channel, exchange)
+
         channel.queue_declare(queue_name, durable=True, exclusive=False)
+        channel.queue_declare(dead_letter_queue_name, durable=True, exclusive=False)
 
         for cqrs_id, replica_model in ReplicaRegistry.models.items():
             channel.queue_bind(exchange=exchange, queue=queue_name, routing_key=cqrs_id)
@@ -211,6 +233,13 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
                 exchange=exchange,
                 queue=queue_name,
                 routing_key='cqrs.{}.{}'.format(queue_name, cqrs_id),
+            )
+
+            # Dead letter
+            channel.queue_bind(
+                exchange=exchange,
+                queue=dead_letter_queue_name,
+                routing_key='cqrs.{}.{}'.format(dead_letter_queue_name, cqrs_id),
             )
 
         delay_queue_check_timeout = 1  # seconds
@@ -298,13 +327,18 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
     @staticmethod
     def _get_consumer_settings():
         queue_name = settings.CQRS['queue']
+        dead_letter_queue_name = settings.CQRS.get('dead_letter_queue')
+        if dead_letter_queue_name is None:
+            dead_letter_queue_name = 'dead_letter_{}'.format(queue_name)
+
         if 'consumer_prefetch_count' in settings.CQRS:
             logger.warning(
-                "The 'consumer_prefetch_count' setting is ignored for RabbitMQTransport."
+                "The 'consumer_prefetch_count' setting is ignored for RabbitMQTransport.",
             )
 
         return (
             queue_name,
+            dead_letter_queue_name,
         )
 
     @classmethod

@@ -27,6 +27,10 @@ class PublicRabbitMQTransport(RabbitMQTransport):
         return cls._get_consumer_settings()
 
     @classmethod
+    def get_produced_message_routing_key(cls, *args):
+        return cls._get_produced_message_routing_key(*args)
+
+    @classmethod
     def consume_message(cls, *args):
         return cls._consume_message(*args)
 
@@ -104,6 +108,15 @@ def test_invalid_url_settings(settings):
     assert ei.match('Scheme must be "amqp" for RabbitMQTransport.')
 
 
+def test_consumer_default_settings(settings):
+    settings.CQRS['queue'] = 'replica'
+    settings.CQRS.pop('dead_letter_queue', None)
+
+    s = PublicRabbitMQTransport.get_consumer_settings()
+
+    assert s[1] == 'dead_letter_replica'
+
+
 def test_consumer_non_default_settings(settings, caplog):
     settings.CQRS = {
         'transport': 'dj_cqrs.transport.rabbit_mq.RabbitMQTransport',
@@ -167,7 +180,7 @@ def test_produce_ok(rabbit_transport, mocker, caplog):
             SignalType.SAVE, 'CQRS_ID', {'id': 1}, 1,
         ),
     )
-    assert 'CQRS is published: pk = 1 (CQRS_ID).' in caplog.text
+    assert 'CQRS is published: pk = 1 (CQRS_ID)' in caplog.text
 
 
 def test_produce_message_ok(mocker):
@@ -303,42 +316,8 @@ def test_consume_message_ack(mocker, caplog):
     assert payload.expires == datetime(2100, 1, 1, tzinfo=timezone.utc)
     assert payload.retries == 1
 
-    assert 'CQRS is received: pk = 1 (cqrs_id).' in caplog.text
-    assert 'CQRS is applied: pk = 1 (cqrs_id).' in caplog.text
-
-
-def test_consume_message_ack_deprecated_structure(settings, mocker, caplog):
-    fake_now = datetime(2020, 1, 1, second=0, tzinfo=timezone.utc)
-    mocker.patch('django.utils.timezone.now', return_value=fake_now)
-
-    settings.CQRS['message_ttl'] = 10
-    expected_expires = datetime(2020, 1, 1, second=10, tzinfo=timezone.utc)
-
-    caplog.set_level(logging.INFO)
-    consumer_mock = mocker.patch('dj_cqrs.controller.consumer.consume')
-
-    PublicRabbitMQTransport.consume_message(
-        mocker.MagicMock(),
-        mocker.MagicMock(),
-        None,
-        '{"signal_type":"signal","cqrs_id":"cqrs_id",'
-        '"instance_data":{},"previous_data":null}',
-        mocker.MagicMock(),
-    )
-
-    assert consumer_mock.call_count == 1
-
-    payload = consumer_mock.call_args[0][0]
-    assert payload.signal_type == 'signal'
-    assert payload.cqrs_id == 'cqrs_id'
-    assert payload.instance_data == {}
-    assert payload.pk is None
-    assert payload.retries == 0
-    assert payload.expires == expected_expires
-
-    assert 'CQRS deprecated package structure.' in caplog.text
-    assert 'CQRS is received: pk = None (cqrs_id).' not in caplog.text
-    assert 'CQRS is applied: pk = None (cqrs_id).' not in caplog.text
+    assert 'CQRS is received: pk = 1 (cqrs_id), correlation_id = abc.' in caplog.text
+    assert 'CQRS is applied: pk = 1 (cqrs_id), correlation_id = abc.' in caplog.text
 
 
 def test_consume_message_nack(mocker, caplog):
@@ -355,13 +334,13 @@ def test_consume_message_nack(mocker, caplog):
         mocker.MagicMock(),
     )
 
-    assert 'CQRS is received: pk = 1 (basic).' in caplog.text
-    assert 'CQRS is failed: pk = 1 (basic), retries = 0.' in caplog.text
+    assert 'CQRS is received: pk = 1 (basic), correlation_id = None.' in caplog.text
+    assert 'CQRS is failed: pk = 1 (basic), correlation_id = None, retries = 0.' in caplog.text
 
 
 def test_consume_message_nack_deprecated_structure(mocker, caplog):
     caplog.set_level(logging.INFO)
-    mocker.patch('dj_cqrs.controller.consumer.consume', return_value=None)
+    consumer_mock = mocker.patch('dj_cqrs.controller.consumer.consume', return_value=None)
 
     PublicRabbitMQTransport.consume_message(
         mocker.MagicMock(),
@@ -371,8 +350,8 @@ def test_consume_message_nack_deprecated_structure(mocker, caplog):
         mocker.MagicMock(),
     )
 
-    assert 'CQRS is received: pk = 1 (cqrs_id).' not in caplog.text
-    assert 'CQRS is denied: pk = 1 (cqrs_id).' not in caplog.text
+    assert consumer_mock.call_count == 0
+    assert "CQRS couldn't proceed, instance_pk isn't found in body" in caplog.text
 
 
 def test_consume_message_expired(mocker, caplog):
@@ -390,8 +369,8 @@ def test_consume_message_expired(mocker, caplog):
     )
 
     assert channel.basic_nack.call_count == 1
-    assert 'CQRS is received: pk = 1 (cqrs_id).' in caplog.text
-    assert 'CQRS is denied: pk = 1 (cqrs_id).' in caplog.text
+    assert 'CQRS is received: pk = 1 (cqrs_id)' in caplog.text
+    assert 'CQRS is added to dead letter queue: pk = 1 (cqrs_id)' in caplog.text
 
 
 def test_consume_message_json_parsing_error(mocker, caplog):
@@ -404,10 +383,10 @@ def test_consume_message_json_parsing_error(mocker, caplog):
 
 def test_consume_message_package_structure_error(mocker, caplog):
     PublicRabbitMQTransport.consume_message(
-        mocker.MagicMock(), mocker.MagicMock(), None, '{"pk":"1"}', mocker.MagicMock(),
+        mocker.MagicMock(), mocker.MagicMock(), None, 'inv{"pk":"1"}', mocker.MagicMock(),
     )
 
-    assert """CQRS couldn't be parsed: {"pk":"1"}""" in caplog.text
+    assert """CQRS couldn't be parsed: inv{"pk":"1"}""" in caplog.text
 
 
 def test_fail_message_with_retry(mocker):
@@ -423,11 +402,16 @@ def test_fail_message_with_retry(mocker):
     assert delay_message.payload is payload
 
 
-def test_fail_message_without_retry(settings, mocker, caplog):
+def test_message_without_retry_dead_letter(settings, mocker, caplog):
     settings.CQRS['max_retries'] = 1
+    produce_message = mocker.patch(
+        'dj_cqrs.transport.rabbit_mq.RabbitMQTransport._produce_message',
+    )
 
     channel = mocker.MagicMock()
-    payload = TransportPayload(SignalType.SAVE, 'basic', {'id': 1}, 1, retries=2)
+    payload = TransportPayload(
+        SignalType.SAVE, 'basic', {'id': 1}, 1, correlation_id='abc', retries=2,
+    )
     delay_queue = DelayQueue()
 
     PublicRabbitMQTransport.fail_message(channel, 1, payload, None, delay_queue)
@@ -435,8 +419,26 @@ def test_fail_message_without_retry(settings, mocker, caplog):
     assert delay_queue.qsize() == 0
     assert channel.basic_nack.call_count == 1
 
-    assert 'CQRS is failed: pk = 1 (basic), retries = 2.' in caplog.text
-    assert 'CQRS is denied: pk = 1 (basic).' in caplog.text
+    assert produce_message.call_count == 1
+
+    produce_payload = produce_message.call_args[0][2]
+    assert produce_payload is payload
+    assert getattr(produce_message, 'is_dead_letter', False)
+
+    assert 'CQRS is failed: pk = 1 (basic), correlation_id = abc, retries = 2.' in caplog.text
+    assert (
+        'CQRS is added to dead letter queue: pk = 1 (basic), correlation_id = abc' in caplog.text
+    )
+
+
+def test_get_produced_message_routing_key_dead_letter(settings):
+    settings.CQRS['dead_letter_queue'] = 'dead_letter_replica'
+    payload = TransportPayload(SignalType.SYNC, 'CQRS_ID', {}, None)
+    payload.is_dead_letter = True
+
+    routing_key = PublicRabbitMQTransport.get_produced_message_routing_key(payload)
+
+    assert routing_key == 'cqrs.dead_letter_replica.CQRS_ID'
 
 
 def test_process_delay_messages(mocker, caplog):

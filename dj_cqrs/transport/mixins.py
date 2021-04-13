@@ -7,42 +7,51 @@ logger = logging.getLogger('django-cqrs')
 
 
 class LoggingMixin:
+    _BASE_PAYLOAD_LOG_TEMPLATE = "CQRS is %s: pk = %s (%s), correlation_id = %s."
 
     @staticmethod
     def log_consumed(payload):
         """
         :param dj_cqrs.dataclasses.TransportPayload payload: Transport payload from master model.
         """
-        if payload.pk:
-            logger.info('CQRS is received: pk = {} ({}).'.format(payload.pk, payload.cqrs_id))
+        msg = "CQRS is received: pk = %s (%s), correlation_id = %s."
+        logger.info(msg, payload.pk, payload.cqrs_id, payload.correlation_id)
 
     @staticmethod
     def log_consumed_accepted(payload):
         """
         :param dj_cqrs.dataclasses.TransportPayload payload: Transport payload from master model.
         """
-        if payload.pk:
-            logger.info('CQRS is applied: pk = {} ({}).'.format(payload.pk, payload.cqrs_id))
+        msg = "CQRS is applied: pk = %s (%s), correlation_id = %s."
+        logger.info(msg, payload.pk, payload.cqrs_id, payload.correlation_id)
 
     @staticmethod
     def log_consumed_denied(payload):
         """
         :param dj_cqrs.dataclasses.TransportPayload payload: Transport payload from master model.
         """
-        if payload.pk:
-            logger.warning('CQRS is denied: pk = {} ({}).'.format(payload.pk, payload.cqrs_id))
+        msg = "CQRS is denied: pk = %s (%s), correlation_id = %s."
+        logger.warning(msg, payload.pk, payload.cqrs_id, payload.correlation_id)
 
     @staticmethod
     def log_consumed_failed(payload):
         """
         :param dj_cqrs.dataclasses.TransportPayload payload: Transport payload from master model.
         """
-        if payload.pk:
-            logger.warning(
-                'CQRS is failed: pk = {} ({}), retries = {}.'.format(
-                    payload.pk, payload.cqrs_id, payload.retries,
-                )
-            )
+        msg = (
+            "CQRS is failed: pk = %s (%s), correlation_id = %s, retries = %s.",
+        )
+        logger.warning(
+            msg, payload.pk, payload.cqrs_id, payload.correlation_id, payload.retries,
+        )
+
+    @staticmethod
+    def log_dead_letter(payload):
+        """
+        :param dj_cqrs.dataclasses.TransportPayload payload: Transport payload from master model.
+        """
+        msg = "CQRS is added to dead letter queue: pk = %s (%s), correlation_id = %s."
+        logger.warning(msg, payload.pk, payload.cqrs_id, payload.correlation_id)
 
     @staticmethod
     def log_delayed(payload, delay, eta):
@@ -51,24 +60,27 @@ class LoggingMixin:
         :param delay: Seconds to wait before requeuing message.
         :param eta: Requeuing datetime.
         """
-        if payload.pk:
-            logger.warning(
-                'CQRS is delayed: pk = {} ({}), delay = {} sec, eta = {}.'.format(
-                    payload.pk, payload.cqrs_id, delay, eta,
-                )
-            )
+        msg = (
+            "CQRS is delayed: pk = %s (%s), correlation_id = %s, delay = %s sec, eta = %s.",
+        )
+        logger.warning(
+            msg, payload.pk, payload.cqrs_id, payload.correlation_id,  delay, eta,
+        )
 
     @staticmethod
     def log_requeued(payload):
         """
         :param dj_cqrs.dataclasses.TransportPayload payload: Transport payload from master model.
         """
-        if payload.pk:
-            logger.warning('CQRS is requeued: pk = {} ({}).'.format(payload.pk, payload.cqrs_id))
+        msg = (
+            "CQRS is requeued: pk = %s (%s), correlation_id = %s.",
+        )
+        logger.warning(msg, payload.pk, payload.cqrs_id, payload.correlation_id)
 
     @staticmethod
     def log_produced(payload):
         """
         :param dj_cqrs.dataclasses.TransportPayload payload: Transport payload from master model.
         """
-        logger.info('CQRS is published: pk = {} ({}).'.format(payload.pk, payload.cqrs_id))
+        msg = "CQRS is published: pk = %s (%s), correlation_id = %s."
+        logger.info(msg, payload.pk, payload.cqrs_id, payload.correlation_id)

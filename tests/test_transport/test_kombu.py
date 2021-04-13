@@ -123,7 +123,7 @@ def test_produce_ok(kombu_transport, mocker, caplog):
             SignalType.SAVE, 'CQRS_ID', {'id': 1}, 1,
         ),
     )
-    assert 'CQRS is published: pk = 1 (CQRS_ID).' in caplog.text
+    assert 'CQRS is published: pk = 1 (CQRS_ID)' in caplog.text
 
 
 def test_produce_message_ok(mocker):
@@ -233,8 +233,8 @@ def test_consume_message_ack(mocker, caplog):
     assert payload.expires is None
     assert payload.retries == 0
 
-    assert 'CQRS is received: pk = 1 (cqrs_id).' in caplog.text
-    assert 'CQRS is applied: pk = 1 (cqrs_id).' in caplog.text
+    assert 'CQRS is received: pk = 1 (cqrs_id), correlation_id = zyx.' in caplog.text
+    assert 'CQRS is applied: pk = 1 (cqrs_id), correlation_id = zyx.' in caplog.text
 
 
 def test_consume_message_ack_deprecated_structure(mocker, caplog):
@@ -247,17 +247,8 @@ def test_consume_message_ack_deprecated_structure(mocker, caplog):
         mocker.MagicMock(),
     )
 
-    assert consumer_mock.call_count == 1
-
-    payload = consumer_mock.call_args[0][0]
-    assert payload.signal_type == 'signal'
-    assert payload.cqrs_id == 'cqrs_id'
-    assert payload.instance_data == {}
-    assert payload.pk is None
-
-    assert 'CQRS deprecated package structure.' in caplog.text
-    assert 'CQRS is received: pk = None (cqrs_id).' not in caplog.text
-    assert 'CQRS is applied: pk = None (cqrs_id).' not in caplog.text
+    assert consumer_mock.call_count == 0
+    assert "CQRS couldn't proceed, instance_pk isn't found in body" in caplog.text
 
 
 def test_consume_message_nack(mocker, caplog):
@@ -272,8 +263,8 @@ def test_consume_message_nack(mocker, caplog):
 
     assert message_mock.reject.call_count == 1
 
-    assert 'CQRS is received: pk = 1 (cqrs_id).' in caplog.text
-    assert 'CQRS is denied: pk = 1 (cqrs_id).' in caplog.text
+    assert 'CQRS is received: pk = 1 (cqrs_id)' in caplog.text
+    assert 'CQRS is denied: pk = 1 (cqrs_id)' in caplog.text
 
 
 def test_consume_message_nack_deprecated_structure(mocker, caplog):
@@ -285,8 +276,8 @@ def test_consume_message_nack_deprecated_structure(mocker, caplog):
         mocker.MagicMock(),
     )
 
-    assert 'CQRS is received: pk = 1 (cqrs_id).' not in caplog.text
-    assert 'CQRS is denied: pk = 1 (cqrs_id).' not in caplog.text
+    assert 'CQRS is received: pk = 1 (cqrs_id)' not in caplog.text
+    assert 'CQRS is denied: pk = 1 (cqrs_id)' not in caplog.text
 
 
 def test_consume_message_json_parsing_error(mocker, caplog):
@@ -300,11 +291,11 @@ def test_consume_message_json_parsing_error(mocker, caplog):
 
 def test_consume_message_package_structure_error(mocker, caplog):
     PublicKombuTransport.consume_message(
-        '{"pk":"1"}',
+        'inv{"pk":"1"}',
         mocker.MagicMock(),
     )
 
-    assert """CQRS couldn't be parsed: {"pk":"1"}""" in caplog.text
+    assert """CQRS couldn't be parsed: inv{"pk":"1"}""" in caplog.text
 
 
 def test_consumer_queues(mocker):

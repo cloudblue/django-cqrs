@@ -1,4 +1,4 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 import os
 
@@ -60,4 +60,7 @@ CQRS = {
     'url': os.getenv('CQRS_BROKER_URL'),
     'consumer_prefetch_count': 2,
     'queue': 'replica',
+    'max_retries': 2,
+    'retry_delay': 1,
+    'dead_message_ttl': 5,
 }

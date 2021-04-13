@@ -124,7 +124,7 @@ class TransportPayload:
 
     @retries.setter
     def retries(self, value):
-        assert value >= 0, "Payload retries field should be a positive integer."
+        assert value >= 0, "Payload retries field should be 0 or positive integer."
         self.__retries = value
 
     def to_dict(self):

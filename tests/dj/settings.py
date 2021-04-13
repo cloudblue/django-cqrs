@@ -59,4 +59,6 @@ CQRS = {
     'retry_delay': 1,
     'max_retries': 5,
     'message_ttl': 3600,
+    'dead_queue': 'dead_letter_replica',
+    'dead_message_ttl': 3600,
 }
