@@ -1,6 +1,9 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 from datetime import datetime, timezone, timedelta
+from queue import Full
+
+import pytest
 
 from dj_cqrs.delay import DelayMessage, DelayQueue
 
@@ -44,6 +47,22 @@ def test_delay_queue_put_same_eta():
     assert delay_queue.get()
 
 
+def test_delay_queue_put_full():
+    eta = datetime(2020, 1, 1, second=0, tzinfo=timezone.utc)
+    delay_queue = DelayQueue(max_size=1)
+
+    delay_queue.put(
+        DelayMessage(1, None, eta),
+    )
+    with pytest.raises(Full):
+        delay_queue.put(
+            DelayMessage(2, None, eta),
+        )
+
+    assert delay_queue.qsize() == 1
+    assert delay_queue.get().delivery_tag == 1
+
+
 def test_delay_queue_get_ready(mocker):
     fake_put_now = datetime(2020, 1, 1, second=0, tzinfo=timezone.utc)
     mocker.patch('django.utils.timezone.now', return_value=fake_put_now)
@@ -72,3 +91,10 @@ def test_delay_queue_get_ready(mocker):
     assert delay_queue.qsize() == 1
     result_message = delay_queue.get()
     assert result_message is expected_not_ready
+
+
+def test_delay_queue_invalid_max_size():
+    with pytest.raises(AssertionError) as e:
+        DelayQueue(max_size=0)
+
+    assert e.value.args[0] == "Delay queue max_size should be positive integer."

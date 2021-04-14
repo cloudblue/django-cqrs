@@ -60,7 +60,11 @@ CQRS = {
     'url': os.getenv('CQRS_BROKER_URL'),
     'consumer_prefetch_count': 2,
     'queue': 'replica',
-    'max_retries': 2,
-    'retry_delay': 1,
-    'dead_message_ttl': 5,
+    'replica': {
+        'CQRS_MAX_RETRIES': 2,
+        'CQRS_RETRY_DELAY': 1,
+        'delay_queue_max_size': 10,
+        'dead_letter_queue': 'dead_letter_replica',
+        'dead_message_ttl': 5,
+    }
 }

@@ -33,7 +33,7 @@ def test_post_save_create_with_retry_fields(settings, mocker):
     fake_now = datetime(2020, 1, 1, second=0, tzinfo=timezone.utc)
     mocker.patch('django.utils.timezone.now', return_value=fake_now)
 
-    settings.CQRS['message_ttl'] = 10
+    settings.CQRS['master']['CQRS_MESSAGE_TTL'] = 10
     expected_expires = datetime(2020, 1, 1, second=10, tzinfo=timezone.utc)
 
     publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
@@ -83,7 +83,7 @@ def test_post_save_delete_with_retry_fields(settings, mocker):
     fake_now = datetime(2020, 1, 1, second=0, tzinfo=timezone.utc)
     mocker.patch('django.utils.timezone.now', return_value=fake_now)
 
-    settings.CQRS['message_ttl'] = 10
+    settings.CQRS['master']['CQRS_MESSAGE_TTL'] = 10
     expected_expires = datetime(2020, 1, 1, second=10, tzinfo=timezone.utc)
 
     publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')

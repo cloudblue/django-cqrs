@@ -8,7 +8,7 @@ from dj_cqrs.utils import get_expires_datetime
 
 
 def test_get_expires_datetime(mocker, settings):
-    settings.CQRS['message_ttl'] = 3600
+    settings.CQRS['master']['CQRS_MESSAGE_TTL'] = 3600
     fake_now = datetime(2020, 1, 1, second=0, tzinfo=timezone.utc)
     mocker.patch('django.utils.timezone.now', return_value=fake_now)
 
@@ -19,7 +19,7 @@ def test_get_expires_datetime(mocker, settings):
 
 
 def test_get_expires_datetime_no_setting_field(mocker, settings):
-    settings.CQRS.pop('message_ttl', None)
+    settings.CQRS['master'].pop('CQRS_MESSAGE_TTL', None)
     fake_now = datetime(2020, 1, 1, second=0, tzinfo=timezone.utc)
     mocker.patch('django.utils.timezone.now', return_value=fake_now)
 
@@ -29,9 +29,9 @@ def test_get_expires_datetime_no_setting_field(mocker, settings):
     assert result == expected_result
 
 
-@pytest.mark.parametrize('message_ttl', [-1, 0, 'test'])
-def test_get_expires_datetime_invalid_filed(message_ttl, mocker, settings):
-    settings.CQRS['message_ttl'] = message_ttl
+@pytest.mark.parametrize('cqrs_message_ttl', [-1, 0, 'test'])
+def test_get_expires_datetime_invalid_filed(cqrs_message_ttl, mocker, settings):
+    settings.CQRS['master']['CQRS_MESSAGE_TTL'] = cqrs_message_ttl
     fake_now = datetime(2020, 1, 1, second=0, tzinfo=timezone.utc)
     mocker.patch('django.utils.timezone.now', return_value=fake_now)
 
@@ -42,7 +42,7 @@ def test_get_expires_datetime_invalid_filed(message_ttl, mocker, settings):
 
 
 def test_get_expires_datetime_infinite(mocker, settings):
-    settings.CQRS['message_ttl'] = None
+    settings.CQRS['master']['CQRS_MESSAGE_TTL'] = None
     fake_now = datetime(2020, 1, 1, second=0, tzinfo=timezone.utc)
     mocker.patch('django.utils.timezone.now', return_value=fake_now)
 

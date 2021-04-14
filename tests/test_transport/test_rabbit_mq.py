@@ -1,7 +1,7 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 import ujson
 from importlib import import_module, reload
@@ -33,6 +33,10 @@ class PublicRabbitMQTransport(RabbitMQTransport):
     @classmethod
     def consume_message(cls, *args):
         return cls._consume_message(*args)
+
+    @classmethod
+    def delay_message(cls, *args):
+        return cls._delay_message(*args)
 
     @classmethod
     def fail_message(cls, *args):
@@ -110,7 +114,7 @@ def test_invalid_url_settings(settings):
 
 def test_consumer_default_settings(settings):
     settings.CQRS['queue'] = 'replica'
-    settings.CQRS.pop('dead_letter_queue', None)
+    settings.CQRS['replica'].pop('dead_letter_queue', None)
 
     s = PublicRabbitMQTransport.get_consumer_settings()
 
@@ -403,7 +407,7 @@ def test_fail_message_with_retry(mocker):
 
 
 def test_message_without_retry_dead_letter(settings, mocker, caplog):
-    settings.CQRS['max_retries'] = 1
+    settings.CQRS['replica']['CQRS_MAX_RETRIES'] = 1
     produce_message = mocker.patch(
         'dj_cqrs.transport.rabbit_mq.RabbitMQTransport._produce_message',
     )
@@ -431,8 +435,27 @@ def test_message_without_retry_dead_letter(settings, mocker, caplog):
     )
 
 
+def test_fail_message_invalid_model(mocker, caplog):
+    nack = mocker.patch(
+        'dj_cqrs.transport.rabbit_mq.RabbitMQTransport._nack',
+    )
+    payload = TransportPayload(SignalType.SAVE, 'not_existing', {'id': 1}, 1)
+    delay_queue = DelayQueue()
+
+    delivery_tag = 101
+    PublicRabbitMQTransport.fail_message(
+        mocker.MagicMock(), delivery_tag, payload, None, delay_queue,
+    )
+
+    assert delay_queue.qsize() == 0
+    assert nack.call_count == 1
+    assert nack.call_args[0][1] == delivery_tag
+
+    assert 'Model for cqrs_id not_existing is not found.' in caplog.text
+
+
 def test_get_produced_message_routing_key_dead_letter(settings):
-    settings.CQRS['dead_letter_queue'] = 'dead_letter_replica'
+    settings.CQRS['replica']['dead_letter_queue'] = 'dead_letter_replica'
     payload = TransportPayload(SignalType.SYNC, 'CQRS_ID', {}, None)
     payload.is_dead_letter = True
 
@@ -462,3 +485,39 @@ def test_process_delay_messages(mocker, caplog):
     assert produce_payload.retries == 1
 
     assert 'CQRS is requeued: pk = 1 (CQRS_ID)' in caplog.text
+
+
+def test_delay_message_with_requeue(mocker, caplog):
+    channel = mocker.MagicMock()
+    requeue_message = mocker.patch(
+        'dj_cqrs.transport.rabbit_mq.RabbitMQTransport._requeue_message',
+    )
+
+    delay_messages = []
+    for delay in (2, 1, 3):
+        payload = TransportPayload(SignalType.SAVE, 'CQRS_ID', {'id': delay}, delay)
+        eta = datetime.now(tz=timezone.utc) + timedelta(hours=delay)
+        delay_message = DelayMessage(delivery_tag=delay, payload=payload, eta=eta)
+        delay_messages.append(delay_message)
+
+    delay_queue = DelayQueue(max_size=3)
+    for delay_message in delay_messages:
+        delay_queue.put(delay_message)
+
+    exceeding_delay = 0
+    exceeding_payload = TransportPayload(SignalType.SAVE, 'CQRS_ID', {'id': 4}, 4)
+    PublicRabbitMQTransport.delay_message(
+        channel, 4, exceeding_payload, exceeding_delay, delay_queue,
+    )
+
+    assert delay_queue.qsize() == 3
+    assert delay_queue.get().payload is exceeding_payload
+    assert (
+        'CQRS is delayed: pk = 4 (CQRS_ID), correlation_id = None, delay = 0 sec' in caplog.text
+    )
+
+    assert requeue_message.call_count == 1
+
+    requeue_payload = requeue_message.call_args[0][2]
+    min_eta_delay_message = sorted(delay_messages, key=lambda x: x.eta)[0]
+    assert requeue_payload is min_eta_delay_message.payload

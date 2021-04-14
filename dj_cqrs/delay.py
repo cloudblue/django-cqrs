@@ -1,6 +1,6 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
-from queue import PriorityQueue
+from queue import PriorityQueue, Full
 
 from django.utils import timezone
 
@@ -25,10 +25,17 @@ class DelayMessage:
 class DelayQueue:
     """Queue for delay messages."""
 
-    def __init__(self):
+    def __init__(self, max_size=None):
+        if max_size is not None:
+            assert max_size > 0, "Delay queue max_size should be positive integer."
+
+        self._max_size = max_size
         self._queue = PriorityQueue()
 
     def get(self):
+        """
+        :rtype: DelayMessage
+        """
         *_, delay_message = self._queue.get()
         return delay_message
 
@@ -55,6 +62,9 @@ class DelayQueue:
         :type delay_message: DelayMessage
         """
         assert isinstance(delay_message, DelayMessage)
+        if self.full():
+            raise Full("Delay queue is full")
+
         self._queue.put((
             delay_message.eta.timestamp(),
             delay_message.delivery_tag,
@@ -63,3 +73,9 @@ class DelayQueue:
 
     def qsize(self):
         return self._queue.qsize()
+
+    def full(self):
+        return (
+            self._max_size is not None
+            and self.qsize() >= self._max_size
+        )

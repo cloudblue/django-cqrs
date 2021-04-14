@@ -55,4 +55,7 @@ USE_TZ = True
 CQRS = {
     'transport': os.getenv('CQRS_MASTER_TRANSPORT'),
     'url': os.getenv('CQRS_BROKER_URL'),
+    'master': {
+        'CQRS_MESSAGE_TTL': 3600,
+    }
 }

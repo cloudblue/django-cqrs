@@ -12,7 +12,11 @@ from django.conf import settings
 from django.utils import timezone
 from pika import exceptions, BasicProperties, BlockingConnection, ConnectionParameters, credentials
 
-from dj_cqrs.constants import SignalType, DEFAULT_DEAD_MESSAGE_TTL
+from dj_cqrs.constants import (
+    SignalType,
+    DEFAULT_DEAD_MESSAGE_TTL,
+    DEFAULT_DELAY_QUEUE_MAX_SIZE,
+)
 from dj_cqrs.controller import consumer
 from dj_cqrs.dataclasses import TransportPayload
 from dj_cqrs.delay import DelayMessage, DelayQueue
@@ -49,7 +53,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         while True:
             connection = None
             try:
-                delay_queue = DelayQueue()
+                delay_queue = cls._get_delay_queue()
                 connection, channel, consumer_generator = cls._get_consumer_rmq_objects(
                     *(common_rabbit_settings + consumer_rabbit_settings)
                 )
@@ -152,18 +156,34 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
 
         if model_cls.should_retry_cqrs(payload.retries, exception):
             delay = model_cls.get_cqrs_retry_delay(payload.retries)
-            eta = timezone.now() + timedelta(seconds=delay)
-
-            delayed_message = DelayMessage(delivery_tag, payload, eta)
-            delay_queue.put(delayed_message)
-            cls.log_delayed(payload, delay, delayed_message.eta)
+            cls._delay_message(channel, delivery_tag, payload, delay, delay_queue)
         else:
             cls._add_to_dead_letter_queue(channel, payload)
             cls._nack(channel, delivery_tag)
 
     @classmethod
+    def _delay_message(cls, channel, delivery_tag, payload, delay, delay_queue):
+        if delay_queue.full():
+            # Memory limits handling, requeuing message with lowest ETA
+            requeue_message = delay_queue.get()
+            cls._requeue_message(
+                channel,
+                requeue_message.delivery_tag,
+                requeue_message.payload,
+            )
+
+        eta = timezone.now() + timedelta(seconds=delay)
+        delay_message = DelayMessage(delivery_tag, payload, eta)
+        delay_queue.put(delay_message)
+        cls.log_delayed(payload, delay, delay_message.eta)
+
+    @classmethod
     def _add_to_dead_letter_queue(cls, channel, payload):
-        dead_message_ttl = settings.CQRS.get('dead_message_ttl', DEFAULT_DEAD_MESSAGE_TTL)
+        replica_settings = settings.CQRS.get('replica', {})
+        dead_message_ttl = DEFAULT_DEAD_MESSAGE_TTL
+        if 'dead_message_ttl' in replica_settings:
+            dead_message_ttl = replica_settings['dead_message_ttl']
+
         expiration = None
         if dead_message_ttl is not None:
             expiration = str(dead_message_ttl * 1000)  # milliseconds
@@ -174,15 +194,16 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         cls.log_dead_letter(payload)
 
     @classmethod
+    def _requeue_message(cls, channel, delivery_tag, payload):
+        payload.retries += 1
+        cls.produce(payload)
+        cls._nack(channel, delivery_tag)
+        cls.log_requeued(payload)
+
+    @classmethod
     def _process_delay_messages(cls, channel, delay_queue):
         for delay_message in delay_queue.get_ready():
-            requeue_payload = delay_message.payload
-            requeue_payload.retries += 1
-
-            # Requeuing
-            cls.produce(requeue_payload)
-            cls._nack(channel, delay_message.delivery_tag)
-            cls.log_requeued(requeue_payload)
+            cls._requeue_message(channel, delay_message.delivery_tag, delay_message.payload)
 
     @classmethod
     def _produce_message(cls, channel, exchange, payload, expiration=None):
@@ -327,9 +348,11 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
     @staticmethod
     def _get_consumer_settings():
         queue_name = settings.CQRS['queue']
-        dead_letter_queue_name = settings.CQRS.get('dead_letter_queue')
-        if dead_letter_queue_name is None:
-            dead_letter_queue_name = 'dead_letter_{}'.format(queue_name)
+
+        replica_settings = settings.CQRS.get('replica', {})
+        dead_letter_queue_name = 'dead_letter_{}'.format(queue_name)
+        if 'dead_letter_queue' in replica_settings:
+            dead_letter_queue_name = replica_settings['dead_letter_queue']
 
         if 'consumer_prefetch_count' in settings.CQRS:
             logger.warning(
@@ -352,3 +375,19 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         channel.basic_nack(delivery_tag, requeue=False)
         if payload is not None:
             cls.log_consumed_denied(payload)
+
+    @classmethod
+    def _get_delay_queue(cls):
+        replica_settings = settings.CQRS.get('replica', {})
+        max_size = DEFAULT_DELAY_QUEUE_MAX_SIZE
+        if 'delay_queue_max_size' in replica_settings:
+            max_size = replica_settings['delay_queue_max_size']
+
+        if max_size is not None and max_size <= 0:
+            logger.warning(
+                "Settings delay_queue_max_size=%s is invalid, using default %s.",
+                max_size, DEFAULT_DELAY_QUEUE_MAX_SIZE,
+            )
+            max_size = DEFAULT_DELAY_QUEUE_MAX_SIZE
+
+        return DelayQueue(max_size)

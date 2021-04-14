@@ -497,18 +497,18 @@ def test_nodb(mocker):
 
 
 @pytest.mark.parametrize(
-    'max_retries, current_retry, expected_result', [
+    'cqrs_max_retries, current_retry, expected_result', [
         (5, 0, True),
         (5, 5, False),
-        (-1, 0, True),  # For invalid max_retries=10
-        (-1, 10, False),
+        (-1, 0, True),  # For invalid cqrs_max_retries=30
+        (-1, 30, False),
         ('test', 9, True),
         (0, 0, False),  # Disabled
         (None, 10000, True),  # Infinite
     ],
 )
-def test_should_retry_cqrs(settings, max_retries, current_retry, expected_result):
-    settings.CQRS['max_retries'] = max_retries
+def test_should_retry_cqrs(settings, cqrs_max_retries, current_retry, expected_result):
+    settings.CQRS['replica']['CQRS_MAX_RETRIES'] = cqrs_max_retries
 
     result = models.BasicFieldsModelRef.should_retry_cqrs(current_retry)
 
@@ -516,10 +516,10 @@ def test_should_retry_cqrs(settings, max_retries, current_retry, expected_result
 
 
 @pytest.mark.parametrize(
-    'current_retry, expected_result', [(0, True), (10, False)],
+    'current_retry, expected_result', [(0, True), (30, False)],
 )
 def test_should_retry_cqrs_no_setting_field(settings, current_retry, expected_result):
-    settings.CQRS.pop('max_retries', None)
+    settings.CQRS['replica'].pop('CQRS_MAX_RETRIES', None)
 
     result = models.BasicFieldsModelRef.should_retry_cqrs(current_retry)
 
@@ -527,16 +527,16 @@ def test_should_retry_cqrs_no_setting_field(settings, current_retry, expected_re
 
 
 @pytest.mark.parametrize(
-    'retry_delay, expected_result', [
+    'cqrs_retry_delay, expected_result', [
         (5, 5),
-        (-1, 60),  # For invalid retry_delay=60
-        (0, 60),
-        ('test', 60),
-        (None, 60),
+        (-1, 2),  # For invalid CQRS_RETRY_DELAY=2
+        (0, 2),
+        ('test', 2),
+        (None, 2),
     ],
 )
-def test_get_cqrs_retry_delay(settings, retry_delay, expected_result):
-    settings.CQRS['retry_delay'] = retry_delay
+def test_get_cqrs_retry_delay(settings, cqrs_retry_delay, expected_result):
+    settings.CQRS['replica']['CQRS_RETRY_DELAY'] = cqrs_retry_delay
 
     result = models.BasicFieldsModelRef.get_cqrs_retry_delay(current_retry=0)
 

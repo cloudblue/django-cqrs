@@ -56,9 +56,14 @@ USE_TZ = True
 CQRS = {
     'transport': 'tests.dj.transport.TransportStub',
     'queue': 'replica',
-    'retry_delay': 1,
-    'max_retries': 5,
-    'message_ttl': 3600,
-    'dead_queue': 'dead_letter_replica',
-    'dead_message_ttl': 3600,
+    'master': {
+        'CQRS_MESSAGE_TTL': 3600,
+    },
+    'replica': {
+        'CQRS_MAX_RETRIES': 5,
+        'CQRS_RETRY_DELAY': 1,
+        'delay_queue_max_size': None,
+        'dead_letter_queue': 'dead_letter_replica',
+        'dead_message_ttl': 5,
+    },
 }

@@ -6,7 +6,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.utils import timezone
 
-from dj_cqrs.constants import DEFAULT_MESSAGE_TTL
+from dj_cqrs.constants import DEFAULT_CQRS_MESSAGE_TTL
 
 logger = logging.getLogger('django-cqrs')
 
@@ -17,18 +17,18 @@ def get_expires_datetime():
     :return: datetime instance, None if infinite
     :rtype: datetime.datetime
     """
-    message_ttl = settings.CQRS.get('message_ttl', DEFAULT_MESSAGE_TTL)
-    if message_ttl is None:
+    master_settings = settings.CQRS.get('master', {})
+    if 'CQRS_MESSAGE_TTL' in master_settings and master_settings['CQRS_MESSAGE_TTL'] is None:
         # Infinite
         return
 
     min_message_ttl = 1
+    message_ttl = master_settings.get('CQRS_MESSAGE_TTL', DEFAULT_CQRS_MESSAGE_TTL)
     if not isinstance(message_ttl, int) or message_ttl < min_message_ttl:
         logger.warning(
-            "Settings message_ttl={} is invalid, using default {}".format(
-                message_ttl, DEFAULT_MESSAGE_TTL,
-            )
+            "Settings CQRS_MESSAGE_TTL=%s is invalid, using default %s.",
+            message_ttl, DEFAULT_CQRS_MESSAGE_TTL,
         )
-        message_ttl = DEFAULT_MESSAGE_TTL
+        message_ttl = DEFAULT_CQRS_MESSAGE_TTL
 
     return timezone.now() + timedelta(seconds=message_ttl)
