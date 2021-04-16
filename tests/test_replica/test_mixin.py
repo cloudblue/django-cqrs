@@ -1,4 +1,4 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 import pytest
 
@@ -494,3 +494,50 @@ def test_nodb(mocker):
 
     with pytest.raises(NotImplementedError):
         models.NoDBModelRef.cqrs_delete(None)
+
+
+@pytest.mark.parametrize(
+    'cqrs_max_retries, current_retry, expected_result', [
+        (5, 0, True),
+        (5, 5, False),
+        (-1, 0, True),  # For invalid cqrs_max_retries=30
+        (-1, 30, False),
+        ('test', 9, True),
+        (0, 0, False),  # Disabled
+        (None, 10000, True),  # Infinite
+    ],
+)
+def test_should_retry_cqrs(settings, cqrs_max_retries, current_retry, expected_result):
+    settings.CQRS['replica']['CQRS_MAX_RETRIES'] = cqrs_max_retries
+
+    result = models.BasicFieldsModelRef.should_retry_cqrs(current_retry)
+
+    assert result is expected_result
+
+
+@pytest.mark.parametrize(
+    'current_retry, expected_result', [(0, True), (30, False)],
+)
+def test_should_retry_cqrs_no_setting_field(settings, current_retry, expected_result):
+    settings.CQRS['replica'].pop('CQRS_MAX_RETRIES', None)
+
+    result = models.BasicFieldsModelRef.should_retry_cqrs(current_retry)
+
+    assert result is expected_result
+
+
+@pytest.mark.parametrize(
+    'cqrs_retry_delay, expected_result', [
+        (5, 5),
+        (-1, 2),  # For invalid CQRS_RETRY_DELAY=2
+        (0, 2),
+        ('test', 2),
+        (None, 2),
+    ],
+)
+def test_get_cqrs_retry_delay(settings, cqrs_retry_delay, expected_result):
+    settings.CQRS['replica']['CQRS_RETRY_DELAY'] = cqrs_retry_delay
+
+    result = models.BasicFieldsModelRef.get_cqrs_retry_delay(current_retry=0)
+
+    assert result is expected_result

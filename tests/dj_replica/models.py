@@ -1,4 +1,4 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 from django.db import models
 
@@ -119,3 +119,11 @@ class Book(models.Model):
     name = models.CharField(max_length=20)
 
     author = models.ForeignKey(AuthorRef, on_delete=models.CASCADE)
+
+
+class FailModel(ReplicaMixin, models.Model):
+    CQRS_ID = 'fail'
+
+    @classmethod
+    def cqrs_save(cls, *args, **kwargs):
+        raise Exception('Test fail Exception')

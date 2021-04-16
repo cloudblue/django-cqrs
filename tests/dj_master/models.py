@@ -1,4 +1,4 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -193,3 +193,7 @@ class WithM2MModel(MasterMixin):
 
     char_field = models.CharField(max_length=100)
     m2m_field = models.ManyToManyField(M2MModel)
+
+
+class FailModel(MasterMixin, models.Model):
+    CQRS_ID = 'fail'
