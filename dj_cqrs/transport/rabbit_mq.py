@@ -196,6 +196,8 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
     @classmethod
     def _requeue_message(cls, channel, delivery_tag, payload):
         payload.retries += 1
+        payload.is_requeue = True
+
         cls.produce(payload)
         cls._nack(channel, delivery_tag)
         cls.log_requeued(payload)
@@ -230,6 +232,9 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         elif getattr(payload, 'is_dead_letter', False):
             dead_letter_queue_name = cls._get_consumer_settings()[-1]
             routing_key = 'cqrs.{}.{}'.format(dead_letter_queue_name, routing_key)
+        elif getattr(payload, 'is_requeue', False):
+            queue = cls._get_consumer_settings()[0]
+            routing_key = 'cqrs.{}.{}'.format(queue, routing_key)
 
         return routing_key
 
@@ -249,7 +254,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         for cqrs_id, replica_model in ReplicaRegistry.models.items():
             channel.queue_bind(exchange=exchange, queue=queue_name, routing_key=cqrs_id)
 
-            # Every service must have specific SYNC routes
+            # Every service must have specific SYNC or requeue routes
             channel.queue_bind(
                 exchange=exchange,
                 queue=queue_name,

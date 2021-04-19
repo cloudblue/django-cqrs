@@ -464,6 +464,16 @@ def test_get_produced_message_routing_key_dead_letter(settings):
     assert routing_key == 'cqrs.dead_letter_replica.CQRS_ID'
 
 
+def test_get_produced_message_routing_key_requeue(settings):
+    settings.CQRS['queue'] = 'replica'
+    payload = TransportPayload(SignalType.SAVE, 'CQRS_ID', {}, None)
+    payload.is_requeue = True
+
+    routing_key = PublicRabbitMQTransport.get_produced_message_routing_key(payload)
+
+    assert routing_key == 'cqrs.replica.CQRS_ID'
+
+
 def test_process_delay_messages(mocker, caplog):
     channel = mocker.MagicMock()
     produce = mocker.patch('dj_cqrs.transport.rabbit_mq.RabbitMQTransport.produce')
@@ -483,6 +493,7 @@ def test_process_delay_messages(mocker, caplog):
     produce_payload = produce.call_args[0][0]
     assert produce_payload is payload
     assert produce_payload.retries == 1
+    assert getattr(produce_payload, 'is_requeue', False)
 
     assert 'CQRS is requeued: pk = 1 (CQRS_ID)' in caplog.text
 
