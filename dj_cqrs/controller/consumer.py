@@ -1,5 +1,6 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
+import copy
 import logging
 from contextlib import ExitStack
 
@@ -16,6 +17,7 @@ def consume(payload):
 
     :param dj_cqrs.dataclasses.TransportPayload payload: Consumed payload from master service.
     """
+    payload = copy.deepcopy(payload)
     return route_signal_to_replica_model(
         payload.signal_type, payload.cqrs_id, payload.instance_data,
         previous_data=payload.previous_data,

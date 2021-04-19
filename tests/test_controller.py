@@ -32,6 +32,31 @@ def test_consumer(mocker):
     factory_mock.assert_called_once_with('a', 'b', {}, previous_data={'e': 'f'})
 
 
+def test_changed_payload_data_during_consume(mocker):
+    def change_data(*args, **kwargs):
+        instance_data = args[2]
+        instance_data['instance_key'] = 'changed instance'
+        kwargs['previous_data']['previous_key'] = 'changed previous'
+
+    factory_mock = mocker.patch(
+        'dj_cqrs.controller.consumer.route_signal_to_replica_model',
+        side_effect=change_data,
+    )
+
+    payload = TransportPayload(
+        SignalType.SAVE,
+        cqrs_id='b',
+        instance_data={'instance_key': 'initial instance'},
+        instance_pk='c',
+        previous_data={'previous_key': 'initial previous'},
+    )
+    consume(payload)
+
+    assert factory_mock.call_count == 1
+    assert payload.instance_data == {'instance_key': 'initial instance'}
+    assert payload.previous_data == {'previous_key': 'initial previous'}
+
+
 @pytest.mark.django_db(transaction=True)
 def test_route_signal_to_replica_model_with_db(django_assert_num_queries):
     with django_assert_num_queries(1):
