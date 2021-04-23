@@ -35,6 +35,7 @@ and that's okay for non-critical business transactions.
    custom_serialization
    track_fields_changes
    transports
+   lifecycle
    utilities
    reference
 
