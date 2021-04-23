@@ -4,7 +4,7 @@ Message lifecycle
 =================
 .. warning::
 
-    Expiration, retrying and dead letter supports only ``RabbitMQTransport`` (on by default).
+    Expiration, retrying and 'dead letters' queueing supported in ``RabbitMQTransport`` only (**on** by default).
 
 `django-cqrs` since version 1.11 provides mechanism for reliable message delivery.
 
@@ -14,11 +14,11 @@ Message lifecycle
 
 Expiration
 ----------
-+------------------+------------+--------------------------------------------------------------------------------------------------+
-| Name             | Default    | Description                                                                                      |
-+==================+============+==================================================================================================+
-| CQRS_MESSAGE_TTL | 86400      | Limits message lifetime in **seconds**, after that period it will be moved to dead letter queue. |
-+------------------+------------+--------------------------------------------------------------------------------------------------+
++------------------+------------+---------------------------------------------------------------------------------------------+
+| Name             | Default    | Description                                                                                 |
++==================+============+=============================================================================================+
+| CQRS_MESSAGE_TTL | 86400      | Limits message lifetime in **seconds**, then it will be moved to 'dead letters' queue.      |
++------------------+------------+---------------------------------------------------------------------------------------------+
 
 .. code-block:: python
 
@@ -33,7 +33,7 @@ Expiration
 
 Fail
 ----
-Message is failed when consume raises any exception or returns negative boolean value (False, None).
+Message assumed as failed when a consumer raises an exception or returns negative boolean value (*False*, *None*, etc).
 
 .. code-block:: python
 
@@ -45,23 +45,22 @@ Message is failed when consume raises any exception or returns negative boolean 
 
         @classmethod
         def cqrs_create(cls, sync, mapped_data, previous_data=None):
-            raise Exception("Some issue during create") # exception could be caught at should_retry_cqrs method
+            raise Exception("Some issue during create") # exception could be caught at should_retry_cqrs() method
 
-        @classmethod
         def cqrs_update(self, sync, mapped_data, previous_data=None):
-            return None # returning negative boolean triggers retrying
+            return None # returning negative boolean for retrying
 
 Retrying
 --------
-+----------------------+----------+----------------------------------------------------------------------------+
-| Name                 | Default  | Description                                                                |
-+======================+==========+============================================================================+
-| CQRS_MAX_RETRIES     | 30       | Maximum number of retry attempts. Infinite if None, 0 for retry disabling. |
-+----------------------+----------+----------------------------------------------------------------------------+
-| CQRS_RETRY_DELAY     | 2        | Constant delay in **seconds** between message fail and requeue.            |
-+----------------------+----------+----------------------------------------------------------------------------+
-| delay_queue_max_size | None     | Maximum number of delayed messages per worker. Infinite if None.           |
-+----------------------+----------+----------------------------------------------------------------------------+
++----------------------+----------+-----------------------------------------------------------------------------+
+| Name                 | Default  | Description                                                                 |
++======================+==========+=============================================================================+
+| CQRS_MAX_RETRIES     | 30       | Maximum number of retry attempts. Infinite if *None*, 0 to disable retries. |
++----------------------+----------+-----------------------------------------------------------------------------+
+| CQRS_RETRY_DELAY     | 2        | Constant delay in **seconds** between message failure and requeueing.       |
++----------------------+----------+-----------------------------------------------------------------------------+
+| delay_queue_max_size | *None*   | Maximum number of delayed messages per worker. Infinite if *None*.          |
++----------------------+----------+-----------------------------------------------------------------------------+
 
 .. code-block:: python
 
@@ -78,7 +77,7 @@ Retrying
 
 Customization
 ^^^^^^^^^^^^^
-The :class:`dj_cqrs.mixins.ReplicaMixin` allows to set retrying behaviour manually.
+The :class:`dj_cqrs.mixins.ReplicaMixin` allows to take full control on retrying.
 
 .. code-block:: python
 
@@ -101,17 +100,17 @@ The :class:`dj_cqrs.mixins.ReplicaMixin` allows to set retrying behaviour manual
                 or isinstance(exception, django.db.OperationalError)
             )
 
-Dead letter
------------
-Expired or failed messages which should not be retried moved to dead letter queue.
+Dead letters
+------------
+Expired or failed messages which should not be retried are moved to 'dead letters' queue.
 
-+-------------------+------------------------+----------------------------------------------------+
-| Name              | Default                | Description                                        |
-+===================+========================+====================================================+
-| dead_letter_queue | dead_letter + queue    | Queue name for dead letter messages.               |
-+-------------------+------------------------+----------------------------------------------------+
-| dead_message_ttl  | 864000                 | Expiration **seconds**. Infinite if None.          |
-+-------------------+------------------------+----------------------------------------------------+
++-------------------+-------------------------+----------------------------------------------------+
+| Name              | Default                 | Description                                        |
++===================+=========================+====================================================+
+| dead_letter_queue | 'dead_letter\_' + queue | Queue name for dead letters.                       |
++-------------------+-------------------------+----------------------------------------------------+
+| dead_message_ttl  | 864000                  | Expiration **seconds**. Infinite if *None*.        |
++-------------------+-------------------------+----------------------------------------------------+
 
 .. code-block:: python
 
@@ -122,7 +121,7 @@ Expired or failed messages which should not be retried moved to dead letter queu
         'queue': 'example',
         'replica': {
             ...
-            'dead_letter_queue': 'dead_letter_example', # generates from CQRS.queue
+            'dead_letter_queue': 'dead_letter_example', # generated from CQRS.queue
             'dead_message_ttl': 864000, # 10 days
         },
     }
