@@ -108,7 +108,7 @@ Expired or failed messages which should not be retried moved to dead letter queu
 +-------------------+------------------------+----------------------------------------------------+
 | Name              | Default                | Description                                        |
 +===================+========================+====================================================+
-| dead_letter_queue | dead_letter + queue    | Queue name for dead letter messages.               |
+| dead_letter_queue | 'dead_letter_' + queue | Queue name for dead letter messages.               |
 +-------------------+------------------------+----------------------------------------------------+
 | dead_message_ttl  | 864000                 | Expiration **seconds**. Infinite if None.          |
 +-------------------+------------------------+----------------------------------------------------+
