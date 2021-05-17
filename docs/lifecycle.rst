@@ -126,3 +126,35 @@ Expired or failed messages which should not be retried are moved to 'dead letter
         },
     }
 
+Commands
+^^^^^^^^
+Dump
+""""""""""""
+Dumps all dead letters to stdout.
+
+.. code-block:: console
+
+    $ python manage.py cqrs_dead_letters dump
+    {"signal_type":"SAVE","cqrs_id":"example","instance_data":{"id":1,"cqrs_revision":0,"cqrs_updated":"2021-04-30 11:50:05.164341+00:00"},"previous_data":null,"instance_pk":135,"correlation_id":null,"retries":30,"expires":"2021-05-01T11:50:00+00:00"}
+
+Retry
+"""""""""""""
+Retry all dead letters.
+Message body retries and expires fields are downgraded.
+
+.. code-block:: console
+
+    $ python manage.py cqrs_dead_letters retry
+    Total dead letters: 1
+    Retrying: 1/1
+    {"signal_type":"SAVE","cqrs_id":"example","instance_data":{"id":1,"cqrs_revision":0,"cqrs_updated":"2021-04-30 11:50:05.164341+00:00"},"previous_data":null,"instance_pk":135,"correlation_id":null,"retries":0,"expires":"2021-05-02T12:30:00+00:00"}
+
+Purge
+"""""""""""""
+Removes all dead letters.
+
+.. code-block:: console
+
+    $ python manage.py cqrs_dead_letters purge
+    Total dead letters: 1
+    Purged
