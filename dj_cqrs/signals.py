@@ -1,13 +1,14 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
+from dj_cqrs.constants import SignalType
+from dj_cqrs.controller import producer
+from dj_cqrs.dataclasses import TransportPayload
+from dj_cqrs.utils import get_expires_datetime
+
 from django.db import models, transaction
 from django.dispatch import Signal
 from django.utils.timezone import now
 
-from dj_cqrs.controller import producer
-from dj_cqrs.constants import SignalType
-from dj_cqrs.dataclasses import TransportPayload
-from dj_cqrs.utils import get_expires_datetime
 
 post_bulk_create = Signal(providing_args=['instances', 'using'])
 """

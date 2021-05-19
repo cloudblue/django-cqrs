@@ -1,12 +1,13 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
-import ujson
+from dj_cqrs.management.commands.utils import batch_qs
+from dj_cqrs.registries import MasterRegistry
+
 from django.core.exceptions import FieldError
 from django.core.management.base import BaseCommand, CommandError
 from django.utils.timezone import now
 
-from dj_cqrs.management.commands.utils import batch_qs
-from dj_cqrs.registries import MasterRegistry
+import ujson
 
 
 class Command(BaseCommand):
@@ -52,14 +53,14 @@ class Command(BaseCommand):
             try:
                 qs = qs.filter(**kwargs)
             except FieldError as e:
-                raise CommandError('Bad filter kwargs! {}'.format(str(e)))
+                raise CommandError('Bad filter kwargs! {0}'.format(str(e)))
 
         if not qs.exists():
             self.stderr.write('No objects found for filter!')
             return
 
         current_dt = now()
-        self.stdout.write('{},{}'.format(model.CQRS_ID, str(current_dt)))
+        self.stdout.write('{0},{1}'.format(model.CQRS_ID, str(current_dt)))
 
         for bqs in batch_qs(qs, batch_size=batch_size):
             package = [
@@ -75,7 +76,7 @@ class Command(BaseCommand):
         model = MasterRegistry.get_model_by_cqrs_id(cqrs_id)
 
         if not model:
-            raise CommandError('Wrong CQRS ID: {}!'.format(cqrs_id))
+            raise CommandError('Wrong CQRS ID: {0}!'.format(cqrs_id))
 
         return model
 

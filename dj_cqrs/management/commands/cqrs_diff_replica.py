@@ -1,12 +1,13 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 import sys
 
-import ujson
+from dj_cqrs.registries import ReplicaRegistry
+
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
-from dj_cqrs.registries import ReplicaRegistry
+import ujson
 
 
 class Command(BaseCommand):
@@ -24,13 +25,14 @@ class Command(BaseCommand):
         with sys.stdin as f:
             first_line = f.readline()
             model = self._get_model(first_line)
-            self.stdout.write('{},{}'.format(first_line.strip(), settings.CQRS.get('queue')))
+            self.stdout.write('{0},{1}'.format(first_line.strip(), settings.CQRS.get('queue')))
 
             for package_line in f:
                 master_data = self.deserialize_in(package_line)
 
-                qs = model._default_manager.filter(pk__in=master_data.keys()) \
-                    .order_by().only('pk', 'cqrs_revision')
+                qs = model._default_manager.filter(
+                    pk__in=master_data.keys(),
+                ).order_by().only('pk', 'cqrs_revision')
                 replica_data = {instance.pk: instance.cqrs_revision for instance in qs}
 
                 diff_ids = set()
@@ -40,7 +42,7 @@ class Command(BaseCommand):
 
                 if diff_ids:
                     self.stdout.write(self.serialize_out(list(diff_ids)))
-                    self.stderr.write('PK to resync: {}'.format(str(diff_ids)))
+                    self.stderr.write('PK to resync: {0}'.format(str(diff_ids)))
 
     @staticmethod
     def _get_model(first_line):
@@ -48,6 +50,6 @@ class Command(BaseCommand):
         model = ReplicaRegistry.get_model_by_cqrs_id(cqrs_id)
 
         if not model:
-            raise CommandError('Wrong CQRS ID: {}!'.format(cqrs_id))
+            raise CommandError('Wrong CQRS ID: {0}!'.format(cqrs_id))
 
         return model

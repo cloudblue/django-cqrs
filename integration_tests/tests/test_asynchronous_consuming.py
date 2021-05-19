@@ -1,11 +1,15 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
+from integration_tests.tests.utils import (
+    REPLICA_BASIC_TABLE,
+    REPLICA_EVENT_TABLE,
+    count_replica_rows,
+    get_replica_all,
+    transport_delay,
+)
+
 import pytest
 
-from integration_tests.tests.utils import (
-    REPLICA_BASIC_TABLE, REPLICA_EVENT_TABLE,
-    count_replica_rows, get_replica_all, transport_delay,
-)
 from tests.dj_master.models import BasicFieldsModel
 
 
@@ -26,7 +30,7 @@ def test_both_consumers_consume(replica_cursor, clean_rabbit_transport_connectio
     assert count_replica_rows(replica_cursor, REPLICA_BASIC_TABLE) == 9
     assert count_replica_rows(replica_cursor, REPLICA_EVENT_TABLE) == 9
 
-    events_data = get_replica_all(replica_cursor, REPLICA_EVENT_TABLE, ('pid', ),)
+    events_data = get_replica_all(replica_cursor, REPLICA_EVENT_TABLE, ('pid',))
     assert len({d[0] for d in events_data}) == 2
 
 
@@ -39,7 +43,7 @@ def test_de_duplication(replica_cursor, clean_rabbit_transport_connection):
     BasicFieldsModel.call_post_bulk_create([master_instance])
     transport_delay(3)
 
-    replica_cursor.execute('TRUNCATE TABLE {};'.format(REPLICA_EVENT_TABLE))
+    replica_cursor.execute('TRUNCATE TABLE {0};'.format(REPLICA_EVENT_TABLE))
     BasicFieldsModel.call_post_bulk_create([master_instance for _ in range(10)])
 
     transport_delay(3)

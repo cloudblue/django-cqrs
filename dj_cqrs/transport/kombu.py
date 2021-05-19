@@ -2,19 +2,21 @@
 
 import logging
 
-import ujson
-from django.conf import settings
-from kombu import Connection, Exchange, Producer, Queue
-from kombu.exceptions import KombuError
-from kombu.mixins import ConsumerMixin
-
-
 from dj_cqrs.constants import SignalType
 from dj_cqrs.controller import consumer
 from dj_cqrs.dataclasses import TransportPayload
 from dj_cqrs.registries import ReplicaRegistry
 from dj_cqrs.transport import BaseTransport
 from dj_cqrs.transport.mixins import LoggingMixin
+
+from django.conf import settings
+
+from kombu import Connection, Exchange, Producer, Queue
+from kombu.exceptions import KombuError
+from kombu.mixins import ConsumerMixin
+
+import ujson
+
 
 logger = logging.getLogger('django-cqrs')
 
@@ -49,7 +51,7 @@ class _KombuConsumer(ConsumerMixin):
             sync_q = Queue(
                 self.queue_name,
                 exchange=self.exchange,
-                routing_key='cqrs.{}.{}'.format(self.queue_name, cqrs_id),
+                routing_key='cqrs.{0}.{1}'.format(self.queue_name, cqrs_id),
             )
             sync_q.maybe_bind(channel)
             sync_q.declare()
@@ -100,7 +102,7 @@ class KombuTransport(LoggingMixin, BaseTransport):
             cls._produce_message(channel, exchange, payload)
             cls.log_produced(payload)
         except KombuError:
-            logger.error("CQRS couldn't be published: pk = {} ({}).".format(
+            logger.error("CQRS couldn't be published: pk = {0} ({1}).".format(
                 payload.pk, payload.cqrs_id,
             ))
         finally:
@@ -112,7 +114,7 @@ class KombuTransport(LoggingMixin, BaseTransport):
         try:
             dct = ujson.loads(body)
         except ValueError:
-            logger.error("CQRS couldn't be parsed: {}.".format(body))
+            logger.error("CQRS couldn't be parsed: {0}.".format(body))
             message.reject()
             return
 
@@ -164,7 +166,7 @@ class KombuTransport(LoggingMixin, BaseTransport):
         routing_key = payload.cqrs_id
 
         if payload.signal_type == SignalType.SYNC and payload.queue:
-            routing_key = 'cqrs.{}.{}'.format(payload.queue, routing_key)
+            routing_key = 'cqrs.{0}.{1}'.format(payload.queue, routing_key)
 
         return routing_key
 

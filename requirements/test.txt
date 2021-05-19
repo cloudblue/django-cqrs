@@ -4,6 +4,15 @@ pytest
 pytest-cov
 pytest-django
 pytest-mock
+pytest-deadfixtures
+pytest-randomly
 djangorestframework
 django-mptt
-pytest-random-order
+flake8-bugbear
+flake8-broken-line
+flake8-commas
+flake8-comprehensions
+flake8-debugger
+flake8-eradicate
+flake8-import-order
+flake8-string-format

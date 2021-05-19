@@ -1,12 +1,12 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 import sys
-
-from django.core.management.base import BaseCommand, CommandError
 
 from dj_cqrs.constants import NO_QUEUE
 from dj_cqrs.management.commands.cqrs_sync import Command as SyncCommand
 from dj_cqrs.registries import MasterRegistry
+
+from django.core.management.base import BaseCommand, CommandError
 
 
 class Command(BaseCommand):
@@ -21,7 +21,7 @@ class Command(BaseCommand):
             for pks_line in f:
                 sync_kwargs = {
                     'cqrs_id': model.CQRS_ID,
-                    'filter': '{{"id__in": {}}}'.format(pks_line.strip()),
+                    'filter': '{{"id__in": {0}}}'.format(pks_line.strip()),
                 }
                 if queue:
                     sync_kwargs['queue'] = queue
@@ -34,7 +34,7 @@ class Command(BaseCommand):
         model = MasterRegistry.get_model_by_cqrs_id(cqrs_id)
 
         if not model:
-            raise CommandError('Wrong CQRS ID: {}!'.format(cqrs_id))
+            raise CommandError('Wrong CQRS ID: {0}!'.format(cqrs_id))
 
         return model
 

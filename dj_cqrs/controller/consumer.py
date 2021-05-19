@@ -4,10 +4,11 @@ import copy
 import logging
 from contextlib import ExitStack
 
-from django.db import close_old_connections, transaction
-
 from dj_cqrs.constants import SignalType
 from dj_cqrs.registries import ReplicaRegistry
+
+from django.db import close_old_connections, transaction
+
 
 logger = logging.getLogger('django-cqrs')
 
@@ -32,7 +33,7 @@ def route_signal_to_replica_model(signal_type, cqrs_id, instance_data, previous_
     :param dict instance_data: Master model data.
     """
     if signal_type not in (SignalType.DELETE, SignalType.SAVE, SignalType.SYNC):
-        logger.error('Bad signal type "{}" for CQRS_ID "{}".'.format(signal_type, cqrs_id))
+        logger.error('Bad signal type "{0}" for CQRS_ID "{1}".'.format(signal_type, cqrs_id))
         return
 
     model_cls = ReplicaRegistry.get_model_by_cqrs_id(cqrs_id)

@@ -1,11 +1,11 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
-from django.conf import settings
-from django.utils.module_loading import import_string
-
 from dj_cqrs.transport.base import BaseTransport
 from dj_cqrs.transport.kombu import KombuTransport
 from dj_cqrs.transport.rabbit_mq import RabbitMQTransport
+
+from django.conf import settings
+from django.utils.module_loading import import_string
 
 
 transport_cls_location = getattr(settings, 'CQRS', {}).get('transport')

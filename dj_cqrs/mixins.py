@@ -2,12 +2,6 @@
 
 import logging
 
-from django.conf import settings
-from django.db import router, transaction
-from django.db.models import DateField, DateTimeField, F, IntegerField, Manager, Model
-from django.db.models.expressions import CombinedExpression
-from django.utils.module_loading import import_string
-
 from dj_cqrs.constants import (
     ALL_BASIC_FIELDS,
     DEFAULT_CQRS_MAX_RETRIES,
@@ -18,6 +12,12 @@ from dj_cqrs.constants import (
 from dj_cqrs.managers import MasterManager, ReplicaManager
 from dj_cqrs.metas import MasterMeta, ReplicaMeta
 from dj_cqrs.signals import MasterSignals, post_bulk_create, post_update
+
+from django.conf import settings
+from django.db import router, transaction
+from django.db.models import DateField, DateTimeField, F, IntegerField, Manager, Model
+from django.db.models.expressions import CombinedExpression
+from django.utils.module_loading import import_string
 
 
 logger = logging.getLogger('django-cqrs')
@@ -270,7 +270,7 @@ class RawMasterMixin(Model):
 
             instance = self.relate_cqrs_serialization(qs).first()
             if not instance:
-                raise RuntimeError("Couldn't serialize CQRS class ({}).".format(self.CQRS_ID))
+                raise RuntimeError("Couldn't serialize CQRS class ({0}).".format(self.CQRS_ID))
 
         data = self._cqrs_serializer_cls(instance).data
         data['cqrs_revision'] = instance.cqrs_revision
@@ -312,7 +312,9 @@ class RawMasterMixin(Model):
             self.__class__._cqrs_serializer_class = serializer
             return serializer
         except ImportError:
-            raise ImportError("Model {}: CQRS_SERIALIZER can't be imported.".format(self.__class__))
+            raise ImportError(
+                "Model {0}: CQRS_SERIALIZER can't be imported.".format(self.__class__),
+            )
 
 
 class MasterMixin(RawMasterMixin, metaclass=MasterMeta):

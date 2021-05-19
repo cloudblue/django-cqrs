@@ -3,11 +3,12 @@
 import os
 import sys
 
-import ujson
-from django.core.management.base import BaseCommand, CommandError
-from django.db import transaction, DatabaseError
-
 from dj_cqrs.registries import ReplicaRegistry
+
+from django.core.management.base import BaseCommand, CommandError
+from django.db import DatabaseError, transaction
+
+import ujson
 
 
 class Command(BaseCommand):
@@ -38,7 +39,7 @@ class Command(BaseCommand):
 
         f_name = options['input']
         if f_name != '-' and not os.path.exists(f_name):
-            raise CommandError("File {} doesn't exist!".format(f_name))
+            raise CommandError("File {0} doesn't exist!".format(f_name))
 
         with sys.stdin if f_name == '-' else open(f_name, 'r') as f:
             try:
@@ -47,11 +48,11 @@ class Command(BaseCommand):
                 cqrs_id = None
 
             if not cqrs_id:
-                raise CommandError('File {} is empty!'.format(f_name))
+                raise CommandError('File {0} is empty!'.format(f_name))
 
             model = ReplicaRegistry.get_model_by_cqrs_id(cqrs_id)
             if not model:
-                raise CommandError('Wrong CQRS ID: {}!'.format(cqrs_id))
+                raise CommandError('Wrong CQRS ID: {0}!'.format(cqrs_id))
 
             with transaction.atomic():
                 if options['clear']:
@@ -80,7 +81,7 @@ class Command(BaseCommand):
                 except EOFError:
                     break
 
-        print('Done!\n{} instance(s) loaded.'.format(success_counter), file=sys.stderr)
+        print('Done!\n{0} instance(s) loaded.'.format(success_counter), file=sys.stderr)
 
     @staticmethod
     def _process_line(line_number, line, model):
@@ -91,23 +92,23 @@ class Command(BaseCommand):
                 master_data = ujson.loads(line.strip())
             except ValueError:
                 print(
-                    "Dump file can't be parsed: line {}!".format(line_number),
-                    file=sys.stderr
+                    "Dump file can't be parsed: line {0}!".format(line_number),
+                    file=sys.stderr,
                 )
                 return False
 
             instance = model.cqrs_save(master_data)
             if not instance:
                 print(
-                    "Instance can't be saved: line {}!".format(line_number),
-                    file=sys.stderr
+                    "Instance can't be saved: line {0}!".format(line_number),
+                    file=sys.stderr,
                 )
             else:
                 return True
         except Exception as e:
             print(
-                'Unexpected error: line {}! {}'.format(line_number, str(e)),
-                file=sys.stderr
+                'Unexpected error: line {0}! {1}'.format(line_number, str(e)),
+                file=sys.stderr,
             )
 
         return False

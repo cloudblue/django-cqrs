@@ -1,13 +1,14 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
-import ujson
-from django.core.management.base import BaseCommand, CommandError
-
 from dj_cqrs.dataclasses import TransportPayload
 from dj_cqrs.registries import ReplicaRegistry
-from dj_cqrs.transport.rabbit_mq import RabbitMQTransport
 from dj_cqrs.transport import current_transport
+from dj_cqrs.transport.rabbit_mq import RabbitMQTransport
 from dj_cqrs.utils import get_expires_datetime
+
+from django.core.management.base import BaseCommand, CommandError
+
+import ujson
 
 
 class RabbitMQTransportService(RabbitMQTransport):
@@ -82,22 +83,22 @@ class Command(BaseCommand):
         queue_name, dead_letter_queue_name = RabbitMQTransportService.get_consumer_settings()
         RabbitMQTransportService.declare_queue(channel, queue_name)
         RabbitMQTransportService.declare_queue(channel, dead_letter_queue_name)
-        for cqrs_id, replica_model in ReplicaRegistry.models.items():
+        for cqrs_id, _ in ReplicaRegistry.models.items():
             channel.queue_bind(exchange=exchange, queue=queue_name, routing_key=cqrs_id)
 
             # Every service must have specific SYNC or requeue routes
             channel.queue_bind(
                 exchange=exchange,
                 queue=queue_name,
-                routing_key='cqrs.{}.{}'.format(queue_name, cqrs_id),
+                routing_key='cqrs.{0}.{1}'.format(queue_name, cqrs_id),
             )
 
         return channel, connection
 
     def handle_retry(self, channel, consumer_generator, dead_letters_count):
-        self.stdout.write("Total dead letters: {}".format(dead_letters_count))
+        self.stdout.write("Total dead letters: {0}".format(dead_letters_count))
         for i in range(1, dead_letters_count + 1):
-            self.stdout.write("Retrying: {}/{}".format(i, dead_letters_count))
+            self.stdout.write("Retrying: {0}/{1}".format(i, dead_letters_count))
             method_frame, properties, body = next(consumer_generator)
 
             dct = ujson.loads(body)
@@ -116,12 +117,12 @@ class Command(BaseCommand):
             RabbitMQTransportService.nack(channel, method_frame.delivery_tag)
 
     def handle_dump(self, consumer_generator, dead_letters_count):
-        for i in range(1, dead_letters_count + 1):
+        for _ in range(1, dead_letters_count + 1):
             *_, body = next(consumer_generator)
             self.stdout.write(body.decode('utf-8'))
 
     def handle_purge(self, channel, dead_letter_queue_name, dead_letter_count):
-        self.stdout.write("Total dead letters: {}".format(dead_letter_count))
+        self.stdout.write("Total dead letters: {0}".format(dead_letter_count))
         if dead_letter_count > 0:
             channel.queue_purge(dead_letter_queue_name)
             self.stdout.write("Purged")

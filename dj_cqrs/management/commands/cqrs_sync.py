@@ -1,16 +1,16 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 import datetime
 import sys
 import time
 
+from dj_cqrs.management.commands.utils import batch_qs
+from dj_cqrs.registries import MasterRegistry
+
 from django.core.exceptions import FieldError
 from django.core.management.base import BaseCommand, CommandError
 
 import ujson
-
-from dj_cqrs.management.commands.utils import batch_qs
-from dj_cqrs.registries import MasterRegistry
 
 
 DEFAULT_BATCH = 10000
@@ -64,7 +64,7 @@ class Command(BaseCommand):
 
         counter, success_counter = 0, 0
         if progress:
-            print('Processing {} records with batch size {}'.format(db_count, batch_size))
+            print('Processing {0} records with batch size {1}'.format(db_count, batch_size))
 
         for qs in batch_qs(model.relate_cqrs_serialization(qs), batch_size=batch_size):
             ts = time.time()
@@ -75,7 +75,7 @@ class Command(BaseCommand):
                     instance.cqrs_sync(queue=options['queue'])
                     success_counter += 1
                 except Exception as e:
-                    print('\nSync record failed for pk={}: {}: {}'.format(
+                    print('\nSync record failed for pk={0}: {1}: {2}'.format(
                         instance.pk, type(e).__name__, str(e),
                     ))
 
@@ -84,12 +84,13 @@ class Command(BaseCommand):
                 percent = 100 * counter / db_count
                 eta = datetime.timedelta(seconds=int((db_count - counter) / rate))
                 sys.stdout.write(
-                    '\r{} of {} processed - {}% with rate {:.1f} rps, to go {} ...{:20}'.format(
+                    '\r{0} of {1} processed - {2}% with '
+                    'rate {3:.1f} rps, to go {4} ...{5:20}'.format(
                         counter, db_count, int(percent), rate, str(eta), ' ',
                     ))
                 sys.stdout.flush()
 
-        print('Done!\n{} instance(s) synced.\n{} instance(s) processed.'.format(
+        print('Done!\n{0} instance(s) synced.\n{1} instance(s) processed.'.format(
             success_counter, counter,
         ))
 
@@ -107,7 +108,7 @@ class Command(BaseCommand):
             try:
                 qs = model._default_manager.filter(**kwargs).order_by()
             except FieldError as e:
-                raise CommandError('Bad filter kwargs! {}'.format(str(e)))
+                raise CommandError('Bad filter kwargs! {0}'.format(str(e)))
 
         return qs
 
@@ -117,7 +118,7 @@ class Command(BaseCommand):
         model = MasterRegistry.get_model_by_cqrs_id(cqrs_id)
 
         if not model:
-            raise CommandError('Wrong CQRS ID: {}!'.format(cqrs_id))
+            raise CommandError('Wrong CQRS ID: {0}!'.format(cqrs_id))
 
         return model
 

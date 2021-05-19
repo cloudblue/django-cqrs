@@ -1,4 +1,4 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 from setuptools import find_packages, setup
 
@@ -39,5 +39,5 @@ setup(
         'Programming Language :: Python :: 3.8',
         'Topic :: Communications',
         'Topic :: Database',
-    ]
+    ],
 )
