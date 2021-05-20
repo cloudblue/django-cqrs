@@ -1,6 +1,6 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
-from queue import PriorityQueue, Full
+from queue import Full, PriorityQueue
 
 from django.utils import timezone
 

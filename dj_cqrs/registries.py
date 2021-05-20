@@ -1,4 +1,4 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 import logging
 
@@ -11,8 +11,10 @@ class RegistryMixin:
     @classmethod
     def register_model(cls, model_cls):
         """ Registration of CQRS model identifiers. """
-        assert model_cls.CQRS_ID not in cls.models, "Two models can't have the same CQRS_ID: {}." \
-            .format(model_cls.CQRS_ID)
+
+        e = "Two models can't have the same CQRS_ID: {0}.".format(model_cls.CQRS_ID)
+        assert model_cls.CQRS_ID not in cls.models, e
+
         cls.models[model_cls.CQRS_ID] = model_cls
 
     @classmethod
@@ -29,7 +31,7 @@ class RegistryMixin:
         if cqrs_id in cls.models:
             return cls.models[cqrs_id]
 
-        logger.error('No model with such CQRS_ID: {}.'.format(cqrs_id))
+        logger.error('No model with such CQRS_ID: {0}.'.format(cqrs_id))
 
 
 class MasterRegistry(RegistryMixin):
@@ -41,6 +43,7 @@ class ReplicaRegistry(RegistryMixin):
 
     @classmethod
     def register_model(cls, model_cls):
-        assert getattr(settings, 'CQRS', {}).get('queue') is not None, \
-            'CQRS queue must be set for the service, that has replica models.'
+        e = 'CQRS queue must be set for the service, that has replica models.'
+        assert getattr(settings, 'CQRS', {}).get('queue') is not None, e
+
         super(ReplicaRegistry, cls).register_model(model_cls)

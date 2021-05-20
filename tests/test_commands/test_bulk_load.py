@@ -1,11 +1,13 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
-import pytest
+
 from django.core.management import CommandError, call_command
 from django.utils.timezone import now
-from tests.utils import db_error
+
+import pytest
 
 from tests.dj_replica.models import AuthorRef
+from tests.utils import db_error
 
 
 COMMAND_NAME = 'cqrs_bulk_load'
@@ -26,21 +28,21 @@ def test_no_file():
 
 def test_empty_file():
     with pytest.raises(CommandError) as e:
-        call_command(COMMAND_NAME, '-i={}empty_file.dump'.format(DUMPS_PATH))
+        call_command(COMMAND_NAME, '-i={0}empty_file.dump'.format(DUMPS_PATH))
 
     assert "empty_file.dump is empty!" in str(e)
 
 
 def test_no_cqrs_id():
     with pytest.raises(CommandError) as e:
-        call_command(COMMAND_NAME, '-i={}bad_cqrs_id.dump'.format(DUMPS_PATH))
+        call_command(COMMAND_NAME, '-i={0}bad_cqrs_id.dump'.format(DUMPS_PATH))
 
     assert "Wrong CQRS ID: publisher!" in str(e)
 
 
 @pytest.mark.django_db
 def test_unparseable_line(capsys):
-    call_command(COMMAND_NAME, '-i={}unparseable.dump'.format(DUMPS_PATH))
+    call_command(COMMAND_NAME, '-i={0}unparseable.dump'.format(DUMPS_PATH))
     assert AuthorRef.objects.count() == 0
 
     captured = capsys.readouterr()
@@ -50,7 +52,7 @@ def test_unparseable_line(capsys):
 
 @pytest.mark.django_db
 def test_bad_master_data(capsys):
-    call_command(COMMAND_NAME, '-i={}bad_master_data.dump'.format(DUMPS_PATH))
+    call_command(COMMAND_NAME, '-i={0}bad_master_data.dump'.format(DUMPS_PATH))
     assert AuthorRef.objects.count() == 1
 
     captured = capsys.readouterr()
@@ -62,7 +64,7 @@ def test_bad_master_data(capsys):
 def test_no_rows(capsys):
     AuthorRef.objects.create(id=1, name='1', cqrs_revision=0, cqrs_updated=now())
 
-    call_command(COMMAND_NAME, '--input={}no_rows.dump'.format(DUMPS_PATH))
+    call_command(COMMAND_NAME, '--input={0}no_rows.dump'.format(DUMPS_PATH))
     assert AuthorRef.objects.count() == 1
 
     captured = capsys.readouterr()
@@ -73,7 +75,7 @@ def test_no_rows(capsys):
 def test_loaded_correctly(capsys):
     AuthorRef.objects.create(id=1, name='1', cqrs_revision=0, cqrs_updated=now())
 
-    call_command(COMMAND_NAME, '--input={}author.dump'.format(DUMPS_PATH))
+    call_command(COMMAND_NAME, '--input={0}author.dump'.format(DUMPS_PATH))
     assert AuthorRef.objects.count() == 2
 
     captured = capsys.readouterr()
@@ -84,7 +86,7 @@ def test_loaded_correctly(capsys):
 def test_delete_before_upload_ok(capsys):
     AuthorRef.objects.create(id=1, name='1', cqrs_revision=0, cqrs_updated=now())
 
-    call_command(COMMAND_NAME, '--input={}no_rows.dump'.format(DUMPS_PATH), '--clear=true')
+    call_command(COMMAND_NAME, '--input={0}no_rows.dump'.format(DUMPS_PATH), '--clear=true')
     assert AuthorRef.objects.count() == 0
 
     captured = capsys.readouterr()
@@ -92,10 +94,10 @@ def test_delete_before_upload_ok(capsys):
 
 
 @pytest.mark.django_db
-def test_delete_operation_fails(mocker, ):
+def test_delete_operation_fails(mocker):
     mocker.patch('django.db.models.manager.BaseManager.all', side_effect=db_error)
     with pytest.raises(CommandError) as e:
-        call_command(COMMAND_NAME, '--input={}no_rows.dump'.format(DUMPS_PATH), '--clear=true')
+        call_command(COMMAND_NAME, '--input={0}no_rows.dump'.format(DUMPS_PATH), '--clear=true')
 
     assert "Delete operation fails!" in str(e)
 
@@ -103,7 +105,7 @@ def test_delete_operation_fails(mocker, ):
 @pytest.mark.django_db
 def test_unexpected_error(mocker, capsys):
     mocker.patch('tests.dj_replica.models.AuthorRef.cqrs_save', side_effect=db_error)
-    call_command(COMMAND_NAME, '--input={}author.dump'.format(DUMPS_PATH))
+    call_command(COMMAND_NAME, '--input={0}author.dump'.format(DUMPS_PATH))
 
     captured = capsys.readouterr()
     assert 'Unexpected error: line 2!' in captured.err
@@ -115,7 +117,7 @@ def test_unexpected_error(mocker, capsys):
 def test_loaded_correctly_batch(capsys):
     AuthorRef.objects.create(id=1, name='1', cqrs_revision=0, cqrs_updated=now())
 
-    call_command(COMMAND_NAME, '--input={}author.dump'.format(DUMPS_PATH), '--batch=1')
+    call_command(COMMAND_NAME, '--input={0}author.dump'.format(DUMPS_PATH), '--batch=1')
     assert AuthorRef.objects.count() == 2
 
     captured = capsys.readouterr()

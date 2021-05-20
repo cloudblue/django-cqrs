@@ -1,20 +1,23 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 import logging
-from datetime import datetime, timezone, timedelta
-
-import ujson
+from datetime import datetime, timedelta, timezone
 from importlib import import_module, reload
 
-import pytest
-from django.db import DatabaseError
-from pika.exceptions import AMQPError
-
-from dj_cqrs.delay import DelayQueue, DelayMessage
 from dj_cqrs.constants import SignalType
 from dj_cqrs.dataclasses import TransportPayload
+from dj_cqrs.delay import DelayMessage, DelayQueue
 from dj_cqrs.transport.rabbit_mq import RabbitMQTransport
+
+from django.db import DatabaseError
+
+from pika.exceptions import AMQPError
+
+import pytest
+
 from tests.utils import db_error
+
+import ujson
 
 
 class PublicRabbitMQTransport(RabbitMQTransport):
@@ -79,7 +82,7 @@ def test_non_default_settings(settings, caplog):
 def test_default_url_settings(settings):
     settings.CQRS = {
         'transport': 'dj_cqrs.transport.rabbit_mq.RabbitMQTransport',
-        'url': 'amqp://localhost'
+        'url': 'amqp://localhost',
     }
     s = PublicRabbitMQTransport.get_common_settings()
     assert s[0] == 'localhost'
@@ -104,7 +107,7 @@ def test_non_default_url_settings(settings):
 def test_invalid_url_settings(settings):
     settings.CQRS = {
         'transport': 'dj_cqrs.transport.rabbit_mq.RabbitMQTransport',
-        'url': 'rabbit://localhost'
+        'url': 'rabbit://localhost',
     }
     with pytest.raises(AssertionError) as ei:
         PublicRabbitMQTransport.get_common_settings()
@@ -207,17 +210,16 @@ def test_produce_message_ok(mocker):
     assert channel.basic_publish.call_count == 1
 
     basic_publish_kwargs = channel.basic_publish.call_args[1]
-    assert ujson.loads(basic_publish_kwargs['body']) == \
-        {
-            'signal_type': SignalType.SAVE,
-            'cqrs_id': 'cqrs_id',
-            'instance_data': {},
-            'instance_pk': 'id',
-            'previous_data': {'e': 'f'},
-            'correlation_id': None,
-            'expires': expected_expires,
-            'retries': 2,
-        }
+    assert ujson.loads(basic_publish_kwargs['body']) == {
+        'signal_type': SignalType.SAVE,
+        'cqrs_id': 'cqrs_id',
+        'instance_data': {},
+        'instance_pk': 'id',
+        'previous_data': {'e': 'f'},
+        'correlation_id': None,
+        'expires': expected_expires,
+        'retries': 2,
+    }
     assert basic_publish_kwargs['exchange'] == 'exchange'
     assert basic_publish_kwargs['mandatory']
     assert basic_publish_kwargs['routing_key'] == 'cqrs_id'
@@ -232,17 +234,16 @@ def test_produce_sync_message_no_queue(mocker):
     PublicRabbitMQTransport.produce_message(channel, 'exchange', payload)
 
     basic_publish_kwargs = channel.basic_publish.call_args[1]
-    assert ujson.loads(basic_publish_kwargs['body']) == \
-        {
-            'signal_type': SignalType.SYNC,
-            'cqrs_id': 'cqrs_id',
-            'instance_data': {},
-            'instance_pk': None,
-            'previous_data': None,
-            'correlation_id': None,
-            'expires': None,
-            'retries': 0,
-        }
+    assert ujson.loads(basic_publish_kwargs['body']) == {
+        'signal_type': SignalType.SYNC,
+        'cqrs_id': 'cqrs_id',
+        'instance_data': {},
+        'instance_pk': None,
+        'previous_data': None,
+        'correlation_id': None,
+        'expires': None,
+        'retries': 0,
+    }
     assert basic_publish_kwargs['routing_key'] == 'cqrs_id'
 
 
@@ -253,17 +254,16 @@ def test_produce_sync_message_queue(mocker):
     PublicRabbitMQTransport.produce_message(channel, 'exchange', payload)
 
     basic_publish_kwargs = channel.basic_publish.call_args[1]
-    assert ujson.loads(basic_publish_kwargs['body']) == \
-        {
-            'signal_type': SignalType.SYNC,
-            'cqrs_id': 'cqrs_id',
-            'instance_data': {},
-            'instance_pk': 'id',
-            'previous_data': None,
-            'correlation_id': None,
-            'expires': None,
-            'retries': 0,
-        }
+    assert ujson.loads(basic_publish_kwargs['body']) == {
+        'signal_type': SignalType.SYNC,
+        'cqrs_id': 'cqrs_id',
+        'instance_data': {},
+        'instance_pk': 'id',
+        'previous_data': None,
+        'correlation_id': None,
+        'expires': None,
+        'retries': 0,
+    }
     assert basic_publish_kwargs['routing_key'] == 'cqrs.queue.cqrs_id'
 
 
@@ -481,7 +481,7 @@ def test_process_delay_messages(mocker, caplog):
     payload = TransportPayload(SignalType.SAVE, 'CQRS_ID', {'id': 1}, 1)
     delay_queue = DelayQueue()
     delay_queue.put(
-        DelayMessage(delivery_tag=1, payload=payload, eta=datetime.now(tz=timezone.utc))
+        DelayMessage(delivery_tag=1, payload=payload, eta=datetime.now(tz=timezone.utc)),
     )
 
     PublicRabbitMQTransport.process_delay_messages(channel, delay_queue)

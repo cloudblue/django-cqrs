@@ -2,11 +2,13 @@
 
 from datetime import datetime, timezone
 
-import pytest
+from dj_cqrs.constants import SignalType
+from dj_cqrs.signals import post_bulk_create, post_update
+
 from django.db.models.signals import post_delete, post_save
 
-from dj_cqrs.signals import post_bulk_create, post_update
-from dj_cqrs.constants import SignalType
+import pytest
+
 from tests.dj_master import models
 from tests.utils import assert_publisher_once_called_with_args
 

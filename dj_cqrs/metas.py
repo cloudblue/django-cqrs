@@ -1,11 +1,11 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
-
-from django.db.models import base
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 from dj_cqrs.constants import ALL_BASIC_FIELDS
 from dj_cqrs.registries import MasterRegistry, ReplicaRegistry
 from dj_cqrs.signals import MasterSignals
 from dj_cqrs.tracker import CQRSTracker
+
+from django.db.models import base
 
 
 class MasterMeta(base.ModelBase):
@@ -51,8 +51,8 @@ class MasterMeta(base.ModelBase):
             _MetaUtils._check_unexisting_names(model_cls, tracked_fields, 'CQRS_TRACKED_FIELDS')
             return
 
-        assert isinstance(tracked_fields, str) and tracked_fields == ALL_BASIC_FIELDS, \
-            "Model {}: Invalid configuration for CQRS_TRACKED_FIELDS".format(model_cls.__name__)
+        e = "Model {0}: Invalid configuration for CQRS_TRACKED_FIELDS".format(model_cls.__name__)
+        assert isinstance(tracked_fields, str) and tracked_fields == ALL_BASIC_FIELDS, e
 
     @staticmethod
     def _check_correct_configuration(model_cls):
@@ -62,10 +62,10 @@ class MasterMeta(base.ModelBase):
         :raises: AssertionError
         """
         if model_cls.CQRS_FIELDS != ALL_BASIC_FIELDS:
-            assert model_cls.CQRS_SERIALIZER is None, \
-                "Model {}: CQRS_FIELDS can't be set together with CQRS_SERIALIZER.".format(
-                    model_cls.__name__,
-                )
+            e = "Model {0}: CQRS_FIELDS can't be set together with CQRS_SERIALIZER.".format(
+                model_cls.__name__,
+            )
+            assert model_cls.CQRS_SERIALIZER is None, e
 
     @staticmethod
     def _check_cqrs_fields(model_cls):
@@ -118,8 +118,8 @@ class _MetaUtils:
     def _check_no_duplicate_names(model_cls, cqrs_field_names, cqrs_attr):
         model_name = model_cls.__name__
 
-        assert len(set(cqrs_field_names)) == len(cqrs_field_names), \
-            'Duplicate names in {} field for model {}.'.format(cqrs_attr, model_name)
+        e = 'Duplicate names in {0} field for model {1}.'.format(cqrs_attr, model_name)
+        assert len(set(cqrs_field_names)) == len(cqrs_field_names), e
 
     @staticmethod
     def _check_unexisting_names(model_cls, cqrs_field_names, cqrs_attr):
@@ -127,8 +127,8 @@ class _MetaUtils:
         model_name = model_cls.__name__
 
         model_field_names = {f.name for f in opts.fields}
-        assert not set(cqrs_field_names) - model_field_names, \
-            '{} field is not correctly set for model {}.'.format(cqrs_attr, model_name)
+        e = '{0} field is not correctly set for model {1}.'.format(cqrs_attr, model_name)
+        assert not set(cqrs_field_names) - model_field_names, e
 
     @staticmethod
     def _check_id_in_names(model_cls, cqrs_field_names, cqrs_attr):
@@ -136,5 +136,5 @@ class _MetaUtils:
         model_name = model_cls.__name__
 
         pk_name = opts.pk.name
-        assert pk_name in cqrs_field_names, \
-            'PK is not in {} for model {}.'.format(cqrs_attr, model_name)
+        e = 'PK is not in {0} for model {1}.'.format(cqrs_attr, model_name)
+        assert pk_name in cqrs_field_names, e

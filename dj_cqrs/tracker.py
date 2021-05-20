@@ -1,9 +1,9 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+
+from dj_cqrs.constants import ALL_BASIC_FIELDS, FIELDS_TRACKER_FIELD_NAME
 
 from model_utils import FieldTracker
 from model_utils.tracker import FieldInstanceTracker
-
-from dj_cqrs.constants import ALL_BASIC_FIELDS, FIELDS_TRACKER_FIELD_NAME
 
 
 class _CQRSTrackerInstance(FieldInstanceTracker):
@@ -45,7 +45,7 @@ class CQRSTracker(FieldTracker):
         for field in opts.concrete_fields:
             if declared == ALL_BASIC_FIELDS or field.name in declared:
                 fields_to_track.append(
-                    field.attname if field.is_relation else field.name
+                    field.attname if field.is_relation else field.name,
                 )
 
         tracker = cls(fields=fields_to_track)

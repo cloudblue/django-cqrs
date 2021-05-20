@@ -2,12 +2,12 @@
 
 import sys
 
-import ujson
+from dj_cqrs.registries import ReplicaRegistry
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import DatabaseError
 
-from dj_cqrs.registries import ReplicaRegistry
+import ujson
 
 
 class Command(BaseCommand):
@@ -36,6 +36,6 @@ class Command(BaseCommand):
         model = ReplicaRegistry.get_model_by_cqrs_id(cqrs_id)
 
         if not model:
-            raise CommandError('Wrong CQRS ID: {}!'.format(cqrs_id))
+            raise CommandError('Wrong CQRS ID: {0}!'.format(cqrs_id))
 
         return model

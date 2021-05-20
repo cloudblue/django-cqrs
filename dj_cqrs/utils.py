@@ -3,10 +3,11 @@
 import logging
 from datetime import timedelta
 
+from dj_cqrs.constants import DEFAULT_CQRS_MESSAGE_TTL
+
 from django.conf import settings
 from django.utils import timezone
 
-from dj_cqrs.constants import DEFAULT_CQRS_MESSAGE_TTL
 
 logger = logging.getLogger('django-cqrs')
 

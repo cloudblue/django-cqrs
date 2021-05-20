@@ -1,13 +1,14 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
+from dj_cqrs.constants import ALL_BASIC_FIELDS
+from dj_cqrs.metas import MasterMeta
+from dj_cqrs.mixins import MasterMixin, RawMasterMixin
+
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
 from mptt.models import MPTTModel, TreeForeignKey
-from dj_cqrs.constants import ALL_BASIC_FIELDS
-from dj_cqrs.metas import MasterMeta
-from dj_cqrs.mixins import MasterMixin, RawMasterMixin
 
 
 class BasicFieldsModel(MasterMixin, models.Model):

@@ -1,13 +1,15 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
-import psycopg2
-import pytest
-from pika import BlockingConnection, URLParameters
+from dj_cqrs.transport import current_transport
+from dj_cqrs.transport.rabbit_mq import RabbitMQTransport
 
 from integration_tests.tests.utils import REPLICA_TABLES
 
-from dj_cqrs.transport import current_transport
-from dj_cqrs.transport.rabbit_mq import RabbitMQTransport
+from pika import BlockingConnection, URLParameters
+
+import psycopg2
+
+import pytest
 
 
 @pytest.fixture
@@ -19,7 +21,7 @@ def replica_cursor():
 
     cursor = connection.cursor()
     for table in REPLICA_TABLES:
-        cursor.execute('TRUNCATE TABLE {};'.format(table))
+        cursor.execute('TRUNCATE TABLE {0};'.format(table))
 
     yield cursor
 

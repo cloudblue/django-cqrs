@@ -1,16 +1,17 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
-import pytest
 from time import sleep
 from uuid import uuid4
 
+from dj_cqrs.constants import FIELDS_TRACKER_FIELD_NAME, SignalType
+from dj_cqrs.metas import MasterMeta
+
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
-from django.db.models import CharField, IntegerField, F
+from django.db.models import CharField, F, IntegerField
 from django.utils.timezone import now
 
-from dj_cqrs.constants import SignalType, FIELDS_TRACKER_FIELD_NAME
-from dj_cqrs.metas import MasterMeta
+import pytest
 
 from tests.dj_master import models
 from tests.dj_master.serializers import AuthorSerializer
@@ -475,7 +476,7 @@ def test_update_from_related_table(mocker):
             'name': 'author',
             'publisher': {
                 'id': 1,
-                'name': 'new'
+                'name': 'new',
             },
             'books': [],
             'cqrs_revision': 1,

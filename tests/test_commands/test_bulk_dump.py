@@ -1,14 +1,16 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
-import ujson
-
-import pytest
 from django.core.management import CommandError, call_command
 from django.db import transaction
-from tests.utils import db_error
+
+import pytest
 
 from tests.dj_master.models import Author, Publisher
 from tests.test_commands.utils import remove_file
+from tests.utils import db_error
+
+import ujson
+
 
 COMMAND_NAME = 'cqrs_bulk_dump'
 

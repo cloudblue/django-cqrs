@@ -1,4 +1,4 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 import os
 
@@ -57,5 +57,5 @@ CQRS = {
     'url': os.getenv('CQRS_BROKER_URL'),
     'master': {
         'CQRS_MESSAGE_TTL': 3600,
-    }
+    },
 }

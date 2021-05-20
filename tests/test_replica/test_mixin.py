@@ -1,11 +1,12 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
-import pytest
+from dj_cqrs.metas import ReplicaMeta
 
 from django.db.models import CharField, IntegerField, QuerySet
 from django.utils.timezone import now
 
-from dj_cqrs.metas import ReplicaMeta
+import pytest
+
 from tests.dj_replica import models
 from tests.utils import db_error
 
@@ -364,8 +365,9 @@ def test_wrong_update_order(caplog):
     assert earlier_instance.cqrs_revision == 2
     assert earlier_instance.char_field == 'new_text_2'
     assert later_instance
-    assert 'Wrong CQRS sync order: pk = 1, cqrs_revision = new 1 / existing 2 (basic).' in \
-        caplog.text
+
+    e = 'Wrong CQRS sync order: pk = 1, cqrs_revision = new 1 / existing 2 (basic).'
+    assert e in caplog.text
 
 
 @pytest.mark.django_db(transaction=True)

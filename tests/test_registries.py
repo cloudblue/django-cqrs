@@ -1,8 +1,9 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+
+from dj_cqrs.registries import MasterRegistry, ReplicaRegistry
 
 import pytest
 
-from dj_cqrs.registries import MasterRegistry, ReplicaRegistry
 from tests.dj_master import models as master_models
 from tests.dj_replica import models as replica_models
 

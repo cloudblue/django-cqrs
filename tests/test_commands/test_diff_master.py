@@ -1,11 +1,12 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
-import ujson
-
-import pytest
 from django.core.management import CommandError, call_command
 
+import pytest
+
 from tests.dj_master.models import Author
+
+import ujson
 
 
 COMMAND_NAME = 'cqrs_diff_master'
@@ -30,7 +31,7 @@ def test_first_row(capsys):
     call_command(COMMAND_NAME, '--cqrs-id=author')
 
     captured = capsys.readouterr()
-    assert '{},'.format(Author.CQRS_ID) in captured.out
+    assert '{0},'.format(Author.CQRS_ID) in captured.out
 
 
 @pytest.mark.django_db

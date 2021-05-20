@@ -1,16 +1,18 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 import logging
-import ujson
 from importlib import import_module, reload
-
-import pytest
-from kombu.exceptions import KombuError
 
 from dj_cqrs.constants import SignalType
 from dj_cqrs.dataclasses import TransportPayload
 from dj_cqrs.registries import ReplicaRegistry
-from dj_cqrs.transport.kombu import _KombuConsumer, KombuTransport
+from dj_cqrs.transport.kombu import KombuTransport, _KombuConsumer
+
+from kombu.exceptions import KombuError
+
+import pytest
+
+import ujson
 
 
 class PublicKombuTransport(KombuTransport):
@@ -139,17 +141,16 @@ def test_produce_message_ok(mocker):
     prepare_message_args = channel.prepare_message.call_args[0]
     basic_publish_kwargs = channel.basic_publish.call_args[1]
 
-    assert ujson.loads(prepare_message_args[0]) == \
-        {
-            'signal_type': SignalType.SAVE,
-            'cqrs_id': 'cqrs_id',
-            'instance_data': {},
-            'instance_pk': 'id',
-            'previous_data': {'e': 'f'},
-            'correlation_id': None,
-            'expires': None,
-            'retries': 0,
-        }
+    assert ujson.loads(prepare_message_args[0]) == {
+        'signal_type': SignalType.SAVE,
+        'cqrs_id': 'cqrs_id',
+        'instance_data': {},
+        'instance_pk': 'id',
+        'previous_data': {'e': 'f'},
+        'correlation_id': None,
+        'expires': None,
+        'retries': 0,
+    }
 
     assert prepare_message_args[2] == 'text/plain'
     assert prepare_message_args[5]['delivery_mode'] == 2
@@ -170,17 +171,16 @@ def test_produce_sync_message_no_queue(mocker):
     prepare_message_args = channel.prepare_message.call_args[0]
     basic_publish_kwargs = channel.basic_publish.call_args[1]
 
-    assert ujson.loads(prepare_message_args[0]) == \
-        {
-            'signal_type': SignalType.SYNC,
-            'cqrs_id': 'cqrs_id',
-            'instance_data': {},
-            'instance_pk': None,
-            'previous_data': None,
-            'correlation_id': None,
-            'expires': None,
-            'retries': 0,
-        }
+    assert ujson.loads(prepare_message_args[0]) == {
+        'signal_type': SignalType.SYNC,
+        'cqrs_id': 'cqrs_id',
+        'instance_data': {},
+        'instance_pk': None,
+        'previous_data': None,
+        'correlation_id': None,
+        'expires': None,
+        'retries': 0,
+    }
     assert basic_publish_kwargs['routing_key'] == 'cqrs_id'
 
 
@@ -194,17 +194,16 @@ def test_produce_sync_message_queue(mocker):
 
     prepare_message_args = channel.prepare_message.call_args[0]
     basic_publish_kwargs = channel.basic_publish.call_args[1]
-    assert ujson.loads(prepare_message_args[0]) == \
-        {
-            'signal_type': SignalType.SYNC,
-            'cqrs_id': 'cqrs_id',
-            'instance_data': {},
-            'instance_pk': 'id',
-            'previous_data': None,
-            'correlation_id': None,
-            'expires': None,
-            'retries': 0,
-        }
+    assert ujson.loads(prepare_message_args[0]) == {
+        'signal_type': SignalType.SYNC,
+        'cqrs_id': 'cqrs_id',
+        'instance_data': {},
+        'instance_pk': 'id',
+        'previous_data': None,
+        'correlation_id': None,
+        'expires': None,
+        'retries': 0,
+    }
     assert basic_publish_kwargs['routing_key'] == 'cqrs.queue.cqrs_id'
 
 

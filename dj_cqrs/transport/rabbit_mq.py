@@ -3,19 +3,11 @@
 import logging
 import time
 from datetime import timedelta
-
 from socket import gaierror
 from urllib.parse import unquote, urlparse
 
-import ujson
-from django.conf import settings
-from django.utils import timezone
-from pika import exceptions, BasicProperties, BlockingConnection, ConnectionParameters, credentials
-
 from dj_cqrs.constants import (
-    SignalType,
-    DEFAULT_DEAD_MESSAGE_TTL,
-    DEFAULT_DELAY_QUEUE_MAX_SIZE,
+    DEFAULT_DEAD_MESSAGE_TTL, DEFAULT_DELAY_QUEUE_MAX_SIZE, SignalType,
 )
 from dj_cqrs.controller import consumer
 from dj_cqrs.dataclasses import TransportPayload
@@ -23,6 +15,14 @@ from dj_cqrs.delay import DelayMessage, DelayQueue
 from dj_cqrs.registries import ReplicaRegistry
 from dj_cqrs.transport import BaseTransport
 from dj_cqrs.transport.mixins import LoggingMixin
+
+from django.conf import settings
+from django.utils import timezone
+
+from pika import BasicProperties, BlockingConnection, ConnectionParameters, credentials, exceptions
+
+import ujson
+
 
 logger = logging.getLogger('django-cqrs')
 
@@ -55,7 +55,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
             try:
                 delay_queue = cls._get_delay_queue()
                 connection, channel, consumer_generator = cls._get_consumer_rmq_objects(
-                    *(common_rabbit_settings + consumer_rabbit_settings)
+                    *(common_rabbit_settings + consumer_rabbit_settings),
                 )
 
                 for method_frame, properties, body in consumer_generator:
@@ -79,7 +79,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         try:
             cls._produce(payload)
         except (exceptions.AMQPError, exceptions.ChannelError, exceptions.ReentrancyError):
-            logger.error("CQRS couldn't be published: pk = {} ({}). Reconnect...".format(
+            logger.error("CQRS couldn't be published: pk = {0} ({1}). Reconnect...".format(
                 payload.pk, payload.cqrs_id,
             ))
 
@@ -89,7 +89,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
             try:
                 cls._produce(payload)
             except (exceptions.AMQPError, exceptions.ChannelError, exceptions.ReentrancyError):
-                logger.error("CQRS couldn't be published: pk = {} ({}).".format(
+                logger.error("CQRS couldn't be published: pk = {0} ({1}).".format(
                     payload.pk, payload.cqrs_id,
                 ))
 
@@ -110,7 +110,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         try:
             dct = ujson.loads(body)
         except ValueError:
-            logger.error("CQRS couldn't be parsed: {}.".format(body))
+            logger.error("CQRS couldn't be parsed: {0}.".format(body))
             ch.basic_reject(delivery_tag=method.delivery_tag, requeue=False)
             return
 
@@ -150,7 +150,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         cls.log_consumed_failed(payload)
         model_cls = ReplicaRegistry.get_model_by_cqrs_id(payload.cqrs_id)
         if model_cls is None:
-            logger.error("Model for cqrs_id {} is not found.".format(payload.cqrs_id))
+            logger.error("Model for cqrs_id {0} is not found.".format(payload.cqrs_id))
             cls._nack(channel, delivery_tag)
             return
 
@@ -220,7 +220,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
                 content_type='text/plain',
                 delivery_mode=2,  # make message persistent
                 expiration=expiration,
-            )
+            ),
         )
 
     @classmethod
@@ -228,13 +228,13 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         routing_key = payload.cqrs_id
 
         if payload.signal_type == SignalType.SYNC and payload.queue:
-            routing_key = 'cqrs.{}.{}'.format(payload.queue, routing_key)
+            routing_key = 'cqrs.{0}.{1}'.format(payload.queue, routing_key)
         elif getattr(payload, 'is_dead_letter', False):
             dead_letter_queue_name = cls._get_consumer_settings()[-1]
-            routing_key = 'cqrs.{}.{}'.format(dead_letter_queue_name, routing_key)
+            routing_key = 'cqrs.{0}.{1}'.format(dead_letter_queue_name, routing_key)
         elif getattr(payload, 'is_requeue', False):
             queue = cls._get_consumer_settings()[0]
-            routing_key = 'cqrs.{}.{}'.format(queue, routing_key)
+            routing_key = 'cqrs.{0}.{1}'.format(queue, routing_key)
 
         return routing_key
 
@@ -251,21 +251,21 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         channel.queue_declare(queue_name, durable=True, exclusive=False)
         channel.queue_declare(dead_letter_queue_name, durable=True, exclusive=False)
 
-        for cqrs_id, replica_model in ReplicaRegistry.models.items():
+        for cqrs_id, _ in ReplicaRegistry.models.items():
             channel.queue_bind(exchange=exchange, queue=queue_name, routing_key=cqrs_id)
 
             # Every service must have specific SYNC or requeue routes
             channel.queue_bind(
                 exchange=exchange,
                 queue=queue_name,
-                routing_key='cqrs.{}.{}'.format(queue_name, cqrs_id),
+                routing_key='cqrs.{0}.{1}'.format(queue_name, cqrs_id),
             )
 
             # Dead letter
             channel.queue_bind(
                 exchange=exchange,
                 queue=dead_letter_queue_name,
-                routing_key='cqrs.{}.{}'.format(dead_letter_queue_name, cqrs_id),
+                routing_key='cqrs.{0}.{1}'.format(dead_letter_queue_name, cqrs_id),
             )
 
         delay_queue_check_timeout = 1  # seconds
@@ -320,12 +320,11 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
     @staticmethod
     def _parse_url(url):
         scheme = urlparse(url).scheme
+        assert scheme == 'amqp', 'Scheme must be "amqp" for RabbitMQTransport.'
+
         schemeless = url[len(scheme) + 3:]
         parts = urlparse('http://' + schemeless)
-        path = parts.path or ''
-        path = path[1:] if path and path[0] == '/' else path
-        assert scheme == 'amqp', \
-            'Scheme must be "amqp" for RabbitMQTransport.'
+
         return (
             unquote(parts.hostname or '') or ConnectionParameters.DEFAULT_HOST,
             parts.port or ConnectionParameters.DEFAULT_PORT,
@@ -355,7 +354,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         queue_name = settings.CQRS['queue']
 
         replica_settings = settings.CQRS.get('replica', {})
-        dead_letter_queue_name = 'dead_letter_{}'.format(queue_name)
+        dead_letter_queue_name = 'dead_letter_{0}'.format(queue_name)
         if 'dead_letter_queue' in replica_settings:
             dead_letter_queue_name = replica_settings['dead_letter_queue']
 

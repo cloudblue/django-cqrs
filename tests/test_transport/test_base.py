@@ -1,10 +1,10 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 from importlib import import_module, reload
 
-import pytest
-
 from dj_cqrs.transport.base import BaseTransport
+
+import pytest
 
 
 def test_no_transport_setting(settings):

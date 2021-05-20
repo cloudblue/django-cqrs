@@ -1,10 +1,10 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
-from datetime import timezone, datetime, timedelta
-
-import pytest
+from datetime import datetime, timedelta, timezone
 
 from dj_cqrs.utils import get_expires_datetime
+
+import pytest
 
 
 def test_get_expires_datetime(mocker, settings):

@@ -1,10 +1,10 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 import logging
 
 from django.core.exceptions import ValidationError
 from django.db import Error, IntegrityError, transaction
-from django.db.models import Manager, F
+from django.db.models import F, Manager
 from django.utils import timezone
 
 
@@ -39,7 +39,7 @@ class MasterManager(Manager):
         with transaction.atomic():
             current_dt = timezone.now()
             result = queryset.update(
-                cqrs_revision=F('cqrs_revision') + 1, cqrs_updated=current_dt, **kwargs
+                cqrs_revision=F('cqrs_revision') + 1, cqrs_updated=current_dt, **kwargs,
             )
         queryset.model.call_post_update(list(queryset.all()), using=queryset.db)
         return result
@@ -56,8 +56,7 @@ class ReplicaManager(Manager):
         :rtype: django.db.models.Model
         """
         mapped_data = self._map_save_data(master_data)
-        mapped_previous_data = self._map_previous_data(previous_data) \
-            if previous_data else None
+        mapped_previous_data = self._map_previous_data(previous_data) if previous_data else None
         if mapped_data:
             pk_name = self._get_model_pk_name()
             pk_value = mapped_data[pk_name]
@@ -102,13 +101,14 @@ class ReplicaManager(Manager):
             pk_value = mapped_data[self._get_model_pk_name()]
             if isinstance(e, IntegrityError):
                 logger.warning(
-                    'Potentially wrong CQRS sync order: pk = {}, cqrs_revision = {} ({}).'.format(
+                    'Potentially wrong CQRS sync order: '
+                    'pk = {0}, cqrs_revision = {1} ({2}).'.format(
                         pk_value, mapped_data['cqrs_revision'], self.model.CQRS_ID,
                     ),
                 )
 
             logger.error(
-                '{}\nCQRS create error: pk = {} ({}).'.format(
+                '{0}\nCQRS create error: pk = {1} ({2}).'.format(
                     str(e), pk_value, self.model.CQRS_ID,
                 ),
             )
@@ -129,15 +129,20 @@ class ReplicaManager(Manager):
 
         if sync:
             if existing_cqrs_revision > current_cqrs_revision:
-                w_tpl = 'CQRS revision downgrade on sync: pk = {}, ' \
-                    'cqrs_revision = new {} / existing {} ({}).'
+                w_tpl = (
+                    'CQRS revision downgrade on sync: pk = {0}, '
+                    'cqrs_revision = new {1} / existing {2} ({3}).'
+                )
                 logger.warning(w_tpl.format(
                     pk_value, current_cqrs_revision, existing_cqrs_revision, self.model.CQRS_ID,
                 ))
 
         else:
             if existing_cqrs_revision > current_cqrs_revision:
-                e_tpl = 'Wrong CQRS sync order: pk = {}, cqrs_revision = new {} / existing {} ({}).'
+                e_tpl = (
+                    'Wrong CQRS sync order: pk = {0}, '
+                    'cqrs_revision = new {1} / existing {2} ({3}).'
+                )
                 logger.error(e_tpl.format(
                     pk_value, current_cqrs_revision, existing_cqrs_revision, self.model.CQRS_ID,
                 ))
@@ -145,13 +150,13 @@ class ReplicaManager(Manager):
 
             if existing_cqrs_revision == current_cqrs_revision:
                 logger.error(
-                    'Received duplicate CQRS data: pk = {}, cqrs_revision = {} ({}).'.format(
+                    'Received duplicate CQRS data: pk = {0}, cqrs_revision = {1} ({2}).'.format(
                         pk_value, current_cqrs_revision, self.model.CQRS_ID,
                     ),
                 )
                 if current_cqrs_revision == 0:
                     logger.warning(
-                        'CQRS potential creation race condition: pk = {} ({}).'.format(
+                        'CQRS potential creation race condition: pk = {0} ({1}).'.format(
                             pk_value, self.model.CQRS_ID,
                         ),
                     )
@@ -159,7 +164,9 @@ class ReplicaManager(Manager):
                 return instance
 
             if current_cqrs_revision != instance.cqrs_revision + 1:
-                w_tpl = 'Lost or filtered out {} CQRS packages: pk = {}, cqrs_revision = {} ({})'
+                w_tpl = (
+                    'Lost or filtered out {0} CQRS packages: pk = {1}, cqrs_revision = {2} ({3})'
+                )
                 logger.warning(w_tpl.format(
                     current_cqrs_revision - instance.cqrs_revision - 1,
                     pk_value, current_cqrs_revision, self.model.CQRS_ID,
@@ -173,7 +180,7 @@ class ReplicaManager(Manager):
             )
         except (Error, ValidationError) as e:
             logger.error(
-                '{}\nCQRS update error: pk = {}, cqrs_revision = {} ({}).'.format(
+                '{0}\nCQRS update error: pk = {1}, cqrs_revision = {2} ({3}).'.format(
                     str(e), pk_value, current_cqrs_revision, self.model.CQRS_ID,
                 ),
             )
@@ -195,7 +202,7 @@ class ReplicaManager(Manager):
                 return True
             except Error as e:
                 logger.error(
-                    '{}\nCQRS delete error: pk = {} ({}).'.format(
+                    '{0}\nCQRS delete error: pk = {1} ({2}).'.format(
                         str(e), pk_value, self.model.CQRS_ID,
                     ),
                 )
@@ -246,7 +253,7 @@ class ReplicaManager(Manager):
         }
         for master_name, replica_name in self.model.CQRS_MAPPING.items():
             if master_name not in master_data:
-                logger.error('Bad master-replica mapping for {} ({}).'.format(
+                logger.error('Bad master-replica mapping for {0} ({1}).'.format(
                     master_name, self.model.CQRS_ID,
                 ))
                 return
@@ -271,7 +278,7 @@ class ReplicaManager(Manager):
             return True
 
         logger.error(
-            'Not all required CQRS fields are provided in data ({}).'.format(self.model.CQRS_ID),
+            'Not all required CQRS fields are provided in data ({0}).'.format(self.model.CQRS_ID),
         )
         return False
 
@@ -293,11 +300,11 @@ class ReplicaManager(Manager):
         if 'cqrs_revision' in data and 'cqrs_updated' in data:
             return True
 
-        logger.error('CQRS sync fields are not provided in data ({}).'.format(self.model.CQRS_ID))
+        logger.error('CQRS sync fields are not provided in data ({0}).'.format(self.model.CQRS_ID))
         return False
 
     def _log_pk_data_error(self):
-        logger.error('CQRS PK is not provided in data ({}).'.format(self.model.CQRS_ID))
+        logger.error('CQRS PK is not provided in data ({0}).'.format(self.model.CQRS_ID))
 
     def _get_model_pk_name(self):
         return self.model._meta.pk.name

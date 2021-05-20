@@ -1,12 +1,13 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
-import ujson
-
-import pytest
 from django.core.management import CommandError, call_command
 from django.utils.timezone import now
 
+import pytest
+
 from tests.dj_replica.models import AuthorRef
+
+import ujson
 
 
 COMMAND_NAME = 'cqrs_deleted_diff_replica'
@@ -31,7 +32,7 @@ def test_first_row(capsys):
     call_command(COMMAND_NAME, '--cqrs-id=author')
 
     captured = capsys.readouterr()
-    assert '{},'.format(AuthorRef.CQRS_ID) in captured.out
+    assert '{0},'.format(AuthorRef.CQRS_ID) in captured.out
 
 
 @pytest.mark.django_db

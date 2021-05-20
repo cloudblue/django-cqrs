@@ -1,15 +1,16 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 import datetime
 import os
 import sys
 import time
 
-import ujson
-from django.core.management.base import BaseCommand, CommandError
-
 from dj_cqrs.management.commands.utils import batch_qs
 from dj_cqrs.registries import MasterRegistry
+
+from django.core.management.base import BaseCommand, CommandError
+
+import ujson
 
 
 class Command(BaseCommand):
@@ -59,7 +60,7 @@ class Command(BaseCommand):
 
             if progress:
                 print(
-                    'Processing {} records with batch size {}'.format(db_count, batch_size),
+                    'Processing {0} records with batch size {1}'.format(db_count, batch_size),
                     file=sys.stderr,
                 )
             for qs in batch_qs(
@@ -76,7 +77,7 @@ class Command(BaseCommand):
                         )
                         success_counter += 1
                     except Exception as e:
-                        print('\nDump record failed for pk={}: {}: {}'.format(
+                        print('\nDump record failed for pk={0}: {1}: {2}'.format(
                             instance.pk, type(e).__name__, str(e),
                         ), file=sys.stderr)
                 if progress:
@@ -84,12 +85,13 @@ class Command(BaseCommand):
                     percent = 100 * counter / db_count
                     eta = datetime.timedelta(seconds=int((db_count - counter) / rate))
                     sys.stderr.write(
-                        '\r{} of {} processed - {}% with rate {:.1f} rps, to go {} ...{:20}'.format(
+                        '\r{0} of {1} processed - {2}% with '
+                        'rate {3:.1f} rps, to go {4} ...{5:20}'.format(
                             counter, db_count, int(percent), rate, str(eta), ' ',
                         ))
                     sys.stderr.flush()
 
-        print('Done!\n{} instance(s) saved.\n{} instance(s) processed.'.format(
+        print('Done!\n{0} instance(s) saved.\n{1} instance(s) processed.'.format(
             success_counter, counter,
         ), file=sys.stderr)
 
@@ -99,7 +101,7 @@ class Command(BaseCommand):
         model = MasterRegistry.get_model_by_cqrs_id(cqrs_id)
 
         if not model:
-            raise CommandError('Wrong CQRS ID: {}!'.format(cqrs_id))
+            raise CommandError('Wrong CQRS ID: {0}!'.format(cqrs_id))
 
         return model
 
@@ -107,10 +109,10 @@ class Command(BaseCommand):
     def _get_output_filename(options):
         f_name = options['output']
         if f_name is None:
-            f_name = '{}.dump'.format(options['cqrs_id'])
+            f_name = '{0}.dump'.format(options['cqrs_id'])
 
         if f_name != '-' and os.path.exists(f_name) and not (options['force']):
-            raise CommandError('File {} exists!'.format(f_name))
+            raise CommandError('File {0} exists!'.format(f_name))
 
         return f_name
 

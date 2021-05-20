@@ -42,7 +42,7 @@ DATABASES = {
         'NAME': os.getenv('POSTGRES_DB', 'replica'),
         'USER': os.getenv('POSTGRES_USER', 'user'),
         'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'pswd'),
-    }
+    },
 }
 
 LANGUAGE_CODE = 'en-us'
@@ -66,5 +66,5 @@ CQRS = {
         'delay_queue_max_size': 10,
         'dead_letter_queue': 'dead_letter_replica',
         'dead_message_ttl': 5,
-    }
+    },
 }
