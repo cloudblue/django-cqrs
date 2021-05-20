@@ -3,9 +3,10 @@
 import sys
 from io import StringIO
 
-import pytest
 from django.core.management import CommandError, call_command
 from django.utils.timezone import now
+
+import pytest
 
 from tests.dj_master.models import Author
 from tests.dj_replica.models import AuthorRef
@@ -48,7 +49,7 @@ def test_first_row(capsys, mocker):
     captured = replica_master_pipe(capsys, mocker)
 
     first_row = captured.out.split('\n')[0]
-    assert '{},'.format(Author.CQRS_ID) in first_row
+    assert '{0},'.format(Author.CQRS_ID) in first_row
 
 
 @pytest.mark.django_db

@@ -1,7 +1,8 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+
+from django.db import transaction
 
 import pytest
-from django.db import transaction
 
 from tests.dj_master import models as master_models
 from tests.dj_replica import models as replica_models
@@ -176,5 +177,5 @@ def test_sync_downgrade(mocker, caplog):
     assert replica_author.cqrs_revision == 0
     assert replica_author.name == 'other'
 
-    assert 'CQRS revision downgrade on sync: pk = 1, cqrs_revision = new 0 / existing 1 (author).' \
-        in caplog.text
+    e = 'CQRS revision downgrade on sync: pk = 1, cqrs_revision = new 0 / existing 1 (author).'
+    assert e in caplog.text

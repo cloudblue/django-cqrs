@@ -1,11 +1,11 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from queue import Full
 
-import pytest
-
 from dj_cqrs.delay import DelayMessage, DelayQueue
+
+import pytest
 
 
 def test_delay_message(mocker):

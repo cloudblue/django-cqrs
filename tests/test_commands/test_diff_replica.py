@@ -1,12 +1,13 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 import sys
 from io import StringIO
 
-import pytest
 from django.conf import settings
 from django.core.management import CommandError, call_command
 from django.utils.timezone import now
+
+import pytest
 
 from tests.dj_master.models import Author
 from tests.dj_replica.models import AuthorRef
@@ -49,7 +50,7 @@ def test_first_row(capsys, mocker):
     captured = master_replica_pipe(capsys, mocker)
 
     first_row = captured.out.split('\n')[0]
-    assert '{},'.format(Author.CQRS_ID) in first_row
+    assert '{0},'.format(Author.CQRS_ID) in first_row
     assert settings.CQRS['queue'] in first_row
 
 

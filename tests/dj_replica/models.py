@@ -1,8 +1,8 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
-from django.db import models
-
 from dj_cqrs.mixins import ReplicaMixin
+
+from django.db import models
 
 
 class BasicFieldsModelRef(ReplicaMixin, models.Model):

@@ -1,14 +1,16 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
-import ujson
 from datetime import datetime
 
-import pytest
+from dj_cqrs.constants import SignalType
+from dj_cqrs.management.commands.cqrs_dead_letters import Command, RabbitMQTransport
+
+from django.core.management import CommandError, call_command
 from django.utils import timezone
 
-from dj_cqrs.constants import SignalType
-from django.core.management import call_command, CommandError
-from dj_cqrs.management.commands.cqrs_dead_letters import Command, RabbitMQTransport
+import pytest
+
+import ujson
 
 
 COMMAND_NAME = 'cqrs_dead_letters'
@@ -19,12 +21,12 @@ def test_dump(capsys, mocker):
     mocker.patch.object(
         RabbitMQTransport,
         '_get_consumer_settings',
-        return_value=('queue', 'dead_letters_queue')
+        return_value=('queue', 'dead_letters_queue'),
     )
     mocker.patch.object(
         RabbitMQTransport,
         '_get_common_settings',
-        return_value=('host', 'port', mocker.MagicMock(), 'exchange')
+        return_value=('host', 'port', mocker.MagicMock(), 'exchange'),
     )
 
     queue = mocker.MagicMock()
@@ -37,7 +39,7 @@ def test_dump(capsys, mocker):
     mocker.patch.object(
         RabbitMQTransport,
         '_create_connection',
-        return_value=(mocker.MagicMock(), channel)
+        return_value=(mocker.MagicMock(), channel),
     )
     mocker.patch.object(RabbitMQTransport, '_nack')
 
@@ -52,7 +54,7 @@ def test_handle_retry(settings, capsys, mocker):
     mocker.patch.object(
         RabbitMQTransport,
         '_get_producer_rmq_objects',
-        return_value=(None, produce_channel)
+        return_value=(None, produce_channel),
     )
 
     channel = mocker.MagicMock()

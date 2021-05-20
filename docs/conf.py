@@ -4,9 +4,9 @@ import os
 import sys
 from datetime import datetime
 
-from setuptools_scm import get_version
-
 import django
+
+from setuptools_scm import get_version
 
 
 sys.path.insert(0, os.path.abspath('..'))
@@ -17,7 +17,7 @@ django.setup()
 # -- Project information -----------------------------------------------------
 
 project = 'django-cqrs'
-copyright = '{}, Ingram Micro Inc.'.format(datetime.now().year)
+copyright = '{0}, Ingram Micro Inc.'.format(datetime.now().year)
 author = 'CloudBlue'
 
 # The full version, including alpha/beta/rc tags

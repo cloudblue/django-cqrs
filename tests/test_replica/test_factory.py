@@ -1,10 +1,10 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
-
-import pytest
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 from dj_cqrs.constants import SignalType
 from dj_cqrs.controller.consumer import route_signal_to_replica_model
 from dj_cqrs.mixins import ReplicaMixin
+
+import pytest
 
 
 def test_bad_model(caplog):

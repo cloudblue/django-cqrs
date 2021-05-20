@@ -1,11 +1,11 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
-import pytest
-
 from dj_cqrs.constants import SignalType
 from dj_cqrs.controller.consumer import consume, route_signal_to_replica_model
 from dj_cqrs.controller.producer import produce
 from dj_cqrs.dataclasses import TransportPayload
+
+import pytest
 
 
 def test_producer(mocker):

@@ -1,11 +1,14 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
-
-import pytest
-from django.core.management import CommandError, call_command
-from tests.utils import db_error
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 from dj_cqrs.constants import SignalType
+
+from django.core.management import CommandError, call_command
+
+import pytest
+
 from tests.dj_master.models import Author
+from tests.utils import db_error
+
 
 COMMAND_NAME = 'cqrs_sync'
 
@@ -109,7 +112,7 @@ def test_error(capsys, mocker):
     Author.objects.create(id=2, name='2')
 
     mocker.patch('tests.dj_master.models.Author.cqrs_sync', side_effect=db_error)
-    call_command(COMMAND_NAME, '--cqrs-id=author', '-f={}')
+    call_command(COMMAND_NAME, '--cqrs-id=author', '-f={}')  # noqa: P103
 
     captured = capsys.readouterr()
     assert 'Sync record failed for pk=2' in captured.out
@@ -120,7 +123,7 @@ def test_error(capsys, mocker):
 @pytest.mark.django_db
 def test_progress(capsys):
     Author.objects.create(id=2, name='2')
-    call_command(COMMAND_NAME, '--cqrs-id=author', '--progress', '-f={}', '--batch=2')
+    call_command(COMMAND_NAME, '--cqrs-id=author', '--progress', '-f={}', '--batch=2')  # noqa: P103
 
     captured = capsys.readouterr()
     assert 'Processing 1 records with batch size 2' in captured.out

@@ -2,9 +2,9 @@
 
 from importlib import import_module, reload
 
-import pytest
-
 from dj_cqrs.correlation import get_correlation_id
+
+import pytest
 
 
 def test_default_correlation():
