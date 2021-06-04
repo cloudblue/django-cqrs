@@ -59,7 +59,7 @@ Retrying
 +----------------------+----------+-----------------------------------------------------------------------------+
 | CQRS_RETRY_DELAY     | 2        | Constant delay in **seconds** between message failure and requeueing.       |
 +----------------------+----------+-----------------------------------------------------------------------------+
-| delay_queue_max_size | *None*   | Maximum number of delayed messages per worker. Infinite if *None*.          |
+| delay_queue_max_size | 1000     | Maximum number of delayed messages per worker. Infinite if *None*.          |
 +----------------------+----------+-----------------------------------------------------------------------------+
 
 .. code-block:: python
@@ -71,7 +71,7 @@ Retrying
         'replica': {
             'CQRS_MAX_RETRIES': 30, # attempts
             'CQRS_RETRY_DELAY': 2,  # seconds
-            'delay_queue_max_size': None, # infinite
+            'delay_queue_max_size': 1000,
         },
     }
 

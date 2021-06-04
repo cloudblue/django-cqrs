@@ -122,6 +122,7 @@ def test_consumer_default_settings(settings):
     s = PublicRabbitMQTransport.get_consumer_settings()
 
     assert s[1] == 'dead_letter_replica'
+    assert s[2] == 1001
 
 
 def test_consumer_non_default_settings(settings, caplog):
@@ -129,10 +130,15 @@ def test_consumer_non_default_settings(settings, caplog):
         'transport': 'dj_cqrs.transport.rabbit_mq.RabbitMQTransport',
         'queue': 'q',
         'consumer_prefetch_count': 2,
+        'replica': {
+            'delay_queue_max_size': None,  # Infinite
+        },
     }
 
     s = PublicRabbitMQTransport.get_consumer_settings()
     assert s[0] == 'q'
+    assert s[1] == 'dead_letter_q'
+    assert s[2] == 0  # Infinite
     assert "The 'consumer_prefetch_count' setting is ignored for RabbitMQTransport." in caplog.text
 
 

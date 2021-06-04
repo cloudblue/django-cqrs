@@ -6,15 +6,14 @@ from datetime import timedelta
 from socket import gaierror
 from urllib.parse import unquote, urlparse
 
-from dj_cqrs.constants import (
-    DEFAULT_DEAD_MESSAGE_TTL, DEFAULT_DELAY_QUEUE_MAX_SIZE, SignalType,
-)
+from dj_cqrs.constants import DEFAULT_DEAD_MESSAGE_TTL, SignalType
 from dj_cqrs.controller import consumer
 from dj_cqrs.dataclasses import TransportPayload
 from dj_cqrs.delay import DelayMessage, DelayQueue
 from dj_cqrs.registries import ReplicaRegistry
 from dj_cqrs.transport import BaseTransport
 from dj_cqrs.transport.mixins import LoggingMixin
+from dj_cqrs.utils import get_delay_queue_max_size, get_prefetch_count
 
 from django.conf import settings
 from django.utils import timezone
@@ -53,7 +52,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         while True:
             connection = None
             try:
-                delay_queue = cls._get_delay_queue()
+                delay_queue = DelayQueue(max_size=get_delay_queue_max_size())
                 connection, channel, consumer_generator = cls._get_consumer_rmq_objects(
                     *(common_rabbit_settings + consumer_rabbit_settings),
                 )
@@ -230,7 +229,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         if payload.signal_type == SignalType.SYNC and payload.queue:
             routing_key = 'cqrs.{0}.{1}'.format(payload.queue, routing_key)
         elif getattr(payload, 'is_dead_letter', False):
-            dead_letter_queue_name = cls._get_consumer_settings()[-1]
+            dead_letter_queue_name = cls._get_consumer_settings()[1]
             routing_key = 'cqrs.{0}.{1}'.format(dead_letter_queue_name, routing_key)
         elif getattr(payload, 'is_requeue', False):
             queue = cls._get_consumer_settings()[0]
@@ -240,12 +239,13 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
 
     @classmethod
     def _get_consumer_rmq_objects(
-        cls, host, port, creds, exchange, queue_name, dead_letter_queue_name,
+        cls, host, port, creds, exchange, queue_name, dead_letter_queue_name, prefetch_count,
     ):
         connection = BlockingConnection(
             ConnectionParameters(host=host, port=port, credentials=creds),
         )
         channel = connection.channel()
+        channel.basic_qos(prefetch_count=prefetch_count)
         cls._declare_exchange(channel, exchange)
 
         channel.queue_declare(queue_name, durable=True, exclusive=False)
@@ -305,6 +305,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
             ),
         )
         channel = connection.channel()
+        channel.basic_qos(prefetch_count=get_prefetch_count())
         cls._declare_exchange(channel, exchange)
 
         return connection, channel
@@ -362,10 +363,12 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
             logger.warning(
                 "The 'consumer_prefetch_count' setting is ignored for RabbitMQTransport.",
             )
+        prefetch_count = get_prefetch_count()
 
         return (
             queue_name,
             dead_letter_queue_name,
+            prefetch_count,
         )
 
     @classmethod
@@ -379,19 +382,3 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         channel.basic_nack(delivery_tag, requeue=False)
         if payload is not None:
             cls.log_consumed_denied(payload)
-
-    @classmethod
-    def _get_delay_queue(cls):
-        replica_settings = settings.CQRS.get('replica', {})
-        max_size = DEFAULT_DELAY_QUEUE_MAX_SIZE
-        if 'delay_queue_max_size' in replica_settings:
-            max_size = replica_settings['delay_queue_max_size']
-
-        if max_size is not None and max_size <= 0:
-            logger.warning(
-                "Settings delay_queue_max_size=%s is invalid, using default %s.",
-                max_size, DEFAULT_DELAY_QUEUE_MAX_SIZE,
-            )
-            max_size = DEFAULT_DELAY_QUEUE_MAX_SIZE
-
-        return DelayQueue(max_size)
