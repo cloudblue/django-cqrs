@@ -32,12 +32,6 @@ jobs:
     - name: Testing
       run: |
         python setup.py test
-    - name: Upload coverage
-      uses: codecov/codecov-action@v1
-      with:
-        file: ./coverage.xml
-        fail_ci_if_error: true
-        verbose: true
     - name: Fix coverage report for Sonar
       run: |
         sed -i 's/\/home\/runner\/work\/django-cqrs\/django-cqrs\//\/github\/workspace\//g' coverage.xml
