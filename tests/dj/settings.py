@@ -62,7 +62,7 @@ CQRS = {
     'replica': {
         'CQRS_MAX_RETRIES': 5,
         'CQRS_RETRY_DELAY': 1,
-        'delay_queue_max_size': None,
+        'delay_queue_max_size': 1000,
         'dead_letter_queue': 'dead_letter_replica',
         'dead_message_ttl': 5,
     },
