@@ -1,0 +1,92 @@
+version: "3"
+
+
+services:
+  # database for master
+  db_pgsql:
+    image: postgres:12
+    environment:
+      POSTGRES_USER: master_app
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: master_app
+    volumes:
+      - pgsql_data:/var/lib/postgresql/data
+
+  # database for replica
+  db_mysql:
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_USER: replica_app
+      MYSQL_PASSWORD: password
+      MYSQL_DATABASE: replica_app
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  # cache storage for replica
+  redis:
+    image: redis
+
+  # CQRS transport backend
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: rabbitmq
+      RABBITMQ_DEFAULT_PASS: password
+
+  # Domain models provider
+  master:
+    build:
+      context: master_app
+    ports:
+      - 8000:8000
+    depends_on:
+      - db_pgsql
+      - rabbitmq
+    volumes:
+      - ./master_app:/app
+    command: >
+      dockerize -wait tcp://rabbitmq:5672 -timeout 30s
+      dockerize -wait tcp://db_pgsql:5432 -timeout 30s
+      ./manage.py runserver 0.0.0.0:8000
+
+  # replica WEB app
+  replica:
+    build:
+      context: replica_app
+    ports:
+      - 8001:8000
+    depends_on:
+      - db_mysql
+      - redis
+      - rabbitmq
+    volumes:
+      - ./replica_app:/app
+    command: >
+      dockerize -wait tcp://rabbitmq:5672 -timeout 30s
+      dockerize -wait tcp://db_mysql:3306 -timeout 30s
+      dockerize -wait tcp://redis:6379 -timeout 30s
+      ./manage.py runserver 0.0.0.0:8000
+
+  # replica CQRS consumer worker
+  replica_cqrs_consumer:
+    build:
+      context: replica_app
+    depends_on:
+      - db_mysql
+      - rabbitmq
+    volumes:
+      - ./replica_app:/app
+    command: >
+      dockerize -wait tcp://rabbitmq:5672 -timeout 30s
+      dockerize -wait tcp://db_mysql:3306 -timeout 30s
+      dockerize -wait tcp://redis:6379 -timeout 30s
+      ./manage.py cqrs_consume -w2
+
+
+volumes:
+  pgsql_data:
+    driver: local
+
+  mysql_data:
+    driver: local
