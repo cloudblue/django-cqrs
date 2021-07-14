@@ -22,6 +22,8 @@ Full documentation is available at [https://django-cqrs.readthedocs.org](https:/
 Examples
 ========
 
+You can find an example project [here](examples/demo_project/README.md)
+
 Integration
 -----------
 * Setup `RabbitMQ`

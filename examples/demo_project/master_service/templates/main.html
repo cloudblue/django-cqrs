@@ -1,0 +1,193 @@
+<html>
+    <head>
+        <title>Master service</title>
+        <style>
+            html, body {
+                color: #333;
+                padding: 20px;
+            }
+            .block {
+                flex-grow: 1;
+                max-width: 100%;
+                padding-right: 40px;
+            }
+            .container {
+                display: flex;
+                justify-content: space-between;
+                max-width: 1200px;
+                flex-wrap: wrap;
+            }
+            .table {
+                padding: 20px;
+                border: 1px solid #dadada;
+            }
+            .table__header,
+            .table__row {
+                display: flex;
+            }
+            .table__header {
+                padding-bottom: 10px;
+                font-weight: bold;
+            }
+            .form-error {
+                color: #FF3333;
+            }
+            .table__col-narrow {
+                width: 100px;
+            }
+            .table__col-wide {
+                width: 200px;
+            }
+            .table__col-actions {
+                width: 120px;
+                display: flex;
+                justify-content: space-between;
+            }
+            .table__col-narrow:last-child,
+            .table__col-wide:last-child {
+                width: auto;
+            }
+            .form__input {
+                width: 200px;
+                padding: 5px;
+            }
+            .form__submit {
+                padding: 5px;
+            }
+            .form__select {
+                padding: 5px;
+                min-width: 200px;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>CQRS Demo: master service</h1>
+        <div class="container">
+            <div class="block">
+                <h2>Users:</h2>
+                <div class="table">
+                    <div class="table__header">
+                        <div class="table__col-narrow">ID</div>
+                        <div class="table__col-wide">Username</div>
+                        <div class="table__col-wide">Actions</div>
+                    </div>
+                    <div class="table__body">
+                        {% for user in users %}
+                            <div class="table__row">
+                                <div class="table__col-narrow">{{ user.id }}</div>
+                                <div class="table__col-wide">{{ user.username }}</div>
+                                <div class="table__col-actions">
+                                    <form action="/users/{{ user.id }}/update/" method="POST">
+                                        <input type="submit" value="Update" />
+                                        {% csrf_token %}
+                                    </form>
+                                    <form action="/users/{{ user.id }}/delete/" method="POST">
+                                        <input type="submit" value="Delete" />
+                                        {% csrf_token %}
+                                    </form>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <br />
+                <form method="POST" action="/users/">
+                    <input type="text" name="username" placeholder="username" class="form__input" required />
+                    <input type="submit" value="Create" class="form__submit" />
+                    {% csrf_token %}
+                </form>
+                <div class="form-error">
+                    {{ user_error }}
+                </div>
+            </div>
+            <div class="block">
+                <h2>Products:</h2>
+                <div class="table">
+                    <div class="table__header">
+                        <div class="table__col-narrow">ID</div>
+                        <div class="table__col-wide">Type</div>
+                        <div class="table__col-wide">Name</div>
+                        <div class="table__col-wide">Actions</div>
+                    </div>
+                    <div class="table__body">
+                        {% for product in products %}
+                            <div class="table__row">
+                                <div class="table__col-narrow">{{ product.id }}</div>
+                                <div class="table__col-wide">{{ product.product_type.name }}</div>
+                                <div class="table__col-wide">{{ product.name }}</div>
+                                <div class="table__col-wide">
+                                    <form action="/products/{{ product.id }}/delete/" method="POST">
+                                        <input type="submit" value="Delete" />
+                                        {% csrf_token %}
+                                    </form>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <br />
+                <form method="POST" action="/products/">
+                    <select class="form__select" name="product_type" required>
+                        <option value="" disabled selected>Select product type</option>
+                        {% for product_type in product_types %}
+                            <option value="{{ product_type.id }}">
+                                {{ product_type.id }} {{ product_type.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <input type="text" name="name" placeholder="name" class="form__input" required />
+                    <input type="submit" value="Create" class="form__submit" />
+                    {% csrf_token %}
+                </form>
+            </div>
+            <div class="block">
+                <h2>User purchases:</h2>
+                <div class="table">
+                    <div class="table__header">
+                        <div class="table__col-narrow">ID</div>
+                        <div class="table__col-narrow">User ID</div>
+                        <div class="table__col-wide">Product</div>
+                        <div class="table__col-wide">Time</div>
+                        <div class="table__col-wide">Actions</div>
+                    </div>
+                    <div class="table__body">
+                        {% for purchase in purchases %}
+                            <div class="table__row">
+                                <div class="table__col-narrow">{{ purchase.id }}</div>
+                                <div class="table__col-narrow">{{ purchase.user_id }}</div>
+                                <div class="table__col-wide">{{ purchase.product.name }}</div>
+                                <div class="table__col-wide">{{ purchase.action_time }}</div>
+                                <div class="table__col-wide">
+                                    <form action="/purchases/{{ purchase.id }}/delete/" method="POST">
+                                        <input type="submit" value="Delete" />
+                                        {% csrf_token %}
+                                    </form>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <br />
+                <form method="POST" action="/purchases/">
+                    <select class="form__select" name="product" required>
+                        <option value="" disabled selected>Select product</option>
+                        {% for product in products %}
+                            <option value="{{ product.id }}">{{ product.id }} {{ product.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <select class="form__select" name="user" required>
+                        <option value="" disabled selected>Select user</option>
+                        {% for user in users %}
+                            <option value="{{ user.id }}">{{ user.id }} {{ user.username }}</option>
+                        {% endfor %}
+                    </select>
+                    <input type="submit" value="Buy" class="form__submit" />
+                    {% csrf_token %}
+                </form>
+                <div class="form-error">
+                    {{ purchase_error }}
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

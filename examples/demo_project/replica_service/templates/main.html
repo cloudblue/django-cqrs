@@ -1,0 +1,116 @@
+<html>
+    <head>
+        <title>Replica service</title>
+        <style>
+            html, body {
+                color: #333;
+                padding: 20px;
+            }
+            .table {
+                padding: 20px;
+                border: 1px solid #dadada;
+            }
+            .table__header,
+            .table__row {
+                display: flex;
+                padding: 2px 0;
+            }
+            .table__header {
+                padding-bottom: 10px;
+                font-weight: bold;
+            }
+            .container {
+                display: flex;
+                justify-content: space-between;
+                max-width: 1200px;
+                flex-wrap: wrap;
+            }
+            .block {
+                flex-grow: 1;
+                max-width: 100%;
+                padding-right: 40px;
+            }
+            .table__col-narrow {
+                width: 100px;
+            }
+            .table__col-wide {
+                width: 200px;
+            }
+            .table__col-narrow:last-child,
+            .table__col-wide:last-child {
+                width: auto;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>CQRS Demo: replica service</h1>
+        <div class="container">
+            <div class="block">
+                <h2>Users:</h2>
+                <p>
+                    Model with default synchroniaztion mechanish
+                </p>
+                <div class="table">
+                    <div class="table__header">
+                        <div class="table__col-narrow">ID</div>
+                        <div class="table__col-wide">Username</div>
+                    </div>
+                    <div class="table__body">
+                        {% for user in users %}
+                            <div class="table__row">
+                                <div class="table__col-narrow">{{ user.id }}</div>
+                                <div class="table__col-wide">{{ user.username }}</div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="block">
+                <h2>Products:</h2>
+                <p>
+                    Model with custom serializer and relation control.
+                </p>
+                <div class="table">
+                    <div class="table__header">
+                        <div class="table__col-narrow">ID</div>
+                        <div class="table__col-wide">Type</div>
+                        <div class="table__col-wide">Name</div>
+                    </div>
+                    <div class="table__body">
+                        {% for product in products %}
+                            <div class="table__row">
+                                <div class="table__col-narrow">{{ product.id }}</div>
+                                <div class="table__col-wide">{{ product.product_type.name }}</div>
+                                <div class="table__col-wide">{{ product.name }}</div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="block">
+                <h2>Purchases:</h2>
+                <p>
+                    Custom storage (redis cache)
+                </p>
+                <div class="table">
+                    <div class="table__header">
+                        <div class="table__col-narrow">ID</div>
+                        <div class="table__col-narrow">User ID</div>
+                        <div class="table__col-wide">Product</div>
+                        <div class="table__col-wide">Time</div>
+                    </div>
+                    <div class="table__body">
+                        {% for purchase in purchases %}
+                            <div class="table__row">
+                                <div class="table__col-narrow">{{ purchase.id }}</div>
+                                <div class="table__col-narrow">{{ purchase.user_id }}</div>
+                                <div class="table__col-wide">{{ purchase.product_name }}</div>
+                                <div class="table__col-wide">{{ purchase.action_time }}</div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
