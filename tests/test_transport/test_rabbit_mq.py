@@ -4,7 +4,9 @@ import logging
 from datetime import datetime, timedelta, timezone
 from importlib import import_module, reload
 
-from dj_cqrs.constants import SignalType
+from dj_cqrs.constants import (
+    DEFAULT_MASTER_AUTO_UPDATE_FIELDS, DEFAULT_MASTER_MESSAGE_TTL, SignalType,
+)
 from dj_cqrs.dataclasses import TransportPayload
 from dj_cqrs.delay import DelayMessage, DelayQueue
 from dj_cqrs.transport.rabbit_mq import RabbitMQTransport
@@ -147,6 +149,11 @@ def rabbit_transport(settings):
     settings.CQRS = {
         'transport': 'dj_cqrs.transport.rabbit_mq.RabbitMQTransport',
         'queue': 'replica',
+        'master': {
+            'CQRS_AUTO_UPDATE_FIELDS': DEFAULT_MASTER_AUTO_UPDATE_FIELDS,
+            'CQRS_MESSAGE_TTL': DEFAULT_MASTER_MESSAGE_TTL,
+            'correlation_function': None,
+        },
     }
     module = reload(import_module('dj_cqrs.transport'))
     yield module.current_transport

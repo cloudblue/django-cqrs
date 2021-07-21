@@ -128,9 +128,7 @@ class RawMasterMixin(Model):
 
     @property
     def _update_cqrs_fields_default(self):
-        return bool(
-            getattr(settings, 'CQRS', {}).get('master', {}).get('CQRS_AUTO_UPDATE_FIELDS', False),
-        )
+        return settings.CQRS['master']['CQRS_AUTO_UPDATE_FIELDS']
 
     def to_cqrs_dict(self, using=None, sync=False):
         """CQRS serialization for transport payload.
