@@ -3,4 +3,16 @@ include VERSION
 include README.md
 include requirements/dev.txt
 include requirements/test.txt
+
+exclude requirements/docs.txt
+exclude sonar-project.properties
+exclude travis_compat_tests.sh
+exclude travis_integration_tests.sh
+exclude tox.ini
+prune docs
 prune tests
+prune integration_tests
+prune examples
+
+exclude .gitignore
+prune .github
