@@ -5,7 +5,12 @@ from datetime import datetime, timedelta, timezone
 from importlib import import_module, reload
 
 from dj_cqrs.constants import (
-    DEFAULT_MASTER_AUTO_UPDATE_FIELDS, DEFAULT_MASTER_MESSAGE_TTL, SignalType,
+    DEFAULT_MASTER_AUTO_UPDATE_FIELDS,
+    DEFAULT_MASTER_MESSAGE_TTL,
+    DEFAULT_REPLICA_DELAY_QUEUE_MAX_SIZE,
+    DEFAULT_REPLICA_MAX_RETRIES,
+    DEFAULT_REPLICA_RETRY_DELAY,
+    SignalType,
 )
 from dj_cqrs.dataclasses import TransportPayload
 from dj_cqrs.delay import DelayMessage, DelayQueue
@@ -133,7 +138,7 @@ def test_consumer_non_default_settings(settings, caplog):
         'queue': 'q',
         'consumer_prefetch_count': 2,
         'replica': {
-            'delay_queue_max_size': None,  # Infinite
+            'CQRS_DELAY_QUEUE_MAX_SIZE': None,  # Infinite
         },
     }
 
@@ -153,6 +158,11 @@ def rabbit_transport(settings):
             'CQRS_AUTO_UPDATE_FIELDS': DEFAULT_MASTER_AUTO_UPDATE_FIELDS,
             'CQRS_MESSAGE_TTL': DEFAULT_MASTER_MESSAGE_TTL,
             'correlation_function': None,
+        },
+        'replica': {
+            'CQRS_MAX_RETRIES': DEFAULT_REPLICA_MAX_RETRIES,
+            'CQRS_RETRY_DELAY': DEFAULT_REPLICA_RETRY_DELAY,
+            'CQRS_DELAY_QUEUE_MAX_SIZE': DEFAULT_REPLICA_DELAY_QUEUE_MAX_SIZE,
         },
     }
     module = reload(import_module('dj_cqrs.transport'))

@@ -13,7 +13,7 @@ from dj_cqrs.delay import DelayMessage, DelayQueue
 from dj_cqrs.registries import ReplicaRegistry
 from dj_cqrs.transport import BaseTransport
 from dj_cqrs.transport.mixins import LoggingMixin
-from dj_cqrs.utils import get_delay_queue_max_size, get_prefetch_count
+from dj_cqrs.utils import get_delay_queue_max_size, get_messages_prefetch_count_per_worker
 
 from django.conf import settings
 from django.utils import timezone
@@ -305,7 +305,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
             ),
         )
         channel = connection.channel()
-        channel.basic_qos(prefetch_count=get_prefetch_count())
+        channel.basic_qos(prefetch_count=get_messages_prefetch_count_per_worker())
         cls._declare_exchange(channel, exchange)
 
         return connection, channel
@@ -363,7 +363,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
             logger.warning(
                 "The 'consumer_prefetch_count' setting is ignored for RabbitMQTransport.",
             )
-        prefetch_count = get_prefetch_count()
+        prefetch_count = get_messages_prefetch_count_per_worker()
 
         return (
             queue_name,
