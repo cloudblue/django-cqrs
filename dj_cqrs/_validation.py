@@ -66,6 +66,12 @@ def _validate_master(cqrs_settings):
     master_settings = cqrs_settings['master']
     assert isinstance(master_settings, dict), 'CQRS master configuration must be dict.'
 
+    _validate_master_auto_update_fields(master_settings)
+    _validate_master_message_ttl(master_settings)
+    _validate_master_correlation_func(master_settings)
+
+
+def _validate_master_auto_update_fields(master_settings):
     if 'CQRS_AUTO_UPDATE_FIELDS' in master_settings:
         assert isinstance(master_settings['CQRS_AUTO_UPDATE_FIELDS'], bool), (
             'CQRS master CQRS_AUTO_UPDATE_FIELDS must be bool.'
@@ -73,6 +79,8 @@ def _validate_master(cqrs_settings):
     else:
         master_settings['CQRS_AUTO_UPDATE_FIELDS'] = DEFAULT_MASTER_AUTO_UPDATE_FIELDS
 
+
+def _validate_master_message_ttl(master_settings):
     if 'CQRS_MESSAGE_TTL' in master_settings:
         min_message_ttl = 1
         message_ttl = master_settings['CQRS_MESSAGE_TTL']
@@ -89,6 +97,8 @@ def _validate_master(cqrs_settings):
     else:
         master_settings['CQRS_MESSAGE_TTL'] = DEFAULT_MASTER_MESSAGE_TTL
 
+
+def _validate_master_correlation_func(master_settings):
     correlation_func = master_settings.get('correlation_function')
     if not correlation_func:
         master_settings['correlation_function'] = None
@@ -105,7 +115,7 @@ def _validate_replica(cqrs_settings):
         'replica': {
             'CQRS_MAX_RETRIES': DEFAULT_REPLICA_MAX_RETRIES,
             'CQRS_RETRY_DELAY': DEFAULT_REPLICA_RETRY_DELAY,
-            'CQRS_DELAY_QUEUE_MAX_SIZE': DEFAULT_REPLICA_DELAY_QUEUE_MAX_SIZE,
+            'delay_queue_max_size': DEFAULT_REPLICA_DELAY_QUEUE_MAX_SIZE,
         },
     }
 
@@ -116,6 +126,12 @@ def _validate_replica(cqrs_settings):
     replica_settings = cqrs_settings['replica']
     assert isinstance(replica_settings, dict), 'CQRS replica configuration must be dict.'
 
+    _validate_replica_max_retries(replica_settings)
+    _validate_replica_retry_delay(replica_settings)
+    _validate_replica_delay_queue_max_size(replica_settings)
+
+
+def _validate_replica_max_retries(replica_settings):
     if 'CQRS_MAX_RETRIES' in replica_settings:
         min_retries = 0
         max_retries = replica_settings['CQRS_MAX_RETRIES']
@@ -132,6 +148,8 @@ def _validate_replica(cqrs_settings):
     else:
         replica_settings['CQRS_MAX_RETRIES'] = DEFAULT_REPLICA_MAX_RETRIES
 
+
+def _validate_replica_retry_delay(replica_settings):
     min_retry_delay = 0
     retry_delay = replica_settings.get('CQRS_RETRY_DELAY')
     if 'CQRS_RETRY_DELAY' not in replica_settings:
@@ -145,21 +163,19 @@ def _validate_replica(cqrs_settings):
         )
         replica_settings['CQRS_RETRY_DELAY'] = DEFAULT_REPLICA_RETRY_DELAY
 
-    # delay_queue_max_size - is the wrong name for CQRS_DELAY_QUEUE_MAX_SIZE,
-    #  which is supported for backward compatibility
-    # TODO: drop `delay_queue_max_size` in 2.0.0
-    min_delay_size = 0
-    delay_size = replica_settings.get(
-        'CQRS_DELAY_QUEUE_MAX_SIZE', replica_settings.get('delay_queue_max_size'),
-    )
-    if delay_size is None:
-        set_delay_size = DEFAULT_REPLICA_DELAY_QUEUE_MAX_SIZE
-    elif not isinstance(delay_size, int) or delay_size <= min_delay_size:
+
+def _validate_replica_delay_queue_max_size(replica_settings):
+    min_queue_size = 0
+    max_queue_size = replica_settings.get('delay_queue_max_size')
+    if 'delay_queue_max_size' not in replica_settings:
+        replica_settings['delay_queue_max_size'] = DEFAULT_REPLICA_DELAY_QUEUE_MAX_SIZE
+    elif not isinstance(max_queue_size, int) or max_queue_size <= min_queue_size:
+        # No error is raised for backward compatibility
+        # TODO: raise error in 2.0.0
         logger.warning(
             'Settings delay_queue_max_size=%s is invalid, using default %s.',
-            delay_size, DEFAULT_REPLICA_DELAY_QUEUE_MAX_SIZE,
+            max_queue_size, DEFAULT_REPLICA_DELAY_QUEUE_MAX_SIZE,
         )
-        set_delay_size = DEFAULT_REPLICA_DELAY_QUEUE_MAX_SIZE
-    else:
-        set_delay_size = delay_size
-    replica_settings['CQRS_DELAY_QUEUE_MAX_SIZE'] = set_delay_size
+        max_queue_size = DEFAULT_REPLICA_DELAY_QUEUE_MAX_SIZE
+
+    replica_settings['delay_queue_max_size'] = max_queue_size

@@ -33,7 +33,7 @@ def get_delay_queue_max_size():
     if 'replica' not in settings.CQRS:
         return None
 
-    return settings.CQRS['replica']['CQRS_DELAY_QUEUE_MAX_SIZE']
+    return settings.CQRS['replica']['delay_queue_max_size']
 
 
 def get_messages_prefetch_count_per_worker():

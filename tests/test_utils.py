@@ -35,18 +35,18 @@ def test_get_delay_queue_max_size_master(settings):
 
 
 def test_get_delay_queue_max_size_replica(settings):
-    settings.CQRS['replica']['CQRS_DELAY_QUEUE_MAX_SIZE'] = 4
+    settings.CQRS['replica']['delay_queue_max_size'] = 4
 
     assert get_delay_queue_max_size() == 4
 
 
 def test_get_messaged_prefetch_count_per_worker_no_delay_queue(settings):
-    settings.CQRS['replica']['CQRS_DELAY_QUEUE_MAX_SIZE'] = None
+    settings.CQRS['replica']['delay_queue_max_size'] = None
 
     assert get_messages_prefetch_count_per_worker() == 0
 
 
 def test_get_messaged_prefetch_count_per_worker_with_delay_queue(settings):
-    settings.CQRS['replica']['CQRS_DELAY_QUEUE_MAX_SIZE'] = 4
+    settings.CQRS['replica']['delay_queue_max_size'] = 4
 
     assert get_messages_prefetch_count_per_worker() == 5

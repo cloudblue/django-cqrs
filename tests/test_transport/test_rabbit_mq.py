@@ -138,7 +138,7 @@ def test_consumer_non_default_settings(settings, caplog):
         'queue': 'q',
         'consumer_prefetch_count': 2,
         'replica': {
-            'CQRS_DELAY_QUEUE_MAX_SIZE': None,  # Infinite
+            'delay_queue_max_size': None,  # Infinite
         },
     }
 
@@ -162,7 +162,7 @@ def rabbit_transport(settings):
         'replica': {
             'CQRS_MAX_RETRIES': DEFAULT_REPLICA_MAX_RETRIES,
             'CQRS_RETRY_DELAY': DEFAULT_REPLICA_RETRY_DELAY,
-            'CQRS_DELAY_QUEUE_MAX_SIZE': DEFAULT_REPLICA_DELAY_QUEUE_MAX_SIZE,
+            'delay_queue_max_size': DEFAULT_REPLICA_DELAY_QUEUE_MAX_SIZE,
         },
     }
     module = reload(import_module('dj_cqrs.transport'))

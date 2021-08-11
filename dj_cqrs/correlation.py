@@ -13,6 +13,6 @@ def get_correlation_id(signal_type, cqrs_id, instance_pk, queue):
     :param queue: Queue to synchronize, defaults to None
     :type queue: str, optional
     """
-    correlation_func = settings.CQRS['master']['correlation_function']
+    correlation_func = settings.CQRS.get('master', {}).get('correlation_function')
     if correlation_func:
         return correlation_func(signal_type, cqrs_id, instance_pk, queue)
