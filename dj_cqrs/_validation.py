@@ -31,10 +31,10 @@ def validate_settings(settings):
 
     _validate_transport(cqrs_settings)
 
-    if is_master:
+    if is_master or ('master' in cqrs_settings):
         _validate_master(cqrs_settings)
 
-    if is_replica:
+    if is_replica or ('replica' in cqrs_settings):
         _validate_replica(cqrs_settings)
 
 
@@ -165,17 +165,17 @@ def _validate_replica_retry_delay(replica_settings):
 
 
 def _validate_replica_delay_queue_max_size(replica_settings):
-    min_queue_size = 0
-    max_queue_size = replica_settings.get('delay_queue_max_size')
+    min_qsize = 0
+    max_qsize = replica_settings.get('delay_queue_max_size')
     if 'delay_queue_max_size' not in replica_settings:
-        replica_settings['delay_queue_max_size'] = DEFAULT_REPLICA_DELAY_QUEUE_MAX_SIZE
-    elif not isinstance(max_queue_size, int) or max_queue_size <= min_queue_size:
+        max_qsize = DEFAULT_REPLICA_DELAY_QUEUE_MAX_SIZE
+    elif (max_qsize is not None) and (not isinstance(max_qsize, int) or max_qsize <= min_qsize):
         # No error is raised for backward compatibility
         # TODO: raise error in 2.0.0
         logger.warning(
             'Settings delay_queue_max_size=%s is invalid, using default %s.',
-            max_queue_size, DEFAULT_REPLICA_DELAY_QUEUE_MAX_SIZE,
+            max_qsize, DEFAULT_REPLICA_DELAY_QUEUE_MAX_SIZE,
         )
-        max_queue_size = DEFAULT_REPLICA_DELAY_QUEUE_MAX_SIZE
+        max_qsize = DEFAULT_REPLICA_DELAY_QUEUE_MAX_SIZE
 
-    replica_settings['delay_queue_max_size'] = max_queue_size
+    replica_settings['delay_queue_max_size'] = max_qsize

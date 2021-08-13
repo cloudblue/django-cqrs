@@ -196,7 +196,7 @@ def test_replica_configuration_is_empty(cqrs_settings):
     assert cqrs_settings.CQRS['replica'] == {
         'CQRS_MAX_RETRIES': 30,
         'CQRS_RETRY_DELAY': 2,
-        'delay_queue_max_size': None,
+        'delay_queue_max_size': 1000,
     }
 
 
@@ -213,6 +213,7 @@ def test_replica_max_retries_has_wrong_type_or_invalid_value(value, cqrs_setting
     cqrs_settings.CQRS['replica'] = {
         'CQRS_MAX_RETRIES': value,
         'CQRS_RETRY_DELAY': 10,
+        'delay_queue_max_size': value,
     }
 
     validate_settings(cqrs_settings)
@@ -220,7 +221,7 @@ def test_replica_max_retries_has_wrong_type_or_invalid_value(value, cqrs_setting
     assert cqrs_settings.CQRS['replica'] == {
         'CQRS_MAX_RETRIES': 30,
         'CQRS_RETRY_DELAY': 10,
-        'delay_queue_max_size': None,
+        'delay_queue_max_size': 1000,
     }
     assert caplog.record_tuples
 
@@ -256,7 +257,7 @@ def test_replica_delay_queue_max_size_is_none(cqrs_settings):
 
     validate_settings(cqrs_settings)
 
-    assert cqrs_settings.CQRS['replica']['delay_queue_max_size'] == 1000
+    assert cqrs_settings.CQRS['replica']['delay_queue_max_size'] is None
 
 
 @pytest.mark.parametrize('value', ({}, 1.23, -2))
