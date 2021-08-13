@@ -52,15 +52,15 @@ Message assumed as failed when a consumer raises an exception or returns negativ
 
 Retrying
 --------
-+----------------------+----------+-----------------------------------------------------------------------------+
-| Name                 | Default  | Description                                                                 |
-+======================+==========+=============================================================================+
-| CQRS_MAX_RETRIES     | 30       | Maximum number of retry attempts. Infinite if *None*, 0 to disable retries. |
-+----------------------+----------+-----------------------------------------------------------------------------+
-| CQRS_RETRY_DELAY     | 2        | Constant delay in **seconds** between message failure and requeueing.       |
-+----------------------+----------+-----------------------------------------------------------------------------+
-| delay_queue_max_size | 1000     | Maximum number of delayed messages per worker. Infinite if *None*.          |
-+----------------------+----------+-----------------------------------------------------------------------------+
++---------------------------+----------+-----------------------------------------------------------------------------+
+| Name                      | Default  | Description                                                                 |
++===========================+==========+=============================================================================+
+| CQRS_MAX_RETRIES          | 30       | Maximum number of retry attempts. Infinite if *None*, 0 to disable retries. |
++---------------------------+----------+-----------------------------------------------------------------------------+
+| CQRS_RETRY_DELAY          | 2        | Constant delay in **seconds** between message failure and requeueing.       |
++---------------------------+----------+-----------------------------------------------------------------------------+
+| CQRS_DELAY_QUEUE_MAX_SIZE | 1000     | Maximum number of delayed messages per worker. Infinite if *None*.          |
++---------------------------+----------+-----------------------------------------------------------------------------+
 
 .. code-block:: python
 
@@ -71,7 +71,7 @@ Retrying
         'replica': {
             'CQRS_MAX_RETRIES': 30, # attempts
             'CQRS_RETRY_DELAY': 2,  # seconds
-            'delay_queue_max_size': 1000,
+            'CQRS_DELAY_QUEUE_MAX_SIZE': 1000,
         },
     }
 

@@ -4,7 +4,7 @@ from dj_cqrs.dataclasses import TransportPayload
 from dj_cqrs.registries import ReplicaRegistry
 from dj_cqrs.transport import current_transport
 from dj_cqrs.transport.rabbit_mq import RabbitMQTransport
-from dj_cqrs.utils import get_expires_datetime
+from dj_cqrs.utils import get_message_expiration_dt
 
 from django.core.management.base import BaseCommand, CommandError
 
@@ -105,7 +105,7 @@ class Command(BaseCommand):
             dct['retries'] = 0
             if dct.get('expires'):
                 # Message could expire already
-                expires = get_expires_datetime()
+                expires = get_message_expiration_dt()
                 dct['expires'] = expires.replace(microsecond=0).isoformat()
             payload = TransportPayload.from_message(dct)
             payload.is_requeue = True

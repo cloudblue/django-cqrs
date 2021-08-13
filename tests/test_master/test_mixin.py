@@ -3,7 +3,12 @@
 from time import sleep
 from uuid import uuid4
 
-from dj_cqrs.constants import FIELDS_TRACKER_FIELD_NAME, SignalType
+from dj_cqrs.constants import (
+    DEFAULT_MASTER_AUTO_UPDATE_FIELDS,
+    DEFAULT_MASTER_MESSAGE_TTL,
+    FIELDS_TRACKER_FIELD_NAME,
+    SignalType,
+)
 from dj_cqrs.metas import MasterMeta
 
 from django.contrib.contenttypes.models import ContentType
@@ -865,7 +870,9 @@ def test_save_update_fields_no_cqrs_fields_global_flag_changed(mocker, settings)
     settings.CQRS = {
         'transport': 'tests.dj.transport.TransportStub',
         'master': {
-            'CQRS_AUTO_UPDATE_FIELDS': True,
+            'CQRS_AUTO_UPDATE_FIELDS': not DEFAULT_MASTER_AUTO_UPDATE_FIELDS,
+            'CQRS_MESSAGE_TTL': DEFAULT_MASTER_MESSAGE_TTL,
+            'correlation_function': None,
         },
     }
     instance.name = 'New'

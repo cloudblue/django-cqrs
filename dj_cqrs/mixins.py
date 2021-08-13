@@ -4,8 +4,6 @@ import logging
 
 from dj_cqrs.constants import (
     ALL_BASIC_FIELDS,
-    DEFAULT_CQRS_MAX_RETRIES,
-    DEFAULT_CQRS_RETRY_DELAY,
     FIELDS_TRACKER_FIELD_NAME,
     TRACKED_FIELDS_ATTR_NAME,
 )
@@ -128,9 +126,7 @@ class RawMasterMixin(Model):
 
     @property
     def _update_cqrs_fields_default(self):
-        return bool(
-            getattr(settings, 'CQRS', {}).get('master', {}).get('CQRS_AUTO_UPDATE_FIELDS', False),
-        )
+        return settings.CQRS['master']['CQRS_AUTO_UPDATE_FIELDS']
 
     def to_cqrs_dict(self, using=None, sync=False):
         """CQRS serialization for transport payload.
@@ -425,19 +421,10 @@ class ReplicaMixin(Model, metaclass=ReplicaMeta):
         :return: True if message should be retried, False otherwise.
         :rtype: bool
         """
-        replica_settings = settings.CQRS.get('replica', {})
-        if 'CQRS_MAX_RETRIES' in replica_settings and replica_settings['CQRS_MAX_RETRIES'] is None:
+        max_retries = settings.CQRS['replica']['CQRS_MAX_RETRIES']
+        if max_retries is None:
             # Infinite
             return True
-
-        min_value = 0
-        max_retries = replica_settings.get('CQRS_MAX_RETRIES', DEFAULT_CQRS_MAX_RETRIES)
-        if not isinstance(max_retries, int) or max_retries < min_value:
-            logger.warning(
-                "Replica setting CQRS_MAX_RETRIES=%s is invalid, using default %s",
-                max_retries, DEFAULT_CQRS_MAX_RETRIES,
-            )
-            max_retries = DEFAULT_CQRS_MAX_RETRIES
 
         return current_retry < max_retries
 
@@ -450,18 +437,4 @@ class ReplicaMixin(Model, metaclass=ReplicaMeta):
         :return: Delay in seconds.
         :rtype: int
         """
-        retry_delay = (
-            settings.CQRS
-            .get('replica', {})
-            .get('CQRS_RETRY_DELAY', DEFAULT_CQRS_RETRY_DELAY)
-        )
-
-        min_value = 1
-        if not isinstance(retry_delay, int) or retry_delay < min_value:
-            logger.warning(
-                "Replica setting CQRS_RETRY_DELAY=%s is invalid, using default %s",
-                retry_delay, DEFAULT_CQRS_RETRY_DELAY,
-            )
-            retry_delay = DEFAULT_CQRS_RETRY_DELAY
-
-        return retry_delay
+        return settings.CQRS['replica']['CQRS_RETRY_DELAY']

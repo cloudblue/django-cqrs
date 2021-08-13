@@ -3,7 +3,9 @@
 import logging
 from importlib import import_module, reload
 
-from dj_cqrs.constants import SignalType
+from dj_cqrs.constants import (
+    DEFAULT_MASTER_AUTO_UPDATE_FIELDS, DEFAULT_MASTER_MESSAGE_TTL, SignalType,
+)
 from dj_cqrs.dataclasses import TransportPayload
 from dj_cqrs.registries import ReplicaRegistry
 from dj_cqrs.transport.kombu import KombuTransport, _KombuConsumer
@@ -79,6 +81,11 @@ def kombu_transport(settings):
     settings.CQRS = {
         'transport': 'dj_cqrs.transport.kombu.KombuTransport',
         'queue': 'replica',
+        'master': {
+            'CQRS_AUTO_UPDATE_FIELDS': DEFAULT_MASTER_AUTO_UPDATE_FIELDS,
+            'CQRS_MESSAGE_TTL': DEFAULT_MASTER_MESSAGE_TTL,
+            'correlation_function': None,
+        },
     }
     module = reload(import_module('dj_cqrs.transport'))
     yield module.current_transport

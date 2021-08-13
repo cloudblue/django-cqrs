@@ -8,18 +8,10 @@ from django.conf import settings
 from django.utils.module_loading import import_string
 
 
-transport_cls_location = getattr(settings, 'CQRS', {}).get('transport')
-if not transport_cls_location:
-    raise AttributeError('CQRS transport is not set.')
-
 try:
-    current_transport = import_string(transport_cls_location)
-
-    if not issubclass(current_transport, BaseTransport):
-        raise ValueError
-
-except (ImportError, ValueError):
-    raise ImportError('Bad CQRS transport class.')
+    current_transport = import_string(settings.CQRS['transport'])
+except (AttributeError, ImportError, KeyError):
+    current_transport = None
 
 
 __all__ = ['BaseTransport', 'KombuTransport', 'RabbitMQTransport', current_transport]

@@ -3,7 +3,7 @@
 from dateutil.parser import parse as dateutil_parse
 
 from dj_cqrs.correlation import get_correlation_id
-from dj_cqrs.utils import get_expires_datetime
+from dj_cqrs.utils import get_message_expiration_dt
 
 from django.utils import timezone
 
@@ -74,7 +74,7 @@ class TransportPayload:
                 expires = dateutil_parse(dct['expires'])
         else:
             # Backward compatibility for old messages otherwise they are infinite by default.
-            expires = get_expires_datetime()
+            expires = get_message_expiration_dt()
 
         return cls(
             dct['signal_type'],
