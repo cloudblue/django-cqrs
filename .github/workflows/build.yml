@@ -43,42 +43,6 @@ jobs:
     - name: Compatibility tests
       run: |
         ./travis_compat_tests.sh
-  build_3_8_django_1_11:
-    name: Build on Python 3.8 django 1.11
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [ 3.8 ]
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements/dev.txt
-          pip install -r requirements/test.txt
-          pip install pytest-cov
-          pip install --upgrade djangorestframework==3.11.*
-          pip install --upgrade django-model-utils==3.2.*
-          pip install --upgrade pytest-django==3.10.*
-          pip install django==1.11.*
-      - name: Linting
-        run: |
-          flake8
-      - name: Testing
-        run: |
-          python setup.py test
-      - name: Integration tests
-        run: |
-          ./travis_integration_tests.sh
-      - name: Compatibility tests
-        run: |
-          ./travis_compat_tests.sh
   build_3_8_django_2_2:
     name: Build on Python 3.8 django 2.2
     runs-on: ubuntu-latest
