@@ -32,6 +32,7 @@ and that's okay for non-critical business transactions.
    :caption: Contents:
 
    getting_started
+   admin
    custom_serialization
    track_fields_changes
    transports
