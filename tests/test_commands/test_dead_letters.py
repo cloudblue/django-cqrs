@@ -21,7 +21,7 @@ def test_dump(capsys, mocker):
     mocker.patch.object(
         RabbitMQTransport,
         '_get_consumer_settings',
-        return_value=('queue', 'dead_letters_queue'),
+        return_value=('queue', 'dead_letters_queue', 0),
     )
     mocker.patch.object(
         RabbitMQTransport,

@@ -48,7 +48,7 @@ class Command(BaseCommand):
         self.check_transport()
         channel, connection = self.init_broker()
 
-        queue_name, dead_letter_queue_name = RabbitMQTransportService.get_consumer_settings()
+        queue_name, dead_letter_queue_name, *_ = RabbitMQTransportService.get_consumer_settings()
         dead_letters_queue = RabbitMQTransportService.declare_queue(
             channel, dead_letter_queue_name,
         )
@@ -80,7 +80,7 @@ class Command(BaseCommand):
             host, port, creds, exchange,
         )
 
-        queue_name, dead_letter_queue_name = RabbitMQTransportService.get_consumer_settings()
+        queue_name, dead_letter_queue_name, *_ = RabbitMQTransportService.get_consumer_settings()
         RabbitMQTransportService.declare_queue(channel, queue_name)
         RabbitMQTransportService.declare_queue(channel, dead_letter_queue_name)
         for cqrs_id, _ in ReplicaRegistry.models.items():
