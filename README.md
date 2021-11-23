@@ -144,6 +144,28 @@ class FilteredSimplestModel(MasterMixin, models.Model):
         return len(str(self.name)) > 2
 ```
 
+Django Admin
+-----------
+
+Add action to synchronize master items from Django Admin page.
+
+```python
+from django.db import models
+from django.contrib import admin
+
+from dj_cqrs.admin_mixins import CQRSAdminMasterSyncMixin
+
+
+class AccountAdmin(CQRSAdminMasterSyncMixin, admin.ModelAdmin):
+    ...
+
+
+admin.site.register(models.Account, AccountAdmin)
+
+```
+
+* If necessary, override ```_cqrs_sync_queryset``` from ```CQRSAdminMasterSyncMixin``` to adjust the QuerySet and use it for synchronization.
+
 
 Utilities
 ---------

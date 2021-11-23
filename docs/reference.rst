@@ -2,6 +2,13 @@ API Reference
 =============
 
 
+Django Admin
+------------
+
+.. autoclass:: dj_cqrs.admin.CQRSAdminMasterSyncMixin
+   :members: sync_items, _cqrs_sync_queryset
+
+
 Mixins
 ------
 
