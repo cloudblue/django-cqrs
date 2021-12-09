@@ -1,3 +1,6 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
-default_app_config = 'dj_cqrs.apps.CQRSConfig'  # pragma: no cover
+import django  # pragma: no cover
+
+if django.VERSION < (3, 2):  # pragma: no cover
+    default_app_config = 'dj_cqrs.apps.CQRSConfig'
