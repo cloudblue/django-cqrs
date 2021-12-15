@@ -118,11 +118,12 @@ class RawMasterMixin(Model):
     def save_tracked_fields(self):
         if hasattr(self, FIELDS_TRACKER_FIELD_NAME):
             tracker = getattr(self, FIELDS_TRACKER_FIELD_NAME)
-            if self._state.adding:
-                data = tracker.changed_initial()
-            else:
-                data = tracker.changed()
-            setattr(self, TRACKED_FIELDS_ATTR_NAME, data)
+            if self.is_initial_cqrs_save:
+                if self._state.adding:
+                    data = tracker.changed_initial()
+                else:
+                    data = tracker.changed()
+                setattr(self, TRACKED_FIELDS_ATTR_NAME, data)
 
     @property
     def _update_cqrs_fields_default(self):
