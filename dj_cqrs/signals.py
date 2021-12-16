@@ -10,13 +10,13 @@ from django.dispatch import Signal
 from django.utils.timezone import now
 
 
-post_bulk_create = Signal(providing_args=['instances', 'using'])
+post_bulk_create = Signal()
 """
 Signal sent after a bulk create.
 See dj_cqrs.mixins.RawMasterMixin.call_post_bulk_create.
 """
 
-post_update = Signal(providing_args=['instances', 'using'])
+post_update = Signal()
 """
 Signal sent after a bulk update.
 See dj_cqrs.mixins.RawMasterMixin.call_post_update.
