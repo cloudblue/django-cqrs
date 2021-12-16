@@ -734,7 +734,7 @@ def test_transaction_instance_saved_once_simple_case(mocker):
 
     mapper = (
         (i0.pk, 0, 'old', None),
-        (i1.pk, 0, '2', '1'),
+        (i1.pk, 0, '2', None),
         (i2.pk, 0, 'a', None),
         (i3.pk, 0, '.', None),
         (i0.pk, 1, 'new', 'old'),
@@ -747,6 +747,27 @@ def test_transaction_instance_saved_once_simple_case(mocker):
         assert payload.instance_data['cqrs_revision'] == expected_data[1]
         assert payload.instance_data['char_field'] == expected_data[2]
         assert payload.previous_data['char_field'] == expected_data[3]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_transaction_instance_saved_multiple_times_previous_data(mocker):
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+    instance = models.TrackedFieldsParentModel.objects.create(char_field='db_value')
+
+    with transaction.atomic():
+        instance.refresh_from_db()
+        instance.char_field = 'save_1'
+        instance.save()
+        instance.char_field = 'save_2'
+        instance.save()
+
+    assert publisher_mock.call_count == 2
+    payload_create = publisher_mock.call_args_list[0][0][0]
+    payload_update = publisher_mock.call_args_list[1][0][0]
+    assert payload_create.instance_data['char_field'] == 'db_value'
+    assert payload_create.previous_data['char_field'] is None
+    assert payload_update.instance_data['char_field'] == 'save_2'
+    assert payload_update.previous_data['char_field'] == 'db_value'
 
 
 @pytest.mark.django_db(transaction=True)
