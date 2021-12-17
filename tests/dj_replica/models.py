@@ -11,7 +11,7 @@ class BasicFieldsModelRef(ReplicaMixin, models.Model):
     int_field = models.IntegerField(primary_key=True)
     char_field = models.CharField(max_length=200)
 
-    bool_field = models.NullBooleanField()
+    bool_field = models.BooleanField(null=True)
     date_field = models.DateField(null=True)
     datetime_field = models.DateTimeField(null=True)
     float_field = models.FloatField(null=True)
@@ -23,7 +23,7 @@ class BadTypeModelRef(ReplicaMixin, models.Model):
     CQRS_ID = 'basic_1'
 
     int_field = models.IntegerField(primary_key=True)
-    datetime_field = models.NullBooleanField()
+    datetime_field = models.BooleanField(null=True)
 
 
 class MappedFieldsModelRef(ReplicaMixin, models.Model):

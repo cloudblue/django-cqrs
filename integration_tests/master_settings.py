@@ -59,3 +59,5 @@ CQRS = {
         'CQRS_MESSAGE_TTL': 3600,
     },
 }
+
+DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
