@@ -68,3 +68,5 @@ CQRS = {
         'dead_message_ttl': 5,
     },
 }
+
+DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'

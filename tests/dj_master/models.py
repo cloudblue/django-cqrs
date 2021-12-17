@@ -16,7 +16,7 @@ class BasicFieldsModel(MasterMixin, models.Model):
     CQRS_TRACKED_FIELDS = ALL_BASIC_FIELDS
 
     int_field = models.IntegerField(primary_key=True)
-    bool_field = models.NullBooleanField()
+    bool_field = models.BooleanField(null=True)
     char_field = models.CharField(max_length=200, null=True)
     date_field = models.DateField(null=True)
     datetime_field = models.DateTimeField(null=True)
