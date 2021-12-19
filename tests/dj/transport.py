@@ -1,4 +1,4 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 import os
 
@@ -14,8 +14,9 @@ class TransportStub(BaseTransport):
         TransportStub.consume(payload)
 
     @staticmethod
-    def consume(payload):
-        consumer.consume(payload)
+    def consume(payload=None):
+        if payload:
+            return consumer.consume(payload)
 
 
 class RabbitMQTransportWithEvents(RabbitMQTransport):

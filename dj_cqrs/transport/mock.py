@@ -1,4 +1,4 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 from dj_cqrs.transport import BaseTransport
 
@@ -9,5 +9,5 @@ class TransportMock(BaseTransport):
         return TransportMock.consume(payload)
 
     @staticmethod
-    def consume(payload):
+    def consume(payload=None, **kwargs):
         return payload

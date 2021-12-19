@@ -23,7 +23,7 @@ logger = logging.getLogger('django-cqrs')
 
 class _KombuConsumer(ConsumerMixin):
 
-    def __init__(self, url, exchange_name, queue_name, prefetch_count, callback):
+    def __init__(self, url, exchange_name, queue_name, prefetch_count, callback, cqrs_ids=None):
         self.connection = Connection(url)
         self.exchange = Exchange(
             exchange_name,
@@ -34,28 +34,31 @@ class _KombuConsumer(ConsumerMixin):
         self.prefetch_count = prefetch_count
         self.callback = callback
         self.queues = []
+        self.cqrs_ids = cqrs_ids
+
         self._init_queues()
 
     def _init_queues(self):
         channel = self.connection.channel()
         for cqrs_id in ReplicaRegistry.models.keys():
-            q = Queue(
-                self.queue_name,
-                exchange=self.exchange,
-                routing_key=cqrs_id,
-            )
-            q.maybe_bind(channel)
-            q.declare()
-            self.queues.append(q)
+            if (not self.cqrs_ids) or (cqrs_id in self.cqrs_ids):
+                q = Queue(
+                    self.queue_name,
+                    exchange=self.exchange,
+                    routing_key=cqrs_id,
+                )
+                q.maybe_bind(channel)
+                q.declare()
+                self.queues.append(q)
 
-            sync_q = Queue(
-                self.queue_name,
-                exchange=self.exchange,
-                routing_key='cqrs.{0}.{1}'.format(self.queue_name, cqrs_id),
-            )
-            sync_q.maybe_bind(channel)
-            sync_q.declare()
-            self.queues.append(sync_q)
+                sync_q = Queue(
+                    self.queue_name,
+                    exchange=self.exchange,
+                    routing_key='cqrs.{0}.{1}'.format(self.queue_name, cqrs_id),
+                )
+                sync_q.maybe_bind(channel)
+                sync_q.declare()
+                self.queues.append(sync_q)
 
     def get_consumers(self, Consumer, channel):
         return [
@@ -77,7 +80,7 @@ class KombuTransport(LoggingMixin, BaseTransport):
         pass
 
     @classmethod
-    def consume(cls):
+    def consume(cls, cqrs_ids=None):
         queue_name, prefetch_count = cls._get_consumer_settings()
         url, exchange_name = cls._get_common_settings()
 
@@ -87,6 +90,7 @@ class KombuTransport(LoggingMixin, BaseTransport):
             queue_name,
             prefetch_count,
             cls._consume_message,
+            cqrs_ids=cqrs_ids,
         )
         consumer.run()
 

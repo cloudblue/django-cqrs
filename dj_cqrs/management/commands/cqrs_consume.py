@@ -12,17 +12,30 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument('--workers', '-w', help='Number of workers', type=int, default=0)
+        parser.add_argument(
+            '--cqrs-id',
+            '-cid',
+            nargs='*',
+            type=str,
+            help='Choose model(s) by CQRS_ID for consuming',
+        )
 
     def handle(self, *args, **options):
-        if options['workers'] == 0:
-            current_transport.consume()
-        else:
-            pool = []
+        consume_kwargs = {}
 
-            for _ in range(options['workers']):
-                p = Process(target=current_transport.consume)
-                pool.append(p)
-                p.start()
+        if options.get('cqrs_id'):
+            consume_kwargs['cqrs_ids'] = set(options['cqrs_id'])
 
-            for p in pool:
-                p.join()
+        if options['workers'] <= 1:
+            current_transport.consume(**consume_kwargs)
+            return
+
+        pool = []
+
+        for _ in range(options['workers']):
+            p = Process(target=current_transport.consume, kwargs=consume_kwargs)
+            pool.append(p)
+            p.start()
+
+        for p in pool:
+            p.join()
