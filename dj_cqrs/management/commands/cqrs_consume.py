@@ -2,9 +2,10 @@
 
 from multiprocessing import Process
 
+from dj_cqrs.registries import ReplicaRegistry
 from dj_cqrs.transport import current_transport
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
 
 class Command(BaseCommand):
@@ -24,7 +25,16 @@ class Command(BaseCommand):
         consume_kwargs = {}
 
         if options.get('cqrs_id'):
-            consume_kwargs['cqrs_ids'] = set(options['cqrs_id'])
+            cqrs_ids = set()
+
+            for cqrs_id in options['cqrs_id']:
+                model = ReplicaRegistry.get_model_by_cqrs_id(cqrs_id)
+                if not model:
+                    raise CommandError('Wrong CQRS ID: {0}!'.format(cqrs_id))
+
+                cqrs_ids.add(cqrs_id)
+
+            consume_kwargs['cqrs_ids'] = cqrs_ids
 
         if options['workers'] <= 1:
             current_transport.consume(**consume_kwargs)

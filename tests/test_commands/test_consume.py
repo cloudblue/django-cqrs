@@ -2,7 +2,7 @@
 
 from importlib import import_module, reload
 
-from django.core.management import call_command
+from django.core.management import CommandError, call_command
 
 import pytest
 
@@ -38,6 +38,13 @@ def test_one_worker_one_cqrs_id(mocker, reload_transport):
 def test_several_cqrs_id(mocker, reload_transport):
     consume_mock = mocker.patch('tests.dj.transport.TransportStub.consume')
 
-    call_command(COMMAND_NAME, cqrs_id=['a', 'b', 'a', 'c'])
+    call_command(COMMAND_NAME, cqrs_id=['author', 'basic', 'author', 'no_db'])
 
-    consume_mock.assert_called_once_with(cqrs_ids={'a', 'b', 'c'})
+    consume_mock.assert_called_once_with(cqrs_ids={'author', 'basic', 'no_db'})
+
+
+def test_wrong_cqrs_id(reload_transport):
+    with pytest.raises(CommandError) as e:
+        call_command(COMMAND_NAME, cqrs_id=['author', 'random', 'no_db'])
+
+    assert "Wrong CQRS ID: random!" in str(e)
