@@ -45,7 +45,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         cls._producer_channel = None
 
     @classmethod
-    def consume(cls):
+    def consume(cls, cqrs_ids=None):
         consumer_rabbit_settings = cls._get_consumer_settings()
         common_rabbit_settings = cls._get_common_settings()
 
@@ -54,7 +54,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
             try:
                 delay_queue = DelayQueue(max_size=get_delay_queue_max_size())
                 connection, channel, consumer_generator = cls._get_consumer_rmq_objects(
-                    *(common_rabbit_settings + consumer_rabbit_settings),
+                    *(common_rabbit_settings + consumer_rabbit_settings), cqrs_ids=cqrs_ids,
                 )
 
                 for method_frame, properties, body in consumer_generator:
@@ -239,7 +239,15 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
 
     @classmethod
     def _get_consumer_rmq_objects(
-        cls, host, port, creds, exchange, queue_name, dead_letter_queue_name, prefetch_count,
+        cls,
+        host,
+        port,
+        creds,
+        exchange,
+        queue_name,
+        dead_letter_queue_name,
+        prefetch_count,
+        cqrs_ids=None,
     ):
         connection = BlockingConnection(
             ConnectionParameters(host=host, port=port, credentials=creds),
@@ -252,6 +260,9 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         channel.queue_declare(dead_letter_queue_name, durable=True, exclusive=False)
 
         for cqrs_id, _ in ReplicaRegistry.models.items():
+            if cqrs_ids and cqrs_id not in cqrs_ids:
+                continue
+
             channel.queue_bind(exchange=exchange, queue=queue_name, routing_key=cqrs_id)
 
             # Every service must have specific SYNC or requeue routes
