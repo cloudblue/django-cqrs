@@ -1,4 +1,4 @@
-#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
 import logging
 from datetime import timedelta
@@ -10,13 +10,14 @@ from django.utils import timezone
 logger = logging.getLogger('django-cqrs')
 
 
-def get_message_expiration_dt():
+def get_message_expiration_dt(message_ttl=None):
     """Calculates when message should expire.
 
+    :param int or None message_ttl:
     :return: Expiration datetime or None if infinite
     :rtype: datetime.datetime or None
     """
-    message_ttl = settings.CQRS['master']['CQRS_MESSAGE_TTL']
+    message_ttl = message_ttl or settings.CQRS['master']['CQRS_MESSAGE_TTL']
     if message_ttl is None:
         # Infinite
         return
