@@ -1,4 +1,4 @@
-#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
 from datetime import datetime, timedelta, timezone
 
@@ -15,6 +15,16 @@ def test_get_message_expiration_dt_fixed(mocker, settings):
     result = get_message_expiration_dt()
 
     expected_result = fake_now + timedelta(seconds=3600)
+    assert result == expected_result
+
+
+def test_get_message_expiration_dt_fixed_from_parameter(mocker, settings):
+    fake_now = datetime(2020, 1, 1, second=0, tzinfo=timezone.utc)
+    mocker.patch('django.utils.timezone.now', return_value=fake_now)
+
+    result = get_message_expiration_dt(message_ttl=2200)
+
+    expected_result = fake_now + timedelta(seconds=2200)
     assert result == expected_result
 
 

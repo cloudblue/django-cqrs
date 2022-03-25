@@ -1,5 +1,6 @@
-#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
+from dj_cqrs.constants import DEFAULT_MASTER_MESSAGE_TTL
 from dj_cqrs.dataclasses import TransportPayload
 from dj_cqrs.registries import ReplicaRegistry
 from dj_cqrs.transport import current_transport
@@ -105,7 +106,7 @@ class Command(BaseCommand):
             dct['retries'] = 0
             if dct.get('expires'):
                 # Message could expire already
-                expires = get_message_expiration_dt()
+                expires = get_message_expiration_dt(DEFAULT_MASTER_MESSAGE_TTL)
                 dct['expires'] = expires.replace(microsecond=0).isoformat()
             payload = TransportPayload.from_message(dct)
             payload.is_requeue = True

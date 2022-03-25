@@ -66,10 +66,10 @@ class Command(BaseCommand):
         if progress:
             print('Processing {0} records with batch size {1}'.format(db_count, batch_size))
 
-        for qs in batch_qs(model.relate_cqrs_serialization(qs), batch_size=batch_size):
+        for qs_ in batch_qs(model.relate_cqrs_serialization(qs), batch_size=batch_size):
             ts = time.time()
             cs = counter
-            for instance in qs:
+            for instance in qs_:
                 counter += 1
                 try:
                     instance.cqrs_sync(queue=options['queue'])

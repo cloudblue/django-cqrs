@@ -1,4 +1,4 @@
-#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
 from datetime import datetime
 
@@ -61,7 +61,6 @@ def test_handle_retry(settings, capsys, mocker):
     method_frame = mocker.MagicMock()
     method_frame.delivery_tag = 12
 
-    settings.CQRS['master']['CQRS_MESSAGE_TTL'] = 3600
     fake_now = datetime(2020, 1, 1, second=0, tzinfo=timezone.utc)
     mocker.patch('django.utils.timezone.now', return_value=fake_now)
     message = {
@@ -86,7 +85,7 @@ def test_handle_retry(settings, capsys, mocker):
 
     produce_message = ujson.loads(produce_kwargs['body'])
     assert produce_message['instance_data'] == message['instance_data']
-    assert produce_message['expires'] == '2020-01-01T01:00:00+00:00'
+    assert produce_message['expires'] == '2020-01-02T00:00:00+00:00'
     assert produce_message['retries'] == 0
 
     captured = capsys.readouterr()
@@ -94,7 +93,7 @@ def test_handle_retry(settings, capsys, mocker):
 
     assert total_msg == 'Total dead letters: 1'
     assert retrying_msg == 'Retrying: 1/1'
-    assert '2020-01-01T01:00:00+00:00' in body_msg
+    assert '2020-01-02T00:00:00+00:00' in body_msg
 
     assert channel.basic_nack.call_count == 1
     assert channel.basic_nack.call_args[0][0] == 12
