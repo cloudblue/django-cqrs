@@ -101,6 +101,7 @@ class PubSubTransport(LoggingMixin, BaseTransport):
         # topic = pubsub_settings[-1]
         # topic = pubsub_settings[-1]
         topic = 'usemoon-cud-admin-sub'
+        pubsub_settings = ['host', 'port', 'creds', 'exchange']
         # Decided not to create context-manager to stay within the class
         connection = cls._get_producer_pubsub_objects(*pubsub_settings, signal_type=payload.signal_type)
 
