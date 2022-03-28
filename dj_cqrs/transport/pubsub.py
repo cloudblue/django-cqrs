@@ -5,6 +5,7 @@ import time
 from datetime import timedelta
 from socket import gaierror
 from urllib.parse import unquote, urlparse
+import json
 
 from dj_cqrs.constants import DEFAULT_DEAD_MESSAGE_TTL, SignalType
 from dj_cqrs.controller import consumer
@@ -20,6 +21,7 @@ from django.utils import timezone
 
 from pika import BasicProperties, BlockingConnection, ConnectionParameters, credentials, exceptions
 from google.cloud import pubsub_v1
+from google.auth import jwt
 import ujson
 
 
@@ -100,7 +102,7 @@ class PubSubTransport(LoggingMixin, BaseTransport):
         # pubsub_settings = cls._get_common_settings()
         # topic = pubsub_settings[-1]
         # topic = pubsub_settings[-1]
-        topic = 'usemoon-cud-admin-sub'
+        topic = 'projects/high-comfort-206717/topics/test1'
         pubsub_settings = ['host', 'port', 'creds', 'exchange']
         # Decided not to create context-manager to stay within the class
         connection = cls._get_producer_pubsub_objects(*pubsub_settings, signal_type=payload.signal_type)
@@ -215,9 +217,8 @@ class PubSubTransport(LoggingMixin, BaseTransport):
         routing_key = cls._get_produced_message_routing_key(payload)
 
         connection.publish(
-            topic_name=topic_name,
-            body=ujson.dumps(payload.to_dict()),
-            spam='eggs'
+            topic=topic_name,
+            data=ujson.dumps(payload.to_dict()).encode('gbk'),
         )
 
     @classmethod
@@ -299,14 +300,22 @@ class PubSubTransport(LoggingMixin, BaseTransport):
 
     @classmethod
     def _create_connection(cls, host, port, creds, exchange):
-        connection = pubsub_v1.PublisherClient()
-        topic = 'trst_topic'
-        cls._declare_topic(connection, topic)
+        service_account_info = json.load(open("service-account-info.json"))
+        audience = "https://pubsub.googleapis.com/google.pubsub.v1.Subscriber"
+        publisher_audience = "https://pubsub.googleapis.com/google.pubsub.v1.Publisher"
+
+        credentials = jwt.Credentials.from_service_account_info(
+            service_account_info, audience=audience
+        )
+        credentials_pub = credentials.with_claims(audience=publisher_audience)
+        connection = pubsub_v1.PublisherClient(credentials=credentials_pub)
+        topic = 'projects/high-comfort-206717/topics/test1'
+        # cls._declare_topic(connection, topic)
         return connection
 
-    @staticmethod
-    def _declare_topic(connection, topic_name):
-        connection.create_topic(name=topic_name)
+    # @staticmethod
+    # def _declare_topic(connection, topic_name):
+    #     connection.create_topic(name=topic_name)
 
     @staticmethod
     def _parse_url(url):
