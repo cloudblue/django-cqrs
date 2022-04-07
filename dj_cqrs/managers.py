@@ -2,6 +2,8 @@
 
 import logging
 
+from dj_cqrs.constants import FIELDS_TRACKER_FIELD_NAME, TRACKED_FIELDS_ATTR_NAME
+
 from django.core.exceptions import ValidationError
 from django.db import Error, IntegrityError, transaction
 from django.db.models import F, Manager
@@ -25,8 +27,7 @@ class MasterManager(Manager):
         objs = super().bulk_create(objs, **kwargs)
 
         if objs:
-            model = type(objs[0])
-            model.call_post_bulk_create(objs, using=self.db)
+            self.model.call_post_bulk_create(objs, using=self.db)
 
         return objs
 
@@ -36,12 +37,33 @@ class MasterManager(Manager):
         :param django.db.models.QuerySet queryset: Django Queryset (f.e. filter)
         :param kwargs: Update kwargs
         """
-        with transaction.atomic():
+        prev_data_mapper = {}
+        collect_prev_data = hasattr(self.model, FIELDS_TRACKER_FIELD_NAME)
+
+        def list_all():
+            return list(queryset.all())
+
+        with transaction.atomic(savepoint=False):
+            if collect_prev_data:
+                objs = list_all()
+                if not objs:
+                    return
+
+                for obj in objs:
+                    prev_data_mapper[obj.pk] = getattr(obj, FIELDS_TRACKER_FIELD_NAME).current()
+
             current_dt = timezone.now()
             result = queryset.update(
                 cqrs_revision=F('cqrs_revision') + 1, cqrs_updated=current_dt, **kwargs,
             )
-        queryset.model.call_post_update(list(queryset.all()), using=queryset.db)
+
+            objs = list_all()
+            if collect_prev_data:
+                for obj in objs:
+                    setattr(obj, TRACKED_FIELDS_ATTR_NAME, prev_data_mapper.get(obj.pk))
+
+        queryset.model.call_post_update(objs, using=queryset.db)
+
         return result
 
 
