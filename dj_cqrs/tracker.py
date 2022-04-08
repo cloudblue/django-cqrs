@@ -1,4 +1,6 @@
-#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2022 Ingram Micro Inc. All rights reserved.
+
+from datetime import date, datetime
 
 from dj_cqrs.constants import ALL_BASIC_FIELDS, FIELDS_TRACKER_FIELD_NAME
 
@@ -24,6 +26,14 @@ class _CQRSTrackerInstance(FieldInstanceTracker):
 
     def changed_initial(self):
         return {field: None for field in self.fields if self.get_field_value(field) is not None}
+
+    def get_field_value(self, field):
+        value = super().get_field_value(field)
+
+        if isinstance(value, (date, datetime)):
+            value = str(value)
+
+        return value
 
 
 class CQRSTracker(FieldTracker):

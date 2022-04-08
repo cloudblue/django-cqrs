@@ -1,5 +1,6 @@
-#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
+from datetime import timedelta
 from time import sleep
 from uuid import uuid4
 
@@ -634,6 +635,29 @@ def test_cqrs_tracked_fields_tracking(mocker):
     assert tracked_data['char_field'] == 'Value'
     assert publisher_mock.call_args[0][0].previous_data == tracked_data
     assert tracked_data == {'cqrs_revision': 0, 'char_field': 'Value'}
+
+
+@pytest.mark.django_db(transaction=True)
+def test_cqrs_tracked_fields_date_and_datetime_tracking(mocker):
+    old_dt = now()
+    old_d = (old_dt + timedelta(days=1)).date()
+
+    models.BasicFieldsModel.objects.create(
+        int_field=1,
+        datetime_field=old_dt,
+        date_field=old_d,
+    )
+
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+    instance = models.BasicFieldsModel.objects.first()
+    instance.datetime_field = now()
+    instance.date_field = now().date()
+    instance.save()
+
+    tracked_data = instance.get_tracked_fields_data()
+    assert publisher_mock.call_args[0][0].previous_data == tracked_data == {
+        'cqrs_revision': 0, 'datetime_field': str(old_dt), 'date_field': str(old_d),
+    }
 
 
 def test_mptt_cqrs_tracked_fields_model_has_tracker():
