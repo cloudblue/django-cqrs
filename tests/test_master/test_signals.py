@@ -1,4 +1,4 @@
-#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
 from datetime import datetime, timezone
 
@@ -10,7 +10,7 @@ from django.db.models.signals import post_delete, post_save
 import pytest
 
 from tests.dj_master import models
-from tests.utils import assert_publisher_once_called_with_args
+from tests.utils import assert_is_sub_dict, assert_publisher_once_called_with_args
 
 
 @pytest.mark.parametrize('model', (models.AllFieldsModel, models.BasicFieldsModel))
@@ -136,7 +136,7 @@ def test_automatic_post_bulk_create(mocker):
 
 
 @pytest.mark.django_db(transaction=True)
-def test_post_bulk_update(mocker):
+def test_post_bulk_update_wout_prev_data(mocker):
     for i in range(3):
         models.SimplestModel.objects.create(id=i)
     cqrs_updated = models.SimplestModel.objects.get(id=1).cqrs_updated
@@ -155,3 +155,55 @@ def test_post_bulk_update(mocker):
     m = models.SimplestModel.objects.get(id=1)
     assert m.cqrs_updated > cqrs_updated
     assert m.cqrs_revision == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_post_bulk_update_with_prev_data(mocker):
+    for i in range(3):
+        models.SimplestTrackedModel.objects.create(id=i, description='old')
+
+    m = models.SimplestTrackedModel.objects.get(id=1)
+    m.status = 'x'
+    m.save()
+
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+    models.SimplestTrackedModel.cqrs.bulk_update(
+        queryset=models.SimplestTrackedModel.objects.filter(id__in={0, 1}).order_by('id'),
+        description='new',
+        status=None,
+    )
+
+    m = models.SimplestTrackedModel.objects.get(id=2)
+    assert m.cqrs_revision == 0
+
+    assert publisher_mock.call_count == 2
+    for pk, prev_data in (
+        (0, {'description': 'old', 'status': None}),
+        (1, {'description': 'old', 'status': 'x'}),
+    ):
+        t0_payload = publisher_mock.call_args_list[pk][0][0]
+        assert t0_payload.signal_type == SignalType.SAVE
+        assert t0_payload.cqrs_id == models.SimplestTrackedModel.CQRS_ID
+        assert t0_payload.pk == pk
+
+        assert_is_sub_dict(
+            {'id': pk, 'description': 'new', 'status': None},
+            t0_payload.instance_data,
+        )
+        assert t0_payload.previous_data == prev_data
+
+        m = models.SimplestTrackedModel.objects.get(id=pk)
+        assert m.cqrs_revision == pk + 1
+        assert m.description == 'new'
+        assert m.status is None
+
+
+@pytest.mark.django_db
+def test_post_bulk_update_nothing_to_update(mocker):
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+    models.SimplestTrackedModel.cqrs.bulk_update(
+        queryset=models.SimplestTrackedModel.objects.all(),
+        description='something',
+    )
+
+    publisher_mock.assert_not_called()
