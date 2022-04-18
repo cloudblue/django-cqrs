@@ -10,7 +10,11 @@ if [ "$INTEGRATION_TESTS" == "yes" ]; then
     docker-compose run master
     docker-compose down --remove-orphans
     docker-compose -f docker-compose.yml -f kombu.yml run master
-	docker-compose -f docker-compose.yml -f kombu.yml down --remove-orphans
+	  docker-compose -f docker-compose.yml -f kombu.yml down --remove-orphans
+	  DB=postgres docker-compose -f docker-compose.yml -f rdbms.yml up app_test
+	  DB=mysql docker-compose -f docker-compose.yml -f rdbms.yml up app_test
+	  docker-compose -f docker-compose.yml -f rdbms.yml down --remove-orphans
+
     cd ..
     echo "Done!"
 else

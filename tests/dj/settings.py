@@ -36,12 +36,36 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'tests.dj.urls'
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-    },
-}
+
+DB_ENGINE = os.getenv('DB', 'sqlite') or 'sqlite'
+
+if DB_ENGINE == 'postgres':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'HOST': 'postgres',
+            'NAME': 'django_cqrs',
+            'USER': 'user',
+            'PASSWORD': 'pswd',
+        },
+    }
+elif DB_ENGINE == 'mysql':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'HOST': 'mysql',
+            'NAME': 'django_cqrs',
+            'USER': 'root',
+            'PASSWORD': 'password',
+        },
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        },
+    }
 
 LANGUAGE_CODE = 'en-us'
 

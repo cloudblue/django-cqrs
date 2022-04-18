@@ -5,23 +5,8 @@ import sys
 from dj_cqrs.registries import MasterRegistry
 
 from django.core.management.base import BaseCommand, CommandError
-from django.db import connection
 
 import ujson
-
-
-GET_NON_EXISTING_PKS_SQL_TEMPLATE = """
-SELECT t.pk
-FROM (
-     WITH t0(pk) AS (
-         VALUES {values}
-     )
-     SELECT *
-     FROM t0
- ) t
-LEFT JOIN {table} m ON m.{pk_field} = t.pk
-WHERE m.{pk_field} IS NULL
-"""
 
 
 class Command(BaseCommand):
@@ -33,7 +18,7 @@ class Command(BaseCommand):
 
     @classmethod
     def deserialize_in(cls, package_line):
-        return ujson.loads(package_line)
+        return set(ujson.loads(package_line))
 
     def handle(self, *args, **options):
         with sys.stdin as f:
@@ -41,21 +26,20 @@ class Command(BaseCommand):
             model = self._get_model(first_line)
             self.stdout.write(first_line.strip())
 
-            with connection.cursor() as cursor:
-                for package_line in f:
-                    master_data = self.deserialize_in(package_line)
+            for package_line in f:
+                master_data = self.deserialize_in(package_line)
 
-                    sql = GET_NON_EXISTING_PKS_SQL_TEMPLATE.format(
-                        values=','.join(["({0})".format(pk) for pk in master_data]),
-                        table=model._meta.db_table,
-                        pk_field=model._meta.pk.attname,
-                    )
-
-                    cursor.execute(sql)
-                    diff_ids = [r[0] for r in cursor.fetchall()]
-                    if diff_ids:
-                        self.stdout.write(self.serialize_out(diff_ids))
-                        self.stderr.write('PK to delete: {0}'.format(str(diff_ids)))
+                exist_pks = set(
+                    model.objects.filter(
+                        pk__in=master_data,
+                    ).values_list(
+                        'pk', flat=True,
+                    ),
+                )
+                diff_ids = list(master_data - exist_pks)
+                if diff_ids:
+                    self.stdout.write(self.serialize_out(diff_ids))
+                    self.stderr.write('PK to delete: {0}'.format(str(diff_ids)))
 
     @staticmethod
     def _get_model(first_line):

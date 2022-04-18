@@ -210,8 +210,13 @@ Testing
 Unit testing
 ------
 1. Python 3.6+
-0. Install dependencies `requirements/test.txt`
-0. `export PYTHONPATH=/your/path/to/django-cqrs/`
+2. Install dependencies `requirements/test.txt`
+3. `export PYTHONPATH=/your/path/to/django-cqrs/`
+
+Run tests with various RDBMS:
+- `cd integration_tests`
+- `DB=postgres docker-compose -f docker-compose.yml -f rdbms.yml up app_test`
+- `DB=mysql docker-compose -f docker-compose.yml -f rdbms.yml up app_test`
 
 Check code style: `flake8`
 Run tests: `pytest`

@@ -12,6 +12,7 @@ from dj_cqrs.constants import (
 )
 from dj_cqrs.metas import MasterMeta
 
+from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.db.models import CharField, F, IntegerField
@@ -173,6 +174,7 @@ def test_cqrs_sync_not_created():
 
 
 @pytest.mark.django_db
+@pytest.mark.skipif(settings.DB_ENGINE != 'sqlite', reason='sqlite only')
 def test_cqrs_sync_cant_refresh_model():
     m = models.SimplestModel.objects.create()
     assert not m.cqrs_sync()
@@ -390,12 +392,12 @@ def test_serialization_no_related_instance(mocker):
 def test_save_serialization(mocker, django_assert_num_queries):
     publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
 
-    # 0 - Transaction start
+    # 0 - Transaction start (SQLite only)
     # 1 - Publisher
     # 2 - Author
     # 3-4 - Books
     # 5-6 - Serialization with prefetch_related
-    query_counter = 7
+    query_counter = 7 if settings.DB_ENGINE == 'sqlite' else 6
     with django_assert_num_queries(query_counter):
         with transaction.atomic():
             publisher = models.Publisher.objects.create(id=1, name='publisher')

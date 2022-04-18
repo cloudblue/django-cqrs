@@ -1,0 +1,35 @@
+version: '3'
+
+services:
+
+  postgres:
+    image: postgres:latest
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=pswd
+      - POSTGRES_DB=django_cqrs
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: django_cqrs
+
+  app_test:
+    build:
+      context: ..
+      dockerfile: integration_tests/Dockerfile
+    volumes:
+      - ../:/app
+    environment:
+      DB: ${DB-}
+    depends_on:
+      - postgres
+      - mysql
+    command: >
+      bash -c '
+        dockerize -wait tcp://postgres:5432 -timeout 50s &&
+        dockerize -wait tcp://mysql:3306 -timeout 50s &&
+        pytest
+      '

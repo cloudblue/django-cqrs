@@ -1,9 +1,11 @@
-#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
 from dj_cqrs.constants import SignalType
 from dj_cqrs.controller.consumer import consume, route_signal_to_replica_model
 from dj_cqrs.controller.producer import produce
 from dj_cqrs.dataclasses import TransportPayload
+
+from django.conf import settings
 
 import pytest
 
@@ -59,7 +61,8 @@ def test_changed_payload_data_during_consume(mocker):
 
 @pytest.mark.django_db(transaction=True)
 def test_route_signal_to_replica_model_with_db(django_assert_num_queries):
-    with django_assert_num_queries(1):
+    query_counter = 0 if settings.DB_ENGINE == 'postgres' else 1
+    with django_assert_num_queries(query_counter):
         route_signal_to_replica_model(SignalType.SAVE, 'lock', {})
 
 
