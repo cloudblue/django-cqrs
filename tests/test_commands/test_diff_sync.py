@@ -1,4 +1,4 @@
-#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
 import sys
 from io import StringIO
@@ -27,7 +27,7 @@ def test_bad_cqrs_id(mocker):
     assert 'Wrong CQRS ID: invalid!' in str(e)
 
 
-def diff_pipe(capsys, mocker, *args):
+def diff_pipe(capsys, mocker, *args, progress=False):
     call_command('cqrs_diff_master', '--cqrs-id=author', *args)
     captured = capsys.readouterr()
 
@@ -38,7 +38,12 @@ def diff_pipe(capsys, mocker, *args):
 
     sync_mock = mocker.patch.object(cqrs_sync.Command, 'handle')
     mocker.patch.object(sys, 'stdin', StringIO(captured.out))
-    call_command(COMMAND_NAME)
+
+    sync_args = args
+    if progress:
+        sync_args += ('--progress',)
+
+    call_command(COMMAND_NAME, *sync_args)
 
     return sync_mock
 
@@ -59,9 +64,15 @@ def test_sync_for_all(mocker, capsys):
     mocker.patch('dj_cqrs.controller.producer.produce')
     Author.objects.create(name='a', id=1)
 
-    sync_mock = diff_pipe(capsys, mocker)
+    sync_mock = diff_pipe(capsys, mocker, '--batch=5000', progress=True)
     sync_mock.assert_called_once_with(
-        **{'cqrs_id': 'author', 'filter': '{"id__in": [1]}', 'queue': 'replica'},
+        **{
+            'cqrs_id': 'author',
+            'filter': '{"id__in": [1]}',
+            'queue': 'replica',
+            'progress': True,
+            'batch': 5000,
+        },
     )
 
 
@@ -75,7 +86,13 @@ def test_partial_sync(mocker, capsys):
 
     sync_mock = diff_pipe(capsys, mocker)
     sync_mock.assert_called_once_with(
-        **{'cqrs_id': 'author', 'filter': '{"id__in": [2]}', 'queue': 'replica'},
+        **{
+            'cqrs_id': 'author',
+            'filter': '{"id__in": [2]}',
+            'queue': 'replica',
+            'batch': 10000,
+            'progress': False,
+        },
     )
 
 
@@ -95,6 +112,11 @@ def test_sync_batch(mocker, capsys):
 def test_sync_no_queue(mocker):
     sync_mock = mocker.patch.object(cqrs_sync.Command, 'handle')
     mocker.patch.object(sys, 'stdin', StringIO('author,dt,{0}\n[1]\n'.format(NO_QUEUE)))
-    call_command(COMMAND_NAME)
+    call_command(COMMAND_NAME, '--progress')
 
-    sync_mock.assert_called_once_with(**{'cqrs_id': 'author', 'filter': '{"id__in": [1]}'})
+    sync_mock.assert_called_once_with(**{
+        'cqrs_id': 'author',
+        'filter': '{"id__in": [1]}',
+        'batch': 10000,
+        'progress': True,
+    })
