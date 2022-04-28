@@ -6,6 +6,7 @@ from dj_cqrs.controller.producer import produce
 from dj_cqrs.dataclasses import TransportPayload
 
 from django.conf import settings
+from django.utils.timezone import now
 
 import pytest
 
@@ -64,6 +65,30 @@ def test_route_signal_to_replica_model_with_db(django_assert_num_queries):
     query_counter = 0 if settings.DB_ENGINE == 'postgres' else 1
     with django_assert_num_queries(query_counter):
         route_signal_to_replica_model(SignalType.SAVE, 'lock', {})
+
+
+@pytest.mark.django_db(transaction=True)
+def test_route_signal_to_replica_model_integrity_error(caplog):
+    instance_data = {
+        'id': 10,
+        'author': {
+            'id': 100,
+        },
+        'cqrs_revision': 0,
+        'cqrs_updated': now(),
+    }
+    instance = route_signal_to_replica_model(SignalType.SAVE, 'article', instance_data)
+    assert not instance
+
+    errors = {
+        'sqlite': 'FOREIGN KEY constraint failed',
+        'postgres': (
+            'insert or update on table "dj_replica_article" violates foreign key constraint'
+        ),
+        'mysql': 'Cannot add or update a child row: a foreign key constraint',
+    }
+
+    assert errors[settings.DB_ENGINE] in caplog.text
 
 
 def test_route_signal_to_replica_model_without_db():

@@ -7,7 +7,7 @@ from contextlib import ExitStack
 from dj_cqrs.constants import SignalType
 from dj_cqrs.registries import ReplicaRegistry
 
-from django.db import close_old_connections, transaction
+from django.db import Error, close_old_connections, transaction
 
 
 logger = logging.getLogger('django-cqrs')
@@ -42,16 +42,26 @@ def route_signal_to_replica_model(signal_type, cqrs_id, instance_data, previous_
         if db_is_needed:
             close_old_connections()
 
-        with transaction.atomic(savepoint=False) if db_is_needed else ExitStack():
-            if signal_type == SignalType.DELETE:
-                return model_cls.cqrs_delete(instance_data)
+        try:
+            with transaction.atomic(savepoint=False) if db_is_needed else ExitStack():
+                if signal_type == SignalType.DELETE:
+                    return model_cls.cqrs_delete(instance_data)
 
-            elif signal_type == SignalType.SAVE:
-                return model_cls.cqrs_save(instance_data, previous_data=previous_data)
+                elif signal_type == SignalType.SAVE:
+                    return model_cls.cqrs_save(instance_data, previous_data=previous_data)
 
-            elif signal_type == SignalType.SYNC:
-                return model_cls.cqrs_save(
-                    instance_data,
-                    previous_data=previous_data,
-                    sync=True,
-                )
+                elif signal_type == SignalType.SYNC:
+                    return model_cls.cqrs_save(
+                        instance_data,
+                        previous_data=previous_data,
+                        sync=True,
+                    )
+        except Error as e:
+            pk_value = instance_data.get(model_cls._meta.pk.name)
+            cqrs_revision = instance_data.get('cqrs_revision')
+
+            logger.error(
+                '{0}\nCQRS {1} error: pk = {2}, cqrs_revision = {3} ({4}).'.format(
+                    str(e), signal_type, pk_value, cqrs_revision, model_cls.CQRS_ID,
+                ),
+            )
