@@ -38,12 +38,12 @@ jobs:
     - name: Testing
       run: |
         python setup.py test
-  build_3_8_9_django_3_2:
-    name: Build on Python 3.8, 3.9 django 3.2
+  build_3_8_9_10_django_3_2:
+    name: Build on Python 3.8, 3.9, 3.10 django 3.2
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8, 3.9]
+        python-version: ['3.8', '3.9', '3.10']
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -96,7 +96,7 @@ jobs:
           python setup.py test
   sonar:
     name: Sonar Checks
-    needs: [build_3_6_7_8_django_2_2, build_3_8_9_django_3_2, build_3_10_django_4_0]
+    needs: [build_3_6_7_8_django_2_2, build_3_8_9_10_django_3_2, build_3_10_django_4_0]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
