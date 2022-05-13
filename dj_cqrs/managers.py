@@ -5,7 +5,7 @@ import logging
 from dj_cqrs.constants import FIELDS_TRACKER_FIELD_NAME, TRACKED_FIELDS_ATTR_NAME
 
 from django.core.exceptions import ValidationError
-from django.db import Error, IntegrityError, transaction
+from django.db import Error, transaction
 from django.db.models import F, Manager
 from django.utils import timezone
 
@@ -121,13 +121,6 @@ class ReplicaManager(Manager):
             )
         except (Error, ValidationError) as e:
             pk_value = mapped_data[self._get_model_pk_name()]
-            if isinstance(e, IntegrityError):
-                logger.warning(
-                    'Potentially wrong CQRS sync order: '
-                    'pk = {0}, cqrs_revision = {1} ({2}).'.format(
-                        pk_value, mapped_data['cqrs_revision'], self.model.CQRS_ID,
-                    ),
-                )
 
             logger.error(
                 '{0}\nCQRS create error: pk = {1} ({2}).'.format(

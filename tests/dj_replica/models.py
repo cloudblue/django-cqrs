@@ -121,6 +121,24 @@ class Book(models.Model):
     author = models.ForeignKey(AuthorRef, on_delete=models.CASCADE)
 
 
+class Article(ReplicaMixin, models.Model):
+    CQRS_ID = 'article'
+
+    id = models.IntegerField(primary_key=True)
+
+    author = models.ForeignKey(AuthorRef, on_delete=models.CASCADE)
+
+    @classmethod
+    def cqrs_create(cls, sync, mapped_data, previous_data=None):
+        data = {
+            'id': mapped_data['id'],
+            'author_id': mapped_data['author']['id'],
+            'cqrs_revision': mapped_data['cqrs_revision'],
+            'cqrs_updated': mapped_data['cqrs_updated'],
+        }
+        return super().cqrs_create(sync, data, previous_data)
+
+
 class FailModel(ReplicaMixin, models.Model):
     CQRS_ID = 'fail'
 

@@ -2,6 +2,7 @@
 
 from dj_cqrs.metas import ReplicaMeta
 
+from django.conf import settings
 from django.db.models import CharField, IntegerField, QuerySet
 from django.utils.timezone import now
 
@@ -331,8 +332,24 @@ def test_update_before_create_is_over(caplog):
     assert updated_instance.cqrs_revision == 1
     assert updated_instance.char_field == 'new_text'
     assert not created_instance
-    assert 'Potentially wrong CQRS sync order: pk = 1, cqrs_revision = 0 (basic).' in caplog.text
-    assert 'CQRS create error: pk = 1 (basic).' in caplog.text
+
+    errors = {
+        'sqlite': (
+            'UNIQUE constraint failed: dj_replica_basicfieldsmodelref.int_field\n'
+            'CQRS create error: pk = 1 (basic).\n'
+        ),
+        'postgres': (
+            'duplicate key value violates unique constraint "dj_replica_basicfieldsmodelref_pkey"\n'
+            'DETAIL:  Key (int_field)=(1) already exists.\n\n'
+            'CQRS create error: pk = 1 (basic).\n'
+        ),
+        'mysql': (
+            '(1062, "Duplicate entry \'1\' for key \'dj_replica_basicfieldsmodelref.PRIMARY\'")\n'
+            'CQRS create error: pk = 1 (basic).\n'
+        ),
+    }
+
+    assert errors[settings.DB_ENGINE] in caplog.text
 
 
 @pytest.mark.django_db(transaction=True)
