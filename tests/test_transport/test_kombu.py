@@ -1,4 +1,4 @@
-#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
 import logging
 from importlib import import_module, reload
@@ -157,6 +157,7 @@ def test_produce_message_ok(mocker):
         'correlation_id': None,
         'expires': None,
         'retries': 0,
+        'meta': None,
     }
 
     assert prepare_message_args[2] == 'text/plain'
@@ -187,6 +188,7 @@ def test_produce_sync_message_no_queue(mocker):
         'correlation_id': None,
         'expires': None,
         'retries': 0,
+        'meta': None,
     }
     assert basic_publish_kwargs['routing_key'] == 'cqrs_id'
 
@@ -210,6 +212,7 @@ def test_produce_sync_message_queue(mocker):
         'correlation_id': None,
         'expires': None,
         'retries': 0,
+        'meta': None,
     }
     assert basic_publish_kwargs['routing_key'] == 'cqrs.queue.cqrs_id'
 

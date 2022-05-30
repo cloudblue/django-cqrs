@@ -1,4 +1,4 @@
-#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
 import logging
 
@@ -190,6 +190,17 @@ class RawMasterMixin(Model):
         :rtype: bool
         """
         return True
+
+    def get_cqrs_meta(self, **kwargs):
+        """
+        This method can be overridden to collect model/instance specific metadata.
+
+        :return: Metadata dictionary if it's provided.
+        :rtype: dict or None
+        """
+        generic_meta_func = settings.CQRS['master']['meta_function']
+        if generic_meta_func:
+            return generic_meta_func()
 
     @classmethod
     def relate_cqrs_serialization(cls, queryset):

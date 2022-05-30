@@ -1,4 +1,4 @@
-#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
 from dateutil.parser import parse as dateutil_parse
 
@@ -43,6 +43,7 @@ class TransportPayload:
         correlation_id=None,
         expires=None,
         retries=0,
+        meta=None,
     ):
         self.__signal_type = signal_type
         self.__cqrs_id = cqrs_id
@@ -50,6 +51,7 @@ class TransportPayload:
         self.__instance_pk = instance_pk
         self.__queue = queue
         self.__previous_data = previous_data
+        self.__meta = meta
 
         if correlation_id:
             self.__correlation_id = correlation_id
@@ -85,6 +87,7 @@ class TransportPayload:
             correlation_id=dct.get('correlation_id'),
             expires=expires,
             retries=dct.get('retries') or 0,
+            meta=dct.get('meta'),
         )
 
     @property
@@ -114,6 +117,10 @@ class TransportPayload:
     @property
     def correlation_id(self):
         return self.__correlation_id
+
+    @property
+    def meta(self):
+        return self.__meta
 
     @property
     def expires(self):
@@ -147,6 +154,7 @@ class TransportPayload:
             'correlation_id': self.__correlation_id,
             'retries': self.__retries,
             'expires': expires,
+            'meta': self.__meta,
         }
 
     def is_expired(self):

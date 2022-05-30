@@ -920,6 +920,7 @@ def test_save_update_fields_no_cqrs_fields_global_flag_changed(mocker, settings)
             'CQRS_AUTO_UPDATE_FIELDS': not DEFAULT_MASTER_AUTO_UPDATE_FIELDS,
             'CQRS_MESSAGE_TTL': DEFAULT_MASTER_MESSAGE_TTL,
             'correlation_function': None,
+            'meta_function': None,
         },
     }
     instance.name = 'New'

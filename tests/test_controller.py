@@ -25,6 +25,7 @@ def test_producer(mocker):
         'correlation_id': None,
         'expires': None,
         'retries': 0,
+        'meta': None,
     }
 
 

@@ -1,4 +1,4 @@
-#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
 from dj_cqrs.constants import SignalType
 from dj_cqrs.controller import producer
@@ -67,6 +67,11 @@ class MasterSignals:
             instance_data = instance.to_cqrs_dict(using, sync=sync)
             previous_data = instance.get_tracked_fields_data()
             signal_type = SignalType.SYNC if sync else SignalType.SAVE
+            meta = instance.get_cqrs_meta(
+                instance_data=instance_data,
+                previous_data=previous_data,
+                signal_type=signal_type,
+            )
             payload = TransportPayload(
                 signal_type,
                 sender.CQRS_ID,
@@ -75,6 +80,7 @@ class MasterSignals:
                 queue,
                 previous_data,
                 expires=get_message_expiration_dt(),
+                meta=meta,
             )
             producer.produce(payload)
 
@@ -109,12 +115,18 @@ class MasterSignals:
 
         signal_type = SignalType.DELETE
 
+        meta = instance.get_cqrs_meta(
+            instance_data=instance_data,
+            signal_type=signal_type,
+        )
+
         payload = TransportPayload(
             signal_type,
             sender.CQRS_ID,
             instance_data,
             instance.pk,
             expires=get_message_expiration_dt(),
+            meta=meta,
         )
         # Delete is always in transaction!
         transaction.on_commit(lambda: producer.produce(payload))

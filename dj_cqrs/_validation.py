@@ -1,4 +1,4 @@
-#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
 import logging
 
@@ -56,6 +56,7 @@ def _validate_master(cqrs_settings):
             'CQRS_AUTO_UPDATE_FIELDS': DEFAULT_MASTER_AUTO_UPDATE_FIELDS,
             'CQRS_MESSAGE_TTL': DEFAULT_MASTER_MESSAGE_TTL,
             'correlation_function': None,
+            'meta_function': None,
         },
     }
 
@@ -69,6 +70,7 @@ def _validate_master(cqrs_settings):
     _validate_master_auto_update_fields(master_settings)
     _validate_master_message_ttl(master_settings)
     _validate_master_correlation_func(master_settings)
+    _validate_master_meta_func(master_settings)
 
 
 def _validate_master_auto_update_fields(master_settings):
@@ -104,6 +106,24 @@ def _validate_master_correlation_func(master_settings):
         master_settings['correlation_function'] = None
     elif not callable(correlation_func):
         raise AssertionError('CQRS master correlation_function must be callable.')
+
+
+def _validate_master_meta_func(master_settings):
+    meta_func = master_settings.get('meta_function')
+    if not meta_func:
+        master_settings['meta_function'] = None
+        return
+
+    if isinstance(meta_func, str):
+        try:
+            meta_func = import_string(meta_func)
+        except ImportError:
+            raise AssertionError('CQRS master meta_function import error.')
+
+    if not callable(meta_func):
+        raise AssertionError('CQRS master meta_function must be callable.')
+
+    master_settings['meta_function'] = meta_func
 
 
 def _validate_replica(cqrs_settings):

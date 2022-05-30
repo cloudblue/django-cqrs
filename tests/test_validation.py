@@ -1,4 +1,4 @@
-#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
 from unittest.mock import MagicMock
 
@@ -87,6 +87,7 @@ def test_master_configuration_not_set(cqrs_settings):
         'CQRS_AUTO_UPDATE_FIELDS': False,
         'CQRS_MESSAGE_TTL': 86400,
         'correlation_function': None,
+        'meta_function': None,
     }
 
 
@@ -109,6 +110,7 @@ def test_master_configuration_is_empty(cqrs_settings):
         'CQRS_AUTO_UPDATE_FIELDS': False,
         'CQRS_MESSAGE_TTL': 86400,
         'correlation_function': None,
+        'meta_function': None,
     }
 
 
@@ -134,6 +136,7 @@ def test_master_message_ttl_is_none(cqrs_settings):
         'CQRS_AUTO_UPDATE_FIELDS': True,
         'CQRS_MESSAGE_TTL': None,
         'correlation_function': None,
+        'meta_function': None,
     }
 
 
@@ -147,6 +150,7 @@ def test_master_message_ttl_has_wrong_type_or_invalid_value(value, cqrs_settings
         'CQRS_AUTO_UPDATE_FIELDS': False,
         'CQRS_MESSAGE_TTL': 86400,
         'correlation_function': None,
+        'meta_function': None,
     }
     assert caplog.record_tuples
 
