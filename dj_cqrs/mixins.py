@@ -195,12 +195,13 @@ class RawMasterMixin(Model):
         """
         This method can be overridden to collect model/instance specific metadata.
 
+        :type kwargs: Signal type, payload data, etc.
         :return: Metadata dictionary if it's provided.
         :rtype: dict or None
         """
         generic_meta_func = settings.CQRS['master']['meta_function']
         if generic_meta_func:
-            return generic_meta_func()
+            return generic_meta_func(**kwargs)
 
     @classmethod
     def relate_cqrs_serialization(cls, queryset):

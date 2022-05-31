@@ -991,3 +991,41 @@ def test_save_update_fields_with_update_cqrs_fields_flag(mocker):
 
     instance.refresh_from_db()
     assert instance.name == 'New'
+
+
+@pytest.mark.django_db(transaction=True)
+def test_get_cqrs_meta_global_meta_function(mocker, settings):
+    f = mocker.MagicMock()
+    f.return_value = {1: 2}
+
+    settings.CQRS['master']['meta_function'] = f
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+
+    obj = models.SimplestModel.objects.create(id=1)
+
+    assert publisher_mock.call_args[0][0].meta == {1: 2}
+    f.assert_called_once_with(
+        instance_data={
+            'cqrs_revision': 0,
+            'cqrs_updated': str(obj.cqrs_updated),
+            'id': 1,
+            'name': None,
+        },
+        previous_data=None,
+        signal_type=SignalType.SAVE,
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_get_cqrs_meta_custom_function(mocker, settings):
+    f = mocker.MagicMock()
+
+    settings.CQRS['master']['meta_function'] = f
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+
+    obj = models.SimplestModel(id=1)
+    obj.get_cqrs_meta = lambda **k: {'test': []}
+    obj.save()
+
+    assert publisher_mock.call_args[0][0].meta == {'test': []}
+    f.assert_not_called()

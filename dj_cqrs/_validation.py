@@ -1,6 +1,7 @@
 #  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
 import logging
+from inspect import getfullargspec, isfunction
 
 from dj_cqrs.constants import (
     DEFAULT_MASTER_AUTO_UPDATE_FIELDS,
@@ -120,8 +121,12 @@ def _validate_master_meta_func(master_settings):
         except ImportError:
             raise AssertionError('CQRS master meta_function import error.')
 
-    if not callable(meta_func):
-        raise AssertionError('CQRS master meta_function must be callable.')
+    if not isfunction(meta_func):
+        raise AssertionError('CQRS master meta_function must be function.')
+
+    r = getfullargspec(meta_func)
+    if not r.varkw:
+        raise AssertionError('CQRS master meta_function must support **kwargs.')
 
     master_settings['meta_function'] = meta_func
 
