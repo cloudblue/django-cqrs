@@ -30,6 +30,8 @@ class TransportPayload:
     :type retries: int, optional
     :param expires: Message expiration datetime, infinite if None
     :type expires: datetime, optional
+    :param meta: Payload metadata
+    :type meta: dict, optional
     """
 
     def __init__(

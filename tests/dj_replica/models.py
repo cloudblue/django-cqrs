@@ -51,6 +51,7 @@ class BadMappingModelRef(ReplicaMixin, models.Model):
 class LockModelRef(ReplicaMixin, models.Model):
     CQRS_ID = 'lock'
     CQRS_SELECT_FOR_UPDATE = True
+    CQRS_META = True
 
     id = models.IntegerField(primary_key=True)
 
@@ -121,7 +122,7 @@ class Book(models.Model):
     author = models.ForeignKey(AuthorRef, on_delete=models.CASCADE)
 
 
-class Article(ReplicaMixin, models.Model):
+class Article(ReplicaMixin):
     CQRS_ID = 'article'
 
     id = models.IntegerField(primary_key=True)
@@ -139,9 +140,29 @@ class Article(ReplicaMixin, models.Model):
         return super().cqrs_create(sync, data, previous_data)
 
 
-class FailModel(ReplicaMixin, models.Model):
+class FailModel(ReplicaMixin):
     CQRS_ID = 'fail'
 
     @classmethod
     def cqrs_save(cls, *args, **kwargs):
         raise Exception('Test fail Exception')
+
+
+class CQRSMetaModel(ReplicaMixin):
+    CQRS_ID = 'meta'
+    CQRS_META = True
+
+    id = models.IntegerField(primary_key=True)
+
+    @classmethod
+    def cqrs_create(cls, sync, mapped_data, **kwargs):
+        return kwargs['meta']
+
+    def cqrs_update(self, sync, mapped_data, previous_data=None, meta=None):
+        return sync, mapped_data, previous_data, meta
+
+    @classmethod
+    def cqrs_delete(cls, master_data, meta=None):
+        super().cqrs_delete(master_data, meta)
+
+        return meta

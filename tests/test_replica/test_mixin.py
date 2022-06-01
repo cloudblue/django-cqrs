@@ -1,5 +1,7 @@
-#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
+from dj_cqrs.constants import SignalType
+from dj_cqrs.dataclasses import TransportPayload
 from dj_cqrs.metas import ReplicaMeta
 
 from django.conf import settings
@@ -8,6 +10,7 @@ from django.utils.timezone import now
 
 import pytest
 
+from tests.dj.transport import TransportStub
 from tests.dj_replica import models
 from tests.utils import db_error
 
@@ -540,3 +543,68 @@ def test_get_cqrs_retry_delay(settings, retry_delay, current_retry):
     result = models.BasicFieldsModelRef.get_cqrs_retry_delay(current_retry=current_retry)
 
     assert result is retry_delay
+
+
+@pytest.mark.django_db
+def test_support_for_meta_create():
+    meta = TransportStub.consume(
+        TransportPayload(
+            SignalType.SAVE,
+            models.CQRSMetaModel.CQRS_ID,
+            {
+                'id': 1,
+                'cqrs_revision': 0,
+                'cqrs_updated': now(),
+            },
+            1,
+            meta={'Hello': 'world'},
+        ),
+    )
+
+    assert meta == {'Hello': 'world'}
+
+
+@pytest.mark.django_db
+def test_support_for_meta_update():
+    models.CQRSMetaModel.objects.create(id=2, cqrs_revision=0, cqrs_updated=now())
+
+    cqrs_updated = now()
+    t = TransportStub.consume(
+        TransportPayload(
+            SignalType.SYNC,
+            models.CQRSMetaModel.CQRS_ID,
+            {
+                'id': 2,
+                'cqrs_revision': 1,
+                'cqrs_updated': cqrs_updated,
+            },
+            2,
+            meta=[1, 2, 3],
+        ),
+    )
+
+    assert t == (
+        True, {'id': 2, 'cqrs_revision': 1, 'cqrs_updated': cqrs_updated}, None, [1, 2, 3],
+    )
+
+
+@pytest.mark.django_db
+def test_support_for_meta_delete():
+    models.CQRSMetaModel.objects.create(id=3, cqrs_revision=0, cqrs_updated=now())
+
+    meta = TransportStub.consume(
+        TransportPayload(
+            SignalType.DELETE,
+            models.CQRSMetaModel.CQRS_ID,
+            {
+                'id': 3,
+                'cqrs_revision': 1,
+                'cqrs_updated': now(),
+            },
+            3,
+            meta={1: 2, 2: {}},
+        ),
+    )
+
+    assert meta == {1: 2, 2: {}}
+    assert not models.CQRSMetaModel.objects.exists()

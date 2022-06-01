@@ -197,11 +197,13 @@ class RawMasterMixin(Model):
 
         :type kwargs: Signal type, payload data, etc.
         :return: Metadata dictionary if it's provided.
-        :rtype: dict or None
+        :rtype: dict
         """
         generic_meta_func = settings.CQRS['master']['meta_function']
         if generic_meta_func:
             return generic_meta_func(**kwargs)
+
+        return {}
 
     @classmethod
     def relate_cqrs_serialization(cls, queryset):
@@ -354,6 +356,9 @@ class ReplicaMixin(Model, metaclass=ReplicaMeta):
     CQRS_NO_DB_OPERATIONS = False
     """Set it to True to disable any default DB operations for this model."""
 
+    CQRS_META = False
+    """Set it to True to receive meta data for this model."""
+
     objects = Manager()
 
     cqrs = ReplicaManager()
@@ -366,41 +371,44 @@ class ReplicaMixin(Model, metaclass=ReplicaMeta):
         abstract = True
 
     @classmethod
-    def cqrs_save(cls, master_data, previous_data=None, sync=False):
+    def cqrs_save(cls, master_data, previous_data=None, sync=False, meta=None):
         """ This method saves (creates or updates) model instance from CQRS master instance data.
         This method must not be overridden. Otherwise, sync checks need to be implemented manually.
 
         :param dict master_data: CQRS master instance data.
         :param dict previous_data: Previous values for tracked fields.
         :param bool sync: Sync package flag.
+        :param dict or None meta: Payload metadata, if exists.
         :return: Model instance.
         :rtype: django.db.models.Model
         """
         if cls.CQRS_NO_DB_OPERATIONS:
             raise NotImplementedError
 
-        return cls.cqrs.save_instance(master_data, previous_data, sync)
+        return cls.cqrs.save_instance(master_data, previous_data, sync, meta)
 
     @classmethod
-    def cqrs_create(cls, sync, mapped_data, previous_data=None):
+    def cqrs_create(cls, sync, mapped_data, previous_data=None, meta=None):
         """ This method creates model instance from CQRS mapped instance data. It must be overridden
         by replicas of master models with custom serialization.
 
         :param bool sync: Sync package flag.
         :param dict mapped_data: CQRS mapped instance data.
         :param dict previous_data: Previous mapped values for tracked fields.
+        :param dict or None meta: Payload metadata, if exists.
         :return: Model instance.
         :rtype: django.db.models.Model
         """
         return cls._default_manager.create(**mapped_data)
 
-    def cqrs_update(self, sync, mapped_data, previous_data=None):
+    def cqrs_update(self, sync, mapped_data, previous_data=None, meta=None):
         """ This method updates model instance from CQRS mapped instance data. It must be overridden
         by replicas of master models with custom serialization.
 
         :param bool sync: Sync package flag.
         :param dict mapped_data: CQRS mapped instance data.
         :param dict previous_data: Previous mapped values for tracked fields.
+        :param dict or None meta: Payload metadata, if exists.
         :return: Model instance.
         :rtype: django.db.models.Model
         """
@@ -411,10 +419,11 @@ class ReplicaMixin(Model, metaclass=ReplicaMeta):
         return self
 
     @classmethod
-    def cqrs_delete(cls, master_data):
+    def cqrs_delete(cls, master_data, meta=None):
         """ This method deletes model instance from mapped CQRS master instance data.
 
         :param dict master_data: CQRS master instance data.
+        :param dict or None meta: Payload metadata, if exists.
         :return: Flag, if delete operation is successful (even if nothing was deleted).
         :rtype: bool
         """

@@ -33,7 +33,7 @@ def test_consumer(mocker):
     factory_mock = mocker.patch('dj_cqrs.controller.consumer.route_signal_to_replica_model')
     consume(TransportPayload('a', 'b', {}, 'c', previous_data={'e': 'f'}))
 
-    factory_mock.assert_called_once_with('a', 'b', {}, previous_data={'e': 'f'})
+    factory_mock.assert_called_once_with('a', 'b', {}, previous_data={'e': 'f'}, meta=None)
 
 
 def test_changed_payload_data_during_consume(mocker):

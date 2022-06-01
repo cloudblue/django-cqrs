@@ -1018,14 +1018,27 @@ def test_get_cqrs_meta_global_meta_function(mocker, settings):
 
 @pytest.mark.django_db(transaction=True)
 def test_get_cqrs_meta_custom_function(mocker, settings):
-    f = mocker.MagicMock()
-
-    settings.CQRS['master']['meta_function'] = f
     publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
 
-    obj = models.SimplestModel(id=1)
-    obj.get_cqrs_meta = lambda **k: {'test': []}
-    obj.save()
+    obj = models.SimplestModel.objects.create(id=1)
+    publisher_mock.reset_mock()
 
-    assert publisher_mock.call_args[0][0].meta == {'test': []}
+    obj.get_cqrs_meta = lambda **k: {'a': {'b': {}}}
+    f = mocker.MagicMock()
+    settings.CQRS['master']['meta_function'] = f
+
+    obj.delete()
+
+    assert publisher_mock.call_args[0][0].meta == {'a': {'b': {}}}
     f.assert_not_called()
+
+
+@pytest.mark.django_db(transaction=True)
+def test_get_cqrs_meta_default(mocker, settings):
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+
+    obj = models.SimplestModel.objects.create(id=1)
+    publisher_mock.reset_mock()
+
+    obj.save()
+    assert publisher_mock.call_args[0][0].meta == {}
