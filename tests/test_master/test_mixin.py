@@ -1005,6 +1005,7 @@ def test_get_cqrs_meta_global_meta_function(mocker, settings):
 
     assert publisher_mock.call_args[0][0].meta == {1: 2}
     f.assert_called_once_with(
+        obj=obj,
         instance_data={
             'cqrs_revision': 0,
             'cqrs_updated': str(obj.cqrs_updated),

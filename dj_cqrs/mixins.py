@@ -201,7 +201,7 @@ class RawMasterMixin(Model):
         """
         generic_meta_func = settings.CQRS['master']['meta_function']
         if generic_meta_func:
-            return generic_meta_func(**kwargs)
+            return generic_meta_func(obj=self, **kwargs)
 
         return {}
 
