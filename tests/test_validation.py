@@ -1,4 +1,4 @@
-#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
 from unittest.mock import MagicMock
 
@@ -8,7 +8,7 @@ import pytest
 
 
 def test_full_configuration():
-    def f(*a):
+    def f(*a, **kw):
         pass
 
     settings = MagicMock(CQRS={
@@ -24,6 +24,7 @@ def test_full_configuration():
             'CQRS_AUTO_UPDATE_FIELDS': True,
             'CQRS_MESSAGE_TTL': 10,
             'correlation_function': f,
+            'meta_function': f,
         },
 
         'replica': {
@@ -87,6 +88,7 @@ def test_master_configuration_not_set(cqrs_settings):
         'CQRS_AUTO_UPDATE_FIELDS': False,
         'CQRS_MESSAGE_TTL': 86400,
         'correlation_function': None,
+        'meta_function': None,
     }
 
 
@@ -109,6 +111,7 @@ def test_master_configuration_is_empty(cqrs_settings):
         'CQRS_AUTO_UPDATE_FIELDS': False,
         'CQRS_MESSAGE_TTL': 86400,
         'correlation_function': None,
+        'meta_function': None,
     }
 
 
@@ -134,6 +137,7 @@ def test_master_message_ttl_is_none(cqrs_settings):
         'CQRS_AUTO_UPDATE_FIELDS': True,
         'CQRS_MESSAGE_TTL': None,
         'correlation_function': None,
+        'meta_function': None,
     }
 
 
@@ -147,6 +151,7 @@ def test_master_message_ttl_has_wrong_type_or_invalid_value(value, cqrs_settings
         'CQRS_AUTO_UPDATE_FIELDS': False,
         'CQRS_MESSAGE_TTL': 86400,
         'correlation_function': None,
+        'meta_function': None,
     }
     assert caplog.record_tuples
 
@@ -166,6 +171,51 @@ def test_master_correlation_func_is_callable(cqrs_settings):
     validate_settings(cqrs_settings)
 
     assert cqrs_settings.CQRS['master']['correlation_function']() == 1
+
+
+def test_master_meta_func_is_func_from_string(cqrs_settings):
+    cqrs_settings.CQRS['master'] = {'meta_function': 'tests.utils.db_error'}
+
+    validate_settings(cqrs_settings)
+
+    assert callable(cqrs_settings.CQRS['master']['meta_function'])
+
+
+def test_master_meta_func_is_func(cqrs_settings):
+    cqrs_settings.CQRS['master'] = {'meta_function': lambda **kw: 1}
+
+    validate_settings(cqrs_settings)
+
+    assert cqrs_settings.CQRS['master']['meta_function']() == 1
+
+
+def test_master_meta_func_is_non_importable_from_string(cqrs_settings):
+    cqrs_settings.CQRS['master'] = {'meta_function': 'random.stuff'}
+
+    with pytest.raises(AssertionError) as e:
+        validate_settings(cqrs_settings)
+
+    assert str(e.value) == 'CQRS master meta_function import error.'
+
+
+@pytest.mark.parametrize('f', ('dj_cqrs.dataclasses.TransportPayload', 5))
+def test_master_meta_func_is_not_func(cqrs_settings, f):
+    cqrs_settings.CQRS['master'] = {'meta_function': f}
+
+    with pytest.raises(AssertionError) as e:
+        validate_settings(cqrs_settings)
+
+    assert str(e.value) == 'CQRS master meta_function must be function.'
+
+
+@pytest.mark.parametrize('f', ('dj_cqrs.utils.get_message_expiration_dt', lambda: 1))
+def test_master_meta_func_must_support_kwargs(cqrs_settings, f):
+    cqrs_settings.CQRS['master'] = {'meta_function': f}
+
+    with pytest.raises(AssertionError) as e:
+        validate_settings(cqrs_settings)
+
+    assert str(e.value) == 'CQRS master meta_function must support **kwargs.'
 
 
 def test_replica_configuration_not_set(cqrs_settings):

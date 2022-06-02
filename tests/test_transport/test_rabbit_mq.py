@@ -1,4 +1,4 @@
-#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
 import logging
 from datetime import datetime, timedelta, timezone
@@ -158,6 +158,7 @@ def rabbit_transport(settings):
             'CQRS_AUTO_UPDATE_FIELDS': DEFAULT_MASTER_AUTO_UPDATE_FIELDS,
             'CQRS_MESSAGE_TTL': DEFAULT_MASTER_MESSAGE_TTL,
             'correlation_function': None,
+            'meta_function': None,
         },
         'replica': {
             'CQRS_MAX_RETRIES': DEFAULT_REPLICA_MAX_RETRIES,
@@ -242,6 +243,7 @@ def test_produce_message_ok(mocker):
         'correlation_id': None,
         'expires': expected_expires,
         'retries': 2,
+        'meta': None,
     }
     assert basic_publish_kwargs['exchange'] == 'exchange'
     assert basic_publish_kwargs['mandatory']
@@ -266,6 +268,7 @@ def test_produce_sync_message_no_queue(mocker):
         'correlation_id': None,
         'expires': None,
         'retries': 0,
+        'meta': None,
     }
     assert basic_publish_kwargs['routing_key'] == 'cqrs_id'
 
@@ -286,6 +289,7 @@ def test_produce_sync_message_queue(mocker):
         'correlation_id': None,
         'expires': None,
         'retries': 0,
+        'meta': None,
     }
     assert basic_publish_kwargs['routing_key'] == 'cqrs.queue.cqrs_id'
 

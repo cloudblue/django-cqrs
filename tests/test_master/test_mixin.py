@@ -920,6 +920,7 @@ def test_save_update_fields_no_cqrs_fields_global_flag_changed(mocker, settings)
             'CQRS_AUTO_UPDATE_FIELDS': not DEFAULT_MASTER_AUTO_UPDATE_FIELDS,
             'CQRS_MESSAGE_TTL': DEFAULT_MASTER_MESSAGE_TTL,
             'correlation_function': None,
+            'meta_function': None,
         },
     }
     instance.name = 'New'
@@ -990,3 +991,55 @@ def test_save_update_fields_with_update_cqrs_fields_flag(mocker):
 
     instance.refresh_from_db()
     assert instance.name == 'New'
+
+
+@pytest.mark.django_db(transaction=True)
+def test_get_cqrs_meta_global_meta_function(mocker, settings):
+    f = mocker.MagicMock()
+    f.return_value = {1: 2}
+
+    settings.CQRS['master']['meta_function'] = f
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+
+    obj = models.SimplestModel.objects.create(id=1)
+
+    assert publisher_mock.call_args[0][0].meta == {1: 2}
+    f.assert_called_once_with(
+        obj=obj,
+        instance_data={
+            'cqrs_revision': 0,
+            'cqrs_updated': str(obj.cqrs_updated),
+            'id': 1,
+            'name': None,
+        },
+        previous_data=None,
+        signal_type=SignalType.SAVE,
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_get_cqrs_meta_custom_function(mocker, settings):
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+
+    obj = models.SimplestModel.objects.create(id=1)
+    publisher_mock.reset_mock()
+
+    obj.get_cqrs_meta = lambda **k: {'a': {'b': {}}}
+    f = mocker.MagicMock()
+    settings.CQRS['master']['meta_function'] = f
+
+    obj.delete()
+
+    assert publisher_mock.call_args[0][0].meta == {'a': {'b': {}}}
+    f.assert_not_called()
+
+
+@pytest.mark.django_db(transaction=True)
+def test_get_cqrs_meta_default(mocker, settings):
+    publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
+
+    obj = models.SimplestModel.objects.create(id=1)
+    publisher_mock.reset_mock()
+
+    obj.save()
+    assert publisher_mock.call_args[0][0].meta == {}

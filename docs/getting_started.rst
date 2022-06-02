@@ -15,11 +15,12 @@ Requirements
 
 `django-cqrs` works with Python 3.6 or later and has the following dependencies:
 
-    * Django >= 1.11.20
-    * pika 1.1.0
-    * kombu 4.6
-    * ujson 3.0.0
-    * django-model-utils 4.0.0
+    * Django >= 2.2
+    * pika >= 1.0.0
+    * kombu >= 4.6
+    * ujson >= 3.0.0
+    * django-model-utils >= 4.0.0
+    * python-dateutil >= 2.4
 
 
 Install

@@ -68,12 +68,13 @@ class MasterManager(Manager):
 
 
 class ReplicaManager(Manager):
-    def save_instance(self, master_data, previous_data=None, sync=False):
+    def save_instance(self, master_data, previous_data=None, sync=False, meta=None):
         """ This method saves (creates or updates) model instance from CQRS master instance data.
 
         :param dict master_data: CQRS master instance data.
         :param dict previous_data: Previous values for tracked fields.
         :param bool sync: Sync package flag.
+        :param dict or None meta: Payload metadata, if exists.
         :return: Model instance.
         :rtype: django.db.models.Model
         """
@@ -96,29 +97,32 @@ class ReplicaManager(Manager):
                     mapped_data,
                     previous_data=mapped_previous_data,
                     sync=sync,
+                    meta=meta,
                 )
 
             return self.create_instance(
                 mapped_data,
                 previous_data=mapped_previous_data,
                 sync=sync,
+                meta=meta,
             )
 
-    def create_instance(self, mapped_data, previous_data=None, sync=False):
+    def create_instance(self, mapped_data, previous_data=None, sync=False, meta=None):
         """ This method creates model instance from mapped CQRS master instance data.
 
         :param dict mapped_data: Mapped CQRS master instance data.
         :param dict previous_data: Previous values for tracked fields.
         :param bool sync: Sync package flag.
+        :param dict or None meta: Payload metadata, if exists.
         :return: ReplicaMixin model instance.
         :rtype: django.db.models.Model
         """
+        f_kw = {'previous_data': previous_data}
+        if self.model.CQRS_META:
+            f_kw['meta'] = meta
+
         try:
-            return self.model.cqrs_create(
-                sync,
-                mapped_data,
-                previous_data=previous_data,
-            )
+            return self.model.cqrs_create(sync, mapped_data, **f_kw)
         except (Error, ValidationError) as e:
             pk_value = mapped_data[self._get_model_pk_name()]
 
@@ -128,12 +132,13 @@ class ReplicaManager(Manager):
                 ),
             )
 
-    def update_instance(self, instance, mapped_data, previous_data=None, sync=False):
+    def update_instance(self, instance, mapped_data, previous_data=None, sync=False, meta=None):
         """ This method updates model instance from mapped CQRS master instance data.
 
         :param django.db.models.Model instance: ReplicaMixin model instance.
         :param dict mapped_data: Mapped CQRS master instance data.
         :param dict previous_data: Previous values for tracked fields.
+        :param dict or None meta: Payload metadata, if exists.
         :param bool sync: Sync package flag.
         :return: ReplicaMixin model instance.
         :rtype: django.db.models.Model
@@ -187,12 +192,12 @@ class ReplicaManager(Manager):
                     pk_value, current_cqrs_revision, self.model.CQRS_ID,
                 ))
 
+        f_kw = {'previous_data': previous_data}
+        if self.model.CQRS_META:
+            f_kw['meta'] = meta
+
         try:
-            return instance.cqrs_update(
-                sync,
-                mapped_data,
-                previous_data=previous_data,
-            )
+            return instance.cqrs_update(sync, mapped_data, **f_kw)
         except (Error, ValidationError) as e:
             logger.error(
                 '{0}\nCQRS update error: pk = {1}, cqrs_revision = {2} ({3}).'.format(
