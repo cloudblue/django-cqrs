@@ -62,6 +62,7 @@ Retrying
 | CQRS_DELAY_QUEUE_MAX_SIZE | 1000     | Maximum number of delayed messages per worker. Infinite if *None*.          |
 +---------------------------+----------+-----------------------------------------------------------------------------+
 
+
 .. code-block:: python
 
     # settings.py
