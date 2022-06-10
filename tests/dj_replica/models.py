@@ -1,6 +1,7 @@
-#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
-from dj_cqrs.mixins import ReplicaMixin
+from dj_cqrs.metas import ReplicaMeta
+from dj_cqrs.mixins import RawReplicaMixin, ReplicaMixin
 
 from django.db import models
 
@@ -166,3 +167,19 @@ class CQRSMetaModel(ReplicaMixin):
         super().cqrs_delete(master_data, meta)
 
         return meta
+
+
+for cqrs_id in ('document1', 'document2'):
+    class DocCls(RawReplicaMixin):
+        CQRS_ID = cqrs_id
+        CQRS_META = True
+
+        @classmethod
+        def cqrs_save(cls, master_data, **kwargs):
+            return cls.CQRS_ID, master_data, kwargs
+
+        @classmethod
+        def cqrs_delete(cls, master_data, **kwargs):
+            return cls.CQRS_ID, master_data, kwargs
+
+    ReplicaMeta.register(DocCls)

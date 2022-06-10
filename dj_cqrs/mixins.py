@@ -336,7 +336,21 @@ class MasterMixin(RawMasterMixin, metaclass=MasterMeta):
         abstract = True
 
 
-class ReplicaMixin(Model, metaclass=ReplicaMeta):
+class RawReplicaMixin:
+    CQRS_ID = None
+    CQRS_NO_DB_OPERATIONS = True
+    CQRS_META = False
+
+    @classmethod
+    def cqrs_save(cls, master_data, **kwargs):
+        raise NotImplementedError
+
+    @classmethod
+    def cqrs_delete(cls, master_data, **kwargs):
+        raise NotImplementedError
+
+
+class ReplicaMixin(RawReplicaMixin, Model, metaclass=ReplicaMeta):
     """
     Mixin for the replica CQRS model, that will receive data updates from master. Models, using
     this mixin should be readonly, but this is not enforced (f.e. for admin).
@@ -360,7 +374,6 @@ class ReplicaMixin(Model, metaclass=ReplicaMeta):
     """Set it to True to receive meta data for this model."""
 
     objects = Manager()
-
     cqrs = ReplicaManager()
     """Manager that adds needed CQRS queryset methods."""
 
@@ -383,7 +396,7 @@ class ReplicaMixin(Model, metaclass=ReplicaMeta):
         :rtype: django.db.models.Model
         """
         if cls.CQRS_NO_DB_OPERATIONS:
-            raise NotImplementedError
+            return super().cqrs_save(master_data, previous_data=previous_data, sync=sync, meta=meta)
 
         return cls.cqrs.save_instance(master_data, previous_data, sync, meta)
 
@@ -428,7 +441,7 @@ class ReplicaMixin(Model, metaclass=ReplicaMeta):
         :rtype: bool
         """
         if cls.CQRS_NO_DB_OPERATIONS:
-            raise NotImplementedError
+            return super().cqrs_delete(master_data, meta=meta)
 
         return cls.cqrs.delete_instance(master_data)
 
