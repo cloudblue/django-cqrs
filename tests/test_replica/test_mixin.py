@@ -3,6 +3,7 @@
 from dj_cqrs.constants import SignalType
 from dj_cqrs.dataclasses import TransportPayload
 from dj_cqrs.metas import ReplicaMeta
+from dj_cqrs.mixins import RawReplicaMixin
 
 from django.conf import settings
 from django.db.models import CharField, IntegerField, QuerySet
@@ -608,3 +609,51 @@ def test_support_for_meta_delete():
 
     assert meta == {1: 2, 2: {}}
     assert not models.CQRSMetaModel.objects.exists()
+
+
+def test_raw_replica_mixin():
+    assert RawReplicaMixin.CQRS_ID is None
+    assert RawReplicaMixin.CQRS_NO_DB_OPERATIONS is True
+    assert RawReplicaMixin.CQRS_META is False
+
+    with pytest.raises(NotImplementedError):
+        RawReplicaMixin.cqrs_save(None)
+
+    with pytest.raises(NotImplementedError):
+        RawReplicaMixin.cqrs_delete(None)
+
+
+@pytest.mark.parametrize('cqrs_id', ('document1', 'document2'))
+def test_support_for_non_models_save(cqrs_id):
+    data = {
+        'slug': 'test',
+        'cqrs_revision': 0,
+        'cqrs_updated': now(),
+    }
+    meta = {'Hello': 'world'}
+
+    _cqrs_id, _data, kwargs = TransportStub.consume(
+        TransportPayload(SignalType.SAVE, cqrs_id, data, 'test', meta=meta),
+    )
+
+    assert _cqrs_id == cqrs_id
+    assert _data == data
+    assert kwargs == {'previous_data': None, 'meta': meta}
+
+
+@pytest.mark.parametrize('cqrs_id', ('document1', 'document2'))
+def test_support_for_non_models_delete(cqrs_id):
+    data = {
+        'slug': 'test',
+        'cqrs_revision': 1,
+        'cqrs_updated': now(),
+    }
+    meta = {'other': 1}
+
+    _cqrs_id, _data, kwargs = TransportStub.consume(
+        TransportPayload(SignalType.DELETE, cqrs_id, data, 'test', meta=meta),
+    )
+
+    assert _cqrs_id == cqrs_id
+    assert _data == data
+    assert kwargs == {'meta': meta}

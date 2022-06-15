@@ -1,4 +1,4 @@
-#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
 from dj_cqrs.constants import ALL_BASIC_FIELDS
 from dj_cqrs.registries import MasterRegistry, ReplicaRegistry
@@ -10,7 +10,6 @@ from django.db.models import base
 
 class MasterMeta(base.ModelBase):
     def __new__(mcs, name, bases, attrs, **kwargs):
-
         model_cls = super(MasterMeta, mcs).__new__(mcs, name, bases, attrs, **kwargs)
 
         if name != 'MasterMixin':
@@ -84,11 +83,15 @@ class ReplicaMeta(base.ModelBase):
         model_cls = super(ReplicaMeta, mcs).__new__(mcs, *args)
 
         if args[0] != 'ReplicaMixin':
-            _MetaUtils.check_cqrs_id(model_cls)
-            ReplicaMeta._check_cqrs_mapping(model_cls)
-            ReplicaRegistry.register_model(model_cls)
+            mcs.register(model_cls)
 
         return model_cls
+
+    @staticmethod
+    def register(model_cls):
+        _MetaUtils.check_cqrs_id(model_cls)
+        ReplicaMeta._check_cqrs_mapping(model_cls)
+        ReplicaRegistry.register_model(model_cls)
 
     @staticmethod
     def _check_cqrs_mapping(model_cls):
@@ -97,8 +100,9 @@ class ReplicaMeta(base.ModelBase):
         :param dj_cqrs.mixins.ReplicaMixin model_cls: CQRS Replica Model.
         :raises: AssertionError
         """
-        if model_cls.CQRS_MAPPING is not None:
-            cqrs_field_names = list(model_cls.CQRS_MAPPING.values())
+        cqrs_mapping = getattr(model_cls, 'CQRS_MAPPING', None)
+        if cqrs_mapping is not None:
+            cqrs_field_names = list(cqrs_mapping.values())
             _MetaUtils.check_cqrs_field_setting(model_cls, cqrs_field_names, 'CQRS_MAPPING')
 
 
