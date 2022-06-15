@@ -51,13 +51,13 @@ yourself deserialization for the replica model.
     class MyReplicaModel(ReplicaMixin):
         CQRS_ID = 'my_model'
         CQRS_CUSTOM_SERIALIZATION = True # bypass default deserialization.
-    
+
         @classmethod
-        def cqrs_create(cls, sync, mapped_data, previous_data=None):
+        def cqrs_create(cls, sync, mapped_data, previous_data=None, meta=None):
             # Custom deserialization logic here
             pass
             
-        def cqrs_update(self, sync, mapped_data, previous_data=None):
+        def cqrs_update(self, sync, mapped_data, previous_data=None, meta=None):
             # Custom deserialization logic here
             pass
 

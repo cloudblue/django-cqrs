@@ -5,3 +5,4 @@ sphinx-rtd-theme==0.4.3
 sphinx-copybutton==0.2.11
 setuptools-scm==3.5.0
 docutils==0.17.1
+Jinja2<3.1

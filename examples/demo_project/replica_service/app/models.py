@@ -36,7 +36,7 @@ class Product(ReplicaMixin, models.Model):
         return product_type
 
     @classmethod
-    def cqrs_create(cls, sync, mapped_data, previous_data=None):
+    def cqrs_create(cls, sync, mapped_data, previous_data=None, meta=None):
         product_type = cls._handle_product_type(mapped_data['product_type'])
         return Product.objects.create(
             id=mapped_data['id'],
@@ -46,7 +46,7 @@ class Product(ReplicaMixin, models.Model):
             cqrs_updated=mapped_data['cqrs_updated'],
         )
 
-    def cqrs_update(self, sync, mapped_data, previous_data=None):
+    def cqrs_update(self, sync, mapped_data, previous_data=None, meta=None):
         product_type = self._handle_product_type(mapped_data['product_type'])
         self.name = mapped_data['name']
         self.product_type_id = product_type.id
@@ -68,11 +68,11 @@ class Purchase(ReplicaMixin):
         abstract = True
 
     @classmethod
-    def cqrs_save(cls, master_data, previous_data=None, sync=False):
+    def cqrs_save(cls, master_data, previous_data=None, sync=False, meta=None):
         cache.set('purchase_' + str(master_data['id']), master_data)
         return True
 
     @classmethod
-    def cqrs_delete(cls, master_data):
+    def cqrs_delete(cls, master_data, meta=None):
         cache.delete('purchase_' + str(master_data['id']))
         return True

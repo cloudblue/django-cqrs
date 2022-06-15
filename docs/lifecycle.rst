@@ -44,10 +44,10 @@ Message assumed as failed when a consumer raises an exception or returns negativ
         ...
 
         @classmethod
-        def cqrs_create(cls, sync, mapped_data, previous_data=None):
+        def cqrs_create(cls, sync, mapped_data, previous_data=None, meta=None):
             raise Exception("Some issue during create") # exception could be caught at should_retry_cqrs() method
 
-        def cqrs_update(self, sync, mapped_data, previous_data=None):
+        def cqrs_update(self, sync, mapped_data, previous_data=None, meta=None):
             return None # returning negative boolean for retrying
 
 Retrying
