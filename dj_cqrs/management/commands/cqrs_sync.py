@@ -1,10 +1,10 @@
-#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
 import datetime
 import sys
 import time
 
-from dj_cqrs.management.commands.utils import batch_qs
+from dj_cqrs.management.utils import batch_qs
 from dj_cqrs.registries import MasterRegistry
 
 from django.core.exceptions import FieldError
