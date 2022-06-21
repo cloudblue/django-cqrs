@@ -349,6 +349,35 @@ class RawReplicaMixin:
     def cqrs_delete(cls, master_data, **kwargs):
         raise NotImplementedError
 
+    @staticmethod
+    def should_retry_cqrs(current_retry, exception=None):
+        """Checks if we should retry the message after current attempt.
+
+        :param current_retry: Current number of message retries.
+        :type current_retry: int
+        :param exception: Exception instance raised during message consume.
+        :type exception: Exception, optional
+        :return: True if message should be retried, False otherwise.
+        :rtype: bool
+        """
+        max_retries = settings.CQRS['replica']['CQRS_MAX_RETRIES']
+        if max_retries is None:
+            # Infinite
+            return True
+
+        return current_retry < max_retries
+
+    @staticmethod
+    def get_cqrs_retry_delay(current_retry):
+        """Returns number of seconds to wait before requeuing the message.
+
+        :param current_retry: Current number of message retries.
+        :type current_retry: int
+        :return: Delay in seconds.
+        :rtype: int
+        """
+        return settings.CQRS['replica']['CQRS_RETRY_DELAY']
+
 
 class ReplicaMixin(RawReplicaMixin, Model, metaclass=ReplicaMeta):
     """
@@ -444,32 +473,3 @@ class ReplicaMixin(RawReplicaMixin, Model, metaclass=ReplicaMeta):
             return super().cqrs_delete(master_data, meta=meta)
 
         return cls.cqrs.delete_instance(master_data)
-
-    @staticmethod
-    def should_retry_cqrs(current_retry, exception=None):
-        """Checks if we should retry the message after current attempt.
-
-        :param current_retry: Current number of message retries.
-        :type current_retry: int
-        :param exception: Exception instance raised during message consume.
-        :type exception: Exception, optional
-        :return: True if message should be retried, False otherwise.
-        :rtype: bool
-        """
-        max_retries = settings.CQRS['replica']['CQRS_MAX_RETRIES']
-        if max_retries is None:
-            # Infinite
-            return True
-
-        return current_retry < max_retries
-
-    @staticmethod
-    def get_cqrs_retry_delay(current_retry):
-        """Returns number of seconds to wait before requeuing the message.
-
-        :param current_retry: Current number of message retries.
-        :type current_retry: int
-        :return: Delay in seconds.
-        :rtype: int
-        """
-        return settings.CQRS['replica']['CQRS_RETRY_DELAY']
