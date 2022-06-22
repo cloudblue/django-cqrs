@@ -24,7 +24,7 @@ setup(
     include_package_data=True,
     install_requires=read_file('requirements/dev.txt').splitlines(),
     tests_require=read_file('requirements/test.txt').splitlines(),
-    setup_requires=['setuptools_scm', 'pytest-runner'],
+    setup_requires=['setuptools_scm==6.*', 'pytest-runner'],
     use_scm_version=True,
 
     keywords='django cqrs sql mixin amqp',
