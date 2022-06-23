@@ -91,11 +91,11 @@ class AuthorRef(ReplicaMixin, models.Model):
     CQRS_CUSTOM_SERIALIZATION = True
     
     @classmethod
-    def cqrs_create(cls, sync, **mapped_data):
+    def cqrs_create(cls, sync, mapped_data, previous_data=None, meta=None):
         # Override here
         pass
         
-    def cqrs_update(self, sync, **mapped_data):
+    def cqrs_update(self, sync, mapped_data, previous_data=None, meta=None):
         # Override here
         pass
 ```

@@ -98,7 +98,6 @@ to the model, you must create a new migration for it:
 Run your django application
 ---------------------------
 
-
 .. code-block:: shell
 
     $ ./manage.py runserver
@@ -181,3 +180,68 @@ And that's all!
 
 Now every time you modify your master model, changes are replicated to
 all services that have a replica model with the same CQRS_ID.
+
+Use of customized meta data
+===========================
+
+The library allow us to send customized metadata from the Master models to the Replica ones.
+
+Configuring the metadata for Master model
+-----------------------------------------
+
+There are two ways to specify what we want to include in this metadata, overriding the master function or setting a default generic function that will be executed for all masters.
+
+
+Override master function
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Inside the Master model class you have to add the **get_cqrs_meta** function that will replace the default one (that returns an empty dict). For instance if you want to return the access of a given model instance inside the metadata you could do the following:
+
+.. code-block:: python
+
+    def get_cqrs_meta(self, **kwargs):
+        meta = super().get_cqrs_meta(**kwargs)
+        if self.is_owner():
+            meta['access']['owner'] = True
+            meta['access']['others'] = False
+        else:
+            meta['access']['owner'] = False
+            meta['access']['others'] = True
+        return meta
+
+
+Setting a default generic function
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In the django settings you could configure a function that will be executed everytime an event is emitted in any Master:
+
+.. code-block:: python
+
+    from ... import get_cqrs_meta
+
+    CQRS = {
+        ...
+        'master': {
+            ...
+            'meta_function': get_cqrs_meta,
+        },
+    }
+
+Retrieving the metadata from the Replica model
+----------------------------------------------
+
+From the replica model you will now receive an additional parameter called **meta** that will contain all metadata set in the Master model. These data will be present in the following class functions:
+* cqrs_update
+* cqrs_create
+* cqrs_delete
+
+For instance replacing the **cqrs_update** we could do something like:
+
+.. code-block:: python
+
+    def cqrs_update(self, sync, mapped_data, previous_data=None, meta=None):
+        if meta and not meta['access']['owner']:
+            # Call asynchronously external system to update some resource.
+        else:
+            # Call asynchronously internal system to update some resource.
+        return super().cqrs_update(sync, mapped_data, previous_data, meta)
