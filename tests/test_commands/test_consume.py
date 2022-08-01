@@ -2,6 +2,10 @@
 
 from importlib import import_module, reload
 
+
+from dj_cqrs.management.commands.cqrs_consume import WorkersManager
+from dj_cqrs.transport import current_transport
+
 from django.core.management import CommandError, call_command
 
 import pytest
@@ -27,12 +31,22 @@ def test_several_workers(reload_transport):
     call_command(COMMAND_NAME, '--workers=2')
 
 
+def test_reload_flag(reload_transport):
+    call_command(COMMAND_NAME, '--reload')
+
+
+def test_workers_manager(reload_transport):
+    manager = WorkersManager({'workers': 1}, current_transport, {})
+    manager.start()
+    manager.reload()
+
+
 def test_one_worker_one_cqrs_id(mocker, reload_transport):
-    consume_mock = mocker.patch('tests.dj.transport.TransportStub.consume')
+    consume_mock = mocker.patch('dj_cqrs.management.commands.cqrs_consume.WorkersManager.start')
 
     call_command(COMMAND_NAME, '--workers=1', '-cid=author')
 
-    consume_mock.assert_called_once_with(cqrs_ids={'author'})
+    consume_mock.assert_called_once_with()
 
 
 def test_several_cqrs_id(mocker, reload_transport):
