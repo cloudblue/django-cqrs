@@ -1,11 +1,41 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
-
-from multiprocessing import Process
+import multiprocessing
+import signal
 
 from dj_cqrs.registries import ReplicaRegistry
 from dj_cqrs.transport import current_transport
 
 from django.core.management.base import BaseCommand, CommandError
+
+
+class WorkersManager:
+
+    def __init__(self, options, transport, consume_kwargs):
+        self.pool = []
+        self.options = options
+        self.transport = transport
+        self.consume_kwargs = consume_kwargs
+
+    def start(self):
+        for i in range(self.options['workers'] or 1):
+            process = multiprocessing.Process(
+                name=f'cqrs-consumer-{i}',
+                target=self.transport.consume,
+                kwargs=self.consume_kwargs,
+            )
+            self.pool.append(process)
+            process.start()
+
+        for process in self.pool:
+            process.join()
+
+    def terminate(self, *args, **kwargs):
+        while self.pool:
+            self.pool.pop().terminate()
+
+    def reload(self, *args, **kwargs):
+        self.terminate()
+        self.start()
 
 
 class Command(BaseCommand):
@@ -20,13 +50,37 @@ class Command(BaseCommand):
             type=str,
             help='Choose model(s) by CQRS_ID for consuming',
         )
+        parser.add_argument(
+            '--reload', '-r', help='Enable reload signal SIGHUP', action='store_true',
+        )
 
     def handle(self, *args, **options):
-        consume_kwargs = {}
+        if not options['workers'] and not options['reload']:
+            current_transport.consume(**self.get_consume_kwargs(options))
+            return
 
+        self.start_workers_pool(options)
+
+    def start_workers_pool(self, options):
+        workers_manager = WorkersManager(
+            options, current_transport, self.get_consume_kwargs(options),
+        )
+        if options['reload']:
+            try:
+                multiprocessing.set_start_method('spawn')
+            except RuntimeError:
+                pass
+
+            signal.signal(signal.SIGHUP, workers_manager.reload)
+
+        signal.signal(signal.SIGINT, workers_manager.terminate)
+        signal.signal(signal.SIGTERM, workers_manager.terminate)
+        workers_manager.start()
+
+    def get_consume_kwargs(self, options):
+        consume_kwargs = {}
         if options.get('cqrs_id'):
             cqrs_ids = set()
-
             for cqrs_id in options['cqrs_id']:
                 model = ReplicaRegistry.get_model_by_cqrs_id(cqrs_id)
                 if not model:
@@ -36,16 +90,4 @@ class Command(BaseCommand):
 
             consume_kwargs['cqrs_ids'] = cqrs_ids
 
-        if options['workers'] <= 1:
-            current_transport.consume(**consume_kwargs)
-            return
-
-        pool = []
-
-        for _ in range(options['workers']):
-            p = Process(target=current_transport.consume, kwargs=consume_kwargs)
-            pool.append(p)
-            p.start()
-
-        for p in pool:
-            p.join()
+        return consume_kwargs
