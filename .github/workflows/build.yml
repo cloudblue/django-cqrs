@@ -11,11 +11,11 @@ on:
 
 jobs:
   build_3_6_7_8_django_2_2:
-    name: Build on Python 3.6, 3.7, 3.8 and django 2.2
+    name: Build on Python 3.7, 3.8 and django 2.2
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.7, 3.8]
     steps:
     - name: Checkout
       uses: actions/checkout@v2
