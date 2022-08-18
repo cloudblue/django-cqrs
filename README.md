@@ -201,7 +201,7 @@ kubectl exec -i REPLICA_CONTAINER -- python manage.py cqrs_deleted_diff_replica 
 Development
 ===========
 
-1. Python 3.6+
+1. Python 3.7 +
 0. Install dependencies `requirements/dev.txt`
 
 Testing
@@ -209,7 +209,7 @@ Testing
 
 Unit testing
 ------
-1. Python 3.6+
+1. Python 3.7 +
 2. Install dependencies `requirements/test.txt`
 3. `export PYTHONPATH=/your/path/to/django-cqrs/`
 

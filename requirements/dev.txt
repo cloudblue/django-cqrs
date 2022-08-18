@@ -1,6 +1,6 @@
 Django>=2.2.19
 pika>=1.0.0
 kombu>=4.6.*
-ujson>=3.0.0
+ujson>=5.4.0
 django-model-utils>=4.0.0
 python-dateutil>=2.4

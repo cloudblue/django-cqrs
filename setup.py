@@ -18,7 +18,7 @@ setup(
     long_description_content_type='text/markdown',
     license='Apache License, Version 2.0',
 
-    python_requires='>=3.6',
+    python_requires='>=3.7',
     zip_safe=True,
     packages=find_packages(),
     include_package_data=True,
@@ -38,7 +38,6 @@ setup(
         'Intended Audience :: Developers',
         'License :: OSI Approved :: Apache Software License',
         'Operating System :: Unix',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
