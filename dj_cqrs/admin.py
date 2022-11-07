@@ -14,8 +14,8 @@ class CQRSAdminMasterSyncMixin:
         Overriding method from AdminModel class; it is used to include the sync method in
         the actions list.
         """
-        if self.actions is not None:
-            self.actions = self.actions + ['sync_items']
+        if self.actions is not None and 'sync_items' not in self.actions:
+            self.actions = list(self.actions) + ['sync_items']
         return super().get_actions(request)
 
     def _cqrs_sync_queryset(self, queryset):

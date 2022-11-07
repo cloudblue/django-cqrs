@@ -19,6 +19,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from pika import BasicProperties, BlockingConnection, ConnectionParameters, credentials, exceptions
+from pika.adapters.utils.connection_workflow import AMQPConnectorException
 
 import ujson
 
@@ -28,6 +29,7 @@ logger = logging.getLogger('django-cqrs')
 
 class RabbitMQTransport(LoggingMixin, BaseTransport):
     CONSUMER_RETRY_TIMEOUT = 5
+    PRODUCER_RETRIES = 1
 
     _producer_connection = None
     _producer_channel = None
@@ -75,34 +77,33 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
 
     @classmethod
     def produce(cls, payload):
+        cls._produce_with_retries(payload, retries=cls.PRODUCER_RETRIES)
+
+    @classmethod
+    def _produce_with_retries(cls, payload, retries):
         try:
-            cls._produce(payload)
-        except (exceptions.AMQPError, exceptions.ChannelError, exceptions.ReentrancyError):
-            logger.error("CQRS couldn't be published: pk = {0} ({1}). Reconnect...".format(
-                payload.pk, payload.cqrs_id,
+            rmq_settings = cls._get_common_settings()
+            exchange = rmq_settings[-1]
+            # Decided not to create context-manager to stay within the class
+            _, channel = cls._get_producer_rmq_objects(
+                *rmq_settings, signal_type=payload.signal_type,
+            )
+
+            cls._produce_message(channel, exchange, payload)
+            cls.log_produced(payload)
+        except (
+            exceptions.AMQPError, exceptions.ChannelError, exceptions.ReentrancyError,
+            AMQPConnectorException,
+        ):
+            logger.error("CQRS couldn't be published: pk = {0} ({1}).{2}".format(
+                payload.pk, payload.cqrs_id, " Reconnect..." if retries else "",
             ))
 
             # in case of any error - close connection and try to reconnect
             cls.clean_connection()
-            # reconnect at least 1 time
-            try:
-                cls._produce(payload)
-            except (exceptions.AMQPError, exceptions.ChannelError, exceptions.ReentrancyError):
-                logger.error("CQRS couldn't be published: pk = {0} ({1}).".format(
-                    payload.pk, payload.cqrs_id,
-                ))
 
-                cls.clean_connection()
-
-    @classmethod
-    def _produce(cls, payload):
-        rmq_settings = cls._get_common_settings()
-        exchange = rmq_settings[-1]
-        # Decided not to create context-manager to stay within the class
-        _, channel = cls._get_producer_rmq_objects(*rmq_settings, signal_type=payload.signal_type)
-
-        cls._produce_message(channel, exchange, payload)
-        cls.log_produced(payload)
+            if retries:
+                cls._produce_with_retries(payload, retries - 1)
 
     @classmethod
     def _consume_message(cls, ch, method, properties, body, delay_queue):
