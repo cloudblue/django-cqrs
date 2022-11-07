@@ -215,8 +215,8 @@ Unit testing
 
 Run tests with various RDBMS:
 - `cd integration_tests`
-- `DB=postgres docker-compose -f docker-compose.yml -f rdbms.yml up app_test`
-- `DB=mysql docker-compose -f docker-compose.yml -f rdbms.yml up app_test`
+- `DB=postgres docker-compose -f docker-compose.yml -f rdbms.yml run app_test`
+- `DB=mysql docker-compose -f docker-compose.yml -f rdbms.yml run app_test`
 
 Check code style: `flake8`
 Run tests: `pytest`

@@ -546,7 +546,7 @@ def test_get_cqrs_retry_delay(settings, retry_delay, current_retry):
     assert result is retry_delay
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_support_for_meta_create():
     meta = TransportStub.consume(
         TransportPayload(
@@ -565,7 +565,7 @@ def test_support_for_meta_create():
     assert meta == {'Hello': 'world'}
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_support_for_meta_update():
     models.CQRSMetaModel.objects.create(id=2, cqrs_revision=0, cqrs_updated=now())
 
@@ -589,7 +589,7 @@ def test_support_for_meta_update():
     )
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_support_for_meta_delete():
     models.CQRSMetaModel.objects.create(id=3, cqrs_revision=0, cqrs_updated=now())
 
