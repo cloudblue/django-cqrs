@@ -18,7 +18,8 @@ from dj_cqrs.transport.rabbit_mq import RabbitMQTransport
 
 from django.db import DatabaseError
 
-from pika.exceptions import AMQPError
+from pika.adapters.utils.connection_workflow import AMQPConnectorException
+from pika.exceptions import AMQPError, ChannelError, ReentrancyError
 
 import pytest
 
@@ -170,12 +171,11 @@ def rabbit_transport(settings):
     yield module.current_transport
 
 
-def amqp_error(*args, **kwargs):
-    raise AMQPError
-
-
-def test_produce_connection_error(rabbit_transport, mocker, caplog):
-    mocker.patch.object(RabbitMQTransport, '_get_producer_rmq_objects', side_effect=amqp_error)
+@pytest.mark.parametrize(
+    'exception', (AMQPError, ChannelError, ReentrancyError, AMQPConnectorException),
+)
+def test_produce_connection_error(exception, rabbit_transport, mocker, caplog):
+    mocker.patch.object(RabbitMQTransport, '_get_producer_rmq_objects', side_effect=exception)
 
     rabbit_transport.produce(
         TransportPayload(
@@ -189,7 +189,7 @@ def test_produce_publish_error(rabbit_transport, mocker, caplog):
     mocker.patch.object(
         RabbitMQTransport, '_get_producer_rmq_objects', return_value=(mocker.MagicMock(), None),
     )
-    mocker.patch.object(RabbitMQTransport, '_produce_message', side_effect=amqp_error)
+    mocker.patch.object(RabbitMQTransport, '_produce_message', side_effect=AMQPError)
 
     rabbit_transport.produce(
         TransportPayload(
@@ -211,6 +211,23 @@ def test_produce_ok(rabbit_transport, mocker, caplog):
             SignalType.SAVE, 'CQRS_ID', {'id': 1}, 1,
         ),
     )
+    assert 'CQRS is published: pk = 1 (CQRS_ID)' in caplog.text
+
+
+def test_produce_retry_on_error(rabbit_transport, mocker, caplog):
+    caplog.set_level(logging.INFO)
+    mocker.patch.object(RabbitMQTransport, '_get_producer_rmq_objects', side_effect=[
+        AMQPConnectorException,
+        (mocker.MagicMock(), None),
+    ])
+    mocker.patch.object(RabbitMQTransport, '_produce_message', return_value=True)
+
+    rabbit_transport.produce(
+        TransportPayload(
+            SignalType.SAVE, 'CQRS_ID', {'id': 1}, 1,
+        ),
+    )
+    assert "CQRS couldn't be published: pk = 1 (CQRS_ID). Reconnect..." in caplog.text
     assert 'CQRS is published: pk = 1 (CQRS_ID)' in caplog.text
 
 
@@ -296,7 +313,7 @@ def test_produce_sync_message_queue(mocker):
 
 def test_consume_connection_error(rabbit_transport, mocker, caplog):
     mocker.patch.object(
-        RabbitMQTransport, '_get_consumer_rmq_objects', side_effect=amqp_error,
+        RabbitMQTransport, '_get_consumer_rmq_objects', side_effect=AMQPError,
     )
     mocker.patch('time.sleep', side_effect=db_error)
 
