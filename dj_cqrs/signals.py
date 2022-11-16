@@ -1,5 +1,7 @@
 #  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
+import logging
+
 from dj_cqrs.constants import SignalType
 from dj_cqrs.controller import producer
 from dj_cqrs.dataclasses import TransportPayload
@@ -9,6 +11,8 @@ from django.db import models, transaction
 from django.dispatch import Signal
 from django.utils.timezone import now
 
+
+logger = logging.getLogger('django-cqrs')
 
 post_bulk_create = Signal()
 """
@@ -62,7 +66,16 @@ class MasterSignals:
         queue = kwargs.get('queue', None)
 
         connection = transaction.get_connection(using)
-        if not connection.in_atomic_block:
+        if not connection.in_atomic_block or instance.is_initial_cqrs_save:
+            transaction.on_commit(
+                lambda: cls._post_save_produce(sender, instance, using, sync, queue),
+            )
+
+    @classmethod
+    def _post_save_produce(cls, sender, instance, using, sync, queue):
+        # As this method may run 'on_commit', the instance may not exist. In that case, log the
+        # error but don't raise an exception.
+        try:
             instance.reset_cqrs_saves_count()
             instance_data = instance.to_cqrs_dict(using, sync=sync)
             previous_data = instance.get_tracked_fields_data()
@@ -72,24 +85,24 @@ class MasterSignals:
                 previous_data=previous_data,
                 signal_type=signal_type,
             )
-            payload = TransportPayload(
-                signal_type,
-                sender.CQRS_ID,
-                instance_data,
-                instance.pk,
-                queue,
-                previous_data,
-                expires=get_message_expiration_dt(),
-                meta=meta,
+        except sender.DoesNotExist:
+            logger.error(
+                f"Can't produce message from master model '{sender.__name__}': "
+                f"The instance doesn't exist (pk={instance.pk})",
             )
-            producer.produce(payload)
+            return
 
-        elif instance.is_initial_cqrs_save:
-            transaction.on_commit(
-                lambda: MasterSignals.post_save(
-                    sender, instance=instance, using=using, sync=sync, queue=queue,
-                ),
-            )
+        payload = TransportPayload(
+            signal_type,
+            sender.CQRS_ID,
+            instance_data,
+            instance.pk,
+            queue,
+            previous_data,
+            expires=get_message_expiration_dt(),
+            meta=meta,
+        )
+        producer.produce(payload)
 
     @classmethod
     def post_delete(cls, sender, **kwargs):

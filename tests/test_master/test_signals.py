@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from dj_cqrs.constants import SignalType
 from dj_cqrs.signals import post_bulk_create, post_update
 
+from django.db import transaction
 from django.db.models.signals import post_delete, post_save
 
 import pytest
@@ -76,6 +77,17 @@ def test_post_save_delete(mocker):
 
     cqrs_updated = publisher_mock.call_args[0][0].to_dict()['instance_data']['cqrs_updated']
     assert isinstance(cqrs_updated, str)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_post_save_instance_doesnt_exist(caplog):
+    with transaction.atomic():
+        models.Author.objects.create(id=1, name='The author')
+        models.Author.objects.get(id=1).delete()
+    assert (
+        "Can't produce message from master model 'Author': "
+        "The instance doesn't exist (pk=1)"
+    ) in caplog.text
 
 
 @pytest.mark.django_db(transaction=True)

@@ -32,6 +32,7 @@ jobs:
         pip install -r requirements/test.txt
         pip install pytest-cov
         pip install djangorestframework==3.13.*
+        pip install django-model-utils==4.2.0
         pip install django==2.2.*
     - name: Linting
       run: |

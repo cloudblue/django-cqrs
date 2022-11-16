@@ -511,11 +511,13 @@ def test_to_cqrs_dict_serializer_import_error():
 
 
 @pytest.mark.django_db(transaction=True)
-def test_to_cqrs_dict_serializer_bad_related_function():
-    with pytest.raises(RuntimeError) as e:
-        models.BadQuerySetSerializationClassModel.objects.create()
+def test_to_cqrs_dict_serializer_bad_related_function(caplog):
+    models.BadQuerySetSerializationClassModel.objects.create()
 
-    assert "Couldn't serialize CQRS class (bad_queryset)." in str(e)
+    assert (
+        "Can't produce message from master model 'BadQuerySetSerializationClassModel': "
+        "The instance doesn't exist"
+    ) in caplog.text
 
 
 @pytest.mark.django_db(transaction=True)
