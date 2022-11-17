@@ -1,4 +1,4 @@
-#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 import multiprocessing
 import signal
 
@@ -31,7 +31,9 @@ class WorkersManager:
 
     def terminate(self, *args, **kwargs):
         while self.pool:
-            self.pool.pop().terminate()
+            p = self.pool.pop()
+            p.terminate()
+            p.join()
 
     def reload(self, *args, **kwargs):
         self.terminate()
@@ -73,8 +75,6 @@ class Command(BaseCommand):
 
             signal.signal(signal.SIGHUP, workers_manager.reload)
 
-        signal.signal(signal.SIGINT, workers_manager.terminate)
-        signal.signal(signal.SIGTERM, workers_manager.terminate)
         workers_manager.start()
 
     def get_consume_kwargs(self, options):
