@@ -277,11 +277,8 @@ class RawMasterMixin(Model):
             instance = self
         else:
             db = using if using is not None else self._state.db
-            qs = self.__class__._default_manager.using(db).filter(pk=self.pk)
-
-            instance = self.relate_cqrs_serialization(qs).first()
-            if not instance:
-                raise RuntimeError("Couldn't serialize CQRS class ({0}).".format(self.CQRS_ID))
+            qs = self.__class__._default_manager.using(db)
+            instance = self.relate_cqrs_serialization(qs).get(pk=self.pk)
 
         data = self._cqrs_serializer_cls(instance).data
         data['cqrs_revision'] = instance.cqrs_revision
