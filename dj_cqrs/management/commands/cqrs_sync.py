@@ -9,6 +9,7 @@ from dj_cqrs.registries import MasterRegistry
 
 from django.core.exceptions import FieldError
 from django.core.management.base import BaseCommand, CommandError
+from django.db import close_old_connections
 
 import ujson
 
@@ -69,6 +70,7 @@ class Command(BaseCommand):
         for qs_ in batch_qs(model.relate_cqrs_serialization(qs), batch_size=batch_size):
             ts = time.time()
             cs = counter
+
             for instance in qs_:
                 counter += 1
                 try:
@@ -78,6 +80,7 @@ class Command(BaseCommand):
                     print('\nSync record failed for pk={0}: {1}: {2}'.format(
                         instance.pk, type(e).__name__, str(e),
                     ))
+                    close_old_connections()
 
             if progress:
                 rate = (counter - cs) / (time.time() - ts)
