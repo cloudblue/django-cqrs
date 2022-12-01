@@ -52,14 +52,22 @@ class Author(MasterMixin, models.Model):
     CQRS_SERIALIZER = 'app.api.AuthorSerializer'
 
 
-# For cases of Diamond Multiinheritance the following approach could be used:
+# For cases of Diamond Multi-inheritance or in case of Proxy Django-models the following approach could be used:
 from mptt.models import MPTTModel
 from dj_cqrs.metas import MasterMeta
 
 class ComplexInheritanceModel(MPTTModel, RawMasterMixin):
-    pass
+    CQRS_ID = 'diamond'
+
+class BaseModel(RawMasterMixin):
+    CQRS_ID = 'base'
+
+class ProxyModel(BaseModel):
+    class Meta:
+        proxy = True
 
 MasterMeta.register(ComplexInheritanceModel)
+MasterMeta.register(BaseModel)
 ```
 
 ```python
