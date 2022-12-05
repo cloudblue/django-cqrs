@@ -3,7 +3,7 @@
 from dateutil.parser import parse as dateutil_parse
 
 from dj_cqrs.correlation import get_correlation_id
-from dj_cqrs.utils import get_message_expiration_dt
+from dj_cqrs.utils import get_json_valid_value, get_message_expiration_dt
 
 from django.utils import timezone
 
@@ -152,8 +152,8 @@ class TransportPayload:
             'cqrs_id': self.__cqrs_id,
             'instance_data': self.__instance_data,
             'previous_data': self.__previous_data,
-            'instance_pk': self.__instance_pk,
-            'correlation_id': self.__correlation_id,
+            'instance_pk': get_json_valid_value(self.__instance_pk),
+            'correlation_id': get_json_valid_value(self.__correlation_id),
             'retries': self.__retries,
             'expires': expires,
             'meta': self.__meta,

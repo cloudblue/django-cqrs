@@ -1,7 +1,8 @@
 #  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
 import logging
-from datetime import timedelta
+from datetime import date, datetime, timedelta
+from uuid import UUID
 
 from django.conf import settings
 from django.utils import timezone
@@ -49,3 +50,7 @@ def get_messages_prefetch_count_per_worker():
         return 0
 
     return delay_queue_max_size + 1
+
+
+def get_json_valid_value(value):
+    return str(value) if isinstance(value, (date, datetime, UUID)) else value
