@@ -13,7 +13,7 @@ from dj_cqrs.signals import MasterSignals, post_bulk_create, post_update
 
 from django.conf import settings
 from django.db import router, transaction
-from django.db.models import DateField, DateTimeField, F, IntegerField, Manager, Model
+from django.db.models import DateField, DateTimeField, F, IntegerField, Manager, Model, UUIDField
 from django.db.models.expressions import CombinedExpression
 from django.utils.module_loading import import_string
 
@@ -261,7 +261,7 @@ class RawMasterMixin(Model):
                 continue
 
             value = f.value_from_object(self)
-            if value is not None and isinstance(f, (DateField, DateTimeField)):
+            if value is not None and isinstance(f, (DateField, DateTimeField, UUIDField)):
                 value = str(value)
 
             data[f.name] = value
