@@ -1,8 +1,7 @@
 #  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
-from datetime import date, datetime
-
 from dj_cqrs.constants import ALL_BASIC_FIELDS, FIELDS_TRACKER_FIELD_NAME
+from dj_cqrs.utils import get_json_valid_value
 
 from model_utils import FieldTracker
 from model_utils.tracker import FieldInstanceTracker
@@ -30,10 +29,7 @@ class _CQRSTrackerInstance(FieldInstanceTracker):
     def get_field_value(self, field):
         value = super().get_field_value(field)
 
-        if isinstance(value, (date, datetime)):
-            value = str(value)
-
-        return value
+        return get_json_valid_value(value)
 
 
 class CQRSTracker(FieldTracker):
