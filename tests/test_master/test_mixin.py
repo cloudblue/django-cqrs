@@ -143,7 +143,7 @@ def test_to_cqrs_dict_basic_types():
         'datetime_field': str(dt),
         'float_field': 1.23,
         'url_field': 'http://example.com',
-        'uuid_field': uid,
+        'uuid_field': str(uid),
     }, m.to_cqrs_dict())
 
 
