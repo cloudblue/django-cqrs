@@ -1,8 +1,8 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
-from dj_cqrs.mixins import MasterMixin
-
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+
+from dj_cqrs.mixins import MasterMixin
 
 
 class User(MasterMixin, AbstractUser):

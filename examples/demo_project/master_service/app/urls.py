@@ -1,12 +1,16 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
-from django.urls import path
-
 from app.views import (
     main_view,
-    product_create_view, product_delete_view, purchase_create_view,
+    product_create_view,
+    product_delete_view,
+    purchase_create_view,
     purchase_delete_view,
-    user_create_view, user_delete_view, user_update_view,
+    user_create_view,
+    user_delete_view,
+    user_update_view,
 )
+from django.urls import path
+
 
 urlpatterns = [
     path('', main_view),

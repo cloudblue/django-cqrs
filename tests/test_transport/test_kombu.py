@@ -3,18 +3,18 @@
 import logging
 from importlib import import_module, reload
 
+import pytest
+import ujson
+from kombu.exceptions import KombuError
+
 from dj_cqrs.constants import (
-    DEFAULT_MASTER_AUTO_UPDATE_FIELDS, DEFAULT_MASTER_MESSAGE_TTL, SignalType,
+    DEFAULT_MASTER_AUTO_UPDATE_FIELDS,
+    DEFAULT_MASTER_MESSAGE_TTL,
+    SignalType,
 )
 from dj_cqrs.dataclasses import TransportPayload
 from dj_cqrs.registries import ReplicaRegistry
 from dj_cqrs.transport.kombu import KombuTransport, _KombuConsumer
-
-from kombu.exceptions import KombuError
-
-import pytest
-
-import ujson
 
 
 class PublicKombuTransport(KombuTransport):

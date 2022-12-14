@@ -1,15 +1,14 @@
 #  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
+import ujson
+from django.core.management.base import BaseCommand, CommandError
+
 from dj_cqrs.constants import DEFAULT_MASTER_MESSAGE_TTL
 from dj_cqrs.dataclasses import TransportPayload
 from dj_cqrs.registries import ReplicaRegistry
 from dj_cqrs.transport import current_transport
 from dj_cqrs.transport.rabbit_mq import RabbitMQTransport
 from dj_cqrs.utils import get_message_expiration_dt
-
-from django.core.management.base import BaseCommand, CommandError
-
-import ujson
 
 
 class RabbitMQTransportService(RabbitMQTransport):

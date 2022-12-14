@@ -2,11 +2,10 @@
 
 import sys
 
-from dj_cqrs.registries import MasterRegistry
-
+import ujson
 from django.core.management.base import BaseCommand, CommandError
 
-import ujson
+from dj_cqrs.registries import MasterRegistry
 
 
 class Command(BaseCommand):

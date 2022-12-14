@@ -3,6 +3,8 @@
 import logging
 from inspect import getfullargspec, isfunction
 
+from django.utils.module_loading import import_string
+
 from dj_cqrs.constants import (
     DEFAULT_MASTER_AUTO_UPDATE_FIELDS,
     DEFAULT_MASTER_MESSAGE_TTL,
@@ -12,8 +14,6 @@ from dj_cqrs.constants import (
 )
 from dj_cqrs.registries import MasterRegistry, ReplicaRegistry
 from dj_cqrs.transport import BaseTransport
-
-from django.utils.module_loading import import_string
 
 
 logger = logging.getLogger('django-cqrs')

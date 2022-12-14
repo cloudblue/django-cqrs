@@ -14,5 +14,6 @@ flake8-commas
 flake8-comprehensions
 flake8-debugger
 flake8-eradicate
-flake8-import-order
+flake8-isort
 flake8-string-format
+isort

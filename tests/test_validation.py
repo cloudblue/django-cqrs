@@ -2,9 +2,9 @@
 
 from unittest.mock import MagicMock
 
-from dj_cqrs._validation import validate_settings
-
 import pytest
+
+from dj_cqrs._validation import validate_settings
 
 
 def test_full_configuration():

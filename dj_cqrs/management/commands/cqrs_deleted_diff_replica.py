@@ -1,13 +1,12 @@
 #  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
-from dj_cqrs.management.utils import batch_qs
-from dj_cqrs.registries import ReplicaRegistry
-
+import ujson
 from django.core.exceptions import FieldError
 from django.core.management.base import BaseCommand, CommandError
 from django.utils.timezone import now
 
-import ujson
+from dj_cqrs.management.utils import batch_qs
+from dj_cqrs.registries import ReplicaRegistry
 
 
 class Command(BaseCommand):

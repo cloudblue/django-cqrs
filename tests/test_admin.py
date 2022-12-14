@@ -1,10 +1,9 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
-from dj_cqrs.admin import CQRSAdminMasterSyncMixin
-
+import pytest
 from django.contrib import admin
 
-import pytest
+from dj_cqrs.admin import CQRSAdminMasterSyncMixin
 
 
 class MockAdminModel(CQRSAdminMasterSyncMixin, admin.ModelAdmin):
