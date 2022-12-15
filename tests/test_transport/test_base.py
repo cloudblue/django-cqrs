@@ -1,8 +1,8 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
-from dj_cqrs.transport.base import BaseTransport
-
 import pytest
+
+from dj_cqrs.transport.base import BaseTransport
 
 
 def test_base_transport_consume():

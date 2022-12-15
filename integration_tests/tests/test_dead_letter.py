@@ -2,10 +2,9 @@
 
 import json
 
-from integration_tests.tests.utils import transport_delay
-
 import pytest
 
+from integration_tests.tests.utils import transport_delay
 from tests.dj_master.models import FailModel
 
 

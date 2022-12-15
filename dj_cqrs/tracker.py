@@ -1,10 +1,10 @@
 #  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
-from dj_cqrs.constants import ALL_BASIC_FIELDS, FIELDS_TRACKER_FIELD_NAME
-from dj_cqrs.utils import get_json_valid_value
-
 from model_utils import FieldTracker
 from model_utils.tracker import FieldInstanceTracker
+
+from dj_cqrs.constants import ALL_BASIC_FIELDS, FIELDS_TRACKER_FIELD_NAME
+from dj_cqrs.utils import get_json_valid_value
 
 
 class _CQRSTrackerInstance(FieldInstanceTracker):

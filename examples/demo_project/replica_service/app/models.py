@@ -1,9 +1,9 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
-from dj_cqrs.mixins import ReplicaMixin
-
 from django.contrib.auth.models import AbstractUser
 from django.core.cache import cache
 from django.db import models
+
+from dj_cqrs.mixins import ReplicaMixin
 
 
 class User(ReplicaMixin, AbstractUser):

@@ -1,11 +1,10 @@
 #  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
 from dateutil.parser import parse as dateutil_parse
+from django.utils import timezone
 
 from dj_cqrs.correlation import get_correlation_id
 from dj_cqrs.utils import get_json_valid_value, get_message_expiration_dt
-
-from django.utils import timezone
 
 
 class TransportPayload:

@@ -2,15 +2,13 @@
 
 from datetime import datetime
 
-from dj_cqrs.constants import SignalType
-from dj_cqrs.management.commands.cqrs_dead_letters import Command, RabbitMQTransport
-
+import pytest
+import ujson
 from django.core.management import CommandError, call_command
 from django.utils import timezone
 
-import pytest
-
-import ujson
+from dj_cqrs.constants import SignalType
+from dj_cqrs.management.commands.cqrs_dead_letters import Command, RabbitMQTransport
 
 
 COMMAND_NAME = 'cqrs_dead_letters'

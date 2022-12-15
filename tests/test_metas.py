@@ -1,8 +1,8 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
-from dj_cqrs.metas import _MetaUtils
-
 import pytest
+
+from dj_cqrs.metas import _MetaUtils
 
 
 @pytest.mark.django_db

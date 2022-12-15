@@ -2,13 +2,11 @@
 
 from importlib import import_module, reload
 
+import pytest
+from django.core.management import CommandError, call_command
 
 from dj_cqrs.management.commands.cqrs_consume import WorkersManager
 from dj_cqrs.transport import current_transport
-
-from django.core.management import CommandError, call_command
-
-import pytest
 
 
 COMMAND_NAME = 'cqrs_consume'

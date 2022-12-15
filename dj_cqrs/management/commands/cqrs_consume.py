@@ -2,10 +2,10 @@
 import multiprocessing
 import signal
 
+from django.core.management.base import BaseCommand, CommandError
+
 from dj_cqrs.registries import ReplicaRegistry
 from dj_cqrs.transport import current_transport
-
-from django.core.management.base import BaseCommand, CommandError
 
 
 class WorkersManager:

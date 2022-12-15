@@ -4,14 +4,13 @@ import datetime
 import sys
 import time
 
-from dj_cqrs.management.utils import batch_qs
-from dj_cqrs.registries import MasterRegistry
-
+import ujson
 from django.core.exceptions import FieldError
 from django.core.management.base import BaseCommand, CommandError
 from django.db import close_old_connections
 
-import ujson
+from dj_cqrs.management.utils import batch_qs
+from dj_cqrs.registries import MasterRegistry
 
 
 DEFAULT_BATCH = 10000

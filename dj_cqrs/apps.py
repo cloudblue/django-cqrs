@@ -1,9 +1,9 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
-from dj_cqrs._validation import validate_settings
-
 from django.apps import AppConfig
 from django.conf import settings
+
+from dj_cqrs._validation import validate_settings
 
 
 class CQRSConfig(AppConfig):

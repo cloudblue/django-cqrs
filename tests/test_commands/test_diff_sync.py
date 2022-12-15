@@ -3,14 +3,12 @@
 import sys
 from io import StringIO
 
-from dj_cqrs.constants import NO_QUEUE
-from dj_cqrs.management.commands import cqrs_sync
-
+import pytest
 from django.core.management import CommandError, call_command
 from django.utils.timezone import now
 
-import pytest
-
+from dj_cqrs.constants import NO_QUEUE
+from dj_cqrs.management.commands import cqrs_sync
 from tests.dj_master.models import Author
 from tests.dj_replica.models import AuthorRef
 

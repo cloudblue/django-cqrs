@@ -2,20 +2,23 @@
 
 import logging
 
+import ujson
+from django.conf import settings
+from kombu import (
+    Connection,
+    Exchange,
+    Producer,
+    Queue,
+)
+from kombu.exceptions import KombuError
+from kombu.mixins import ConsumerMixin
+
 from dj_cqrs.constants import SignalType
 from dj_cqrs.controller import consumer
 from dj_cqrs.dataclasses import TransportPayload
 from dj_cqrs.registries import ReplicaRegistry
 from dj_cqrs.transport import BaseTransport
 from dj_cqrs.transport.mixins import LoggingMixin
-
-from django.conf import settings
-
-from kombu import Connection, Exchange, Producer, Queue
-from kombu.exceptions import KombuError
-from kombu.mixins import ConsumerMixin
-
-import ujson
 
 
 logger = logging.getLogger('django-cqrs')

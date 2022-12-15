@@ -1,9 +1,13 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+from app.models import (
+    Product,
+    ProductType,
+    Purchase,
+    User,
+)
 from django.http import HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
-
-from app.models import Product, ProductType, Purchase, User
 
 
 def _render_page(request, **kwargs):

@@ -1,8 +1,7 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+from app.models import Product, User
 from django.core.cache import cache
 from django.shortcuts import render
-
-from app.models import Product, User
 
 
 def main_page_view(request):
