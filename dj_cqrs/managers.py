@@ -2,12 +2,12 @@
 
 import logging
 
-from dj_cqrs.constants import FIELDS_TRACKER_FIELD_NAME, TRACKED_FIELDS_ATTR_NAME
-
 from django.core.exceptions import ValidationError
 from django.db import Error, transaction
 from django.db.models import F, Manager
 from django.utils import timezone
+
+from dj_cqrs.constants import FIELDS_TRACKER_FIELD_NAME, TRACKED_FIELDS_ATTR_NAME
 
 
 logger = logging.getLogger('django-cqrs')

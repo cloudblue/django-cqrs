@@ -3,10 +3,9 @@
 import sys
 from io import StringIO
 
+import pytest
 from django.core.management import CommandError, call_command
 from django.utils.timezone import now
-
-import pytest
 
 from tests.dj_master.models import Author
 from tests.dj_replica.models import AuthorRef

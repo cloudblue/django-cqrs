@@ -1,12 +1,10 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
+import pytest
+import ujson
 from django.core.management import CommandError, call_command
 
-import pytest
-
 from tests.dj_master.models import Author
-
-import ujson
 
 
 COMMAND_NAME = 'cqrs_diff_master'

@@ -1,11 +1,13 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
-from integration_tests.tests.utils import (
-    REPLICA_BASIC_TABLE, count_replica_rows, get_replica_first, transport_delay,
-)
-
 import pytest
 
+from integration_tests.tests.utils import (
+    REPLICA_BASIC_TABLE,
+    count_replica_rows,
+    get_replica_first,
+    transport_delay,
+)
 from tests.dj_master.models import BasicFieldsModel
 
 

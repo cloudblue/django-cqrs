@@ -1,15 +1,12 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
-from dj_cqrs.transport import current_transport
-from dj_cqrs.transport.rabbit_mq import RabbitMQTransport
-
-from integration_tests.tests.utils import REPLICA_TABLES
-
+import psycopg2
+import pytest
 from pika import BlockingConnection, URLParameters
 
-import psycopg2
-
-import pytest
+from dj_cqrs.transport import current_transport
+from dj_cqrs.transport.rabbit_mq import RabbitMQTransport
+from integration_tests.tests.utils import REPLICA_TABLES
 
 
 @pytest.fixture

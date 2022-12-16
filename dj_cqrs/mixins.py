@@ -2,20 +2,24 @@
 
 import logging
 
-from dj_cqrs.constants import (
-    ALL_BASIC_FIELDS,
-    FIELDS_TRACKER_FIELD_NAME,
-    TRACKED_FIELDS_ATTR_NAME,
+from django.conf import settings
+from django.db import router, transaction
+from django.db.models import (
+    DateField,
+    DateTimeField,
+    F,
+    IntegerField,
+    Manager,
+    Model,
+    UUIDField,
 )
+from django.db.models.expressions import CombinedExpression
+from django.utils.module_loading import import_string
+
+from dj_cqrs.constants import ALL_BASIC_FIELDS, FIELDS_TRACKER_FIELD_NAME, TRACKED_FIELDS_ATTR_NAME
 from dj_cqrs.managers import MasterManager, ReplicaManager
 from dj_cqrs.metas import MasterMeta, ReplicaMeta
 from dj_cqrs.signals import MasterSignals, post_bulk_create, post_update
-
-from django.conf import settings
-from django.db import router, transaction
-from django.db.models import DateField, DateTimeField, F, IntegerField, Manager, Model, UUIDField
-from django.db.models.expressions import CombinedExpression
-from django.utils.module_loading import import_string
 
 
 logger = logging.getLogger('django-cqrs')

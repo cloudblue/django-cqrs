@@ -1,16 +1,14 @@
 #  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
-from dj_cqrs.constants import SignalType
-from dj_cqrs.dataclasses import TransportPayload
-from dj_cqrs.metas import ReplicaMeta
-from dj_cqrs.mixins import RawReplicaMixin
-
+import pytest
 from django.conf import settings
 from django.db.models import CharField, IntegerField, QuerySet
 from django.utils.timezone import now
 
-import pytest
-
+from dj_cqrs.constants import SignalType
+from dj_cqrs.dataclasses import TransportPayload
+from dj_cqrs.metas import ReplicaMeta
+from dj_cqrs.mixins import RawReplicaMixin
 from tests.dj.transport import TransportStub
 from tests.dj_replica import models
 from tests.utils import db_error

@@ -1,7 +1,14 @@
 #  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import (
+    date,
+    datetime,
+    timedelta,
+    timezone,
+)
 from uuid import UUID
+
+import pytest
 
 from dj_cqrs.utils import (
     get_delay_queue_max_size,
@@ -9,8 +16,6 @@ from dj_cqrs.utils import (
     get_message_expiration_dt,
     get_messages_prefetch_count_per_worker,
 )
-
-import pytest
 
 
 def test_get_message_expiration_dt_fixed(mocker, settings):

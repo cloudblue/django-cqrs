@@ -1,5 +1,7 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
+import pytest
+
 from integration_tests.tests.utils import (
     REPLICA_BASIC_TABLE,
     REPLICA_EVENT_TABLE,
@@ -7,9 +9,6 @@ from integration_tests.tests.utils import (
     get_replica_all,
     transport_delay,
 )
-
-import pytest
-
 from tests.dj_master.models import BasicFieldsModel
 
 

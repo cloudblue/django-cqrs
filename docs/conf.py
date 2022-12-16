@@ -5,7 +5,6 @@ import sys
 from datetime import datetime
 
 import django
-
 from setuptools_scm import get_version
 
 

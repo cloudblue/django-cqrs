@@ -210,7 +210,10 @@ Development
 ===========
 
 1. Python 3.7 +
-0. Install dependencies `requirements/dev.txt`
+2. Install dependencies `requirements/dev.txt`
+3. We use `isort` library to order and format our imports, and we check it using `flake8-isort` library (automatically on `flake8` run).  
+For convenience you may run `isort .` to order imports.
+
 
 Testing
 =======

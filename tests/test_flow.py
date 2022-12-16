@@ -1,8 +1,7 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
-from django.db import transaction
-
 import pytest
+from django.db import transaction
 
 from tests.dj_master import models as master_models
 from tests.dj_replica import models as replica_models

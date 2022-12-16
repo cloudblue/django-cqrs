@@ -1,10 +1,9 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
 
+import pytest
 from django.core.management import CommandError, call_command
 from django.utils.timezone import now
-
-import pytest
 
 from tests.dj_replica.models import AuthorRef
 from tests.utils import db_error

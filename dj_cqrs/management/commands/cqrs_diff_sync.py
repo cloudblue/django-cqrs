@@ -2,15 +2,15 @@
 
 import sys
 
+from django.core.management.base import BaseCommand, CommandError
+
 from dj_cqrs.constants import NO_QUEUE
 from dj_cqrs.management.commands.cqrs_sync import (
-    Command as SyncCommand,
     DEFAULT_BATCH,
     DEFAULT_PROGRESS,
+    Command as SyncCommand,
 )
 from dj_cqrs.registries import MasterRegistry
-
-from django.core.management.base import BaseCommand, CommandError
 
 
 class Command(BaseCommand):

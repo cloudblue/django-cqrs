@@ -1,11 +1,11 @@
 #  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
+from django.db.models import base
+
 from dj_cqrs.constants import ALL_BASIC_FIELDS
 from dj_cqrs.registries import MasterRegistry, ReplicaRegistry
 from dj_cqrs.signals import MasterSignals
 from dj_cqrs.tracker import CQRSTracker
-
-from django.db.models import base
 
 
 class MasterMeta(base.ModelBase):

@@ -3,9 +3,9 @@
 from datetime import datetime, timedelta, timezone
 from queue import Full
 
-from dj_cqrs.delay import DelayMessage, DelayQueue
-
 import pytest
+
+from dj_cqrs.delay import DelayMessage, DelayQueue
 
 
 def test_delay_message(mocker):
