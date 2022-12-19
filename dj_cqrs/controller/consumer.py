@@ -4,10 +4,10 @@ import copy
 import logging
 from contextlib import ExitStack
 
+from django.db import Error, close_old_connections, transaction
+
 from dj_cqrs.constants import SignalType
 from dj_cqrs.registries import ReplicaRegistry
-
-from django.db import Error, close_old_connections, transaction
 
 
 logger = logging.getLogger('django-cqrs')

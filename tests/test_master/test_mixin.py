@@ -4,6 +4,13 @@ from datetime import timedelta
 from time import sleep
 from uuid import uuid4
 
+import pytest
+from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
+from django.db import transaction
+from django.db.models import CharField, F, IntegerField
+from django.utils.timezone import now
+
 from dj_cqrs.constants import (
     DEFAULT_MASTER_AUTO_UPDATE_FIELDS,
     DEFAULT_MASTER_MESSAGE_TTL,
@@ -11,15 +18,6 @@ from dj_cqrs.constants import (
     SignalType,
 )
 from dj_cqrs.metas import MasterMeta
-
-from django.conf import settings
-from django.contrib.contenttypes.models import ContentType
-from django.db import transaction
-from django.db.models import CharField, F, IntegerField
-from django.utils.timezone import now
-
-import pytest
-
 from tests.dj_master import models
 from tests.dj_master.serializers import AuthorSerializer
 from tests.utils import (

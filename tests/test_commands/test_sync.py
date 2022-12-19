@@ -1,11 +1,9 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
-from dj_cqrs.constants import SignalType
-
+import pytest
 from django.core.management import CommandError, call_command
 
-import pytest
-
+from dj_cqrs.constants import SignalType
 from tests.dj_master.models import Author
 from tests.utils import db_error
 

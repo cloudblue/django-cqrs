@@ -2,12 +2,11 @@
 
 import sys
 
-from dj_cqrs.registries import ReplicaRegistry
-
+import ujson
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
-import ujson
+from dj_cqrs.registries import ReplicaRegistry
 
 
 class Command(BaseCommand):

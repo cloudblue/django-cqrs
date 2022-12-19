@@ -1,9 +1,9 @@
 #  Copyright © 2021 Ingram Micro Inc. All rights reserved.
 
-from django.conf import settings
 import django.contrib.auth.validators
-from django.db import migrations, models
 import django.utils.timezone
+from django.conf import settings
+from django.db import migrations, models
 
 
 class Migration(migrations.Migration):

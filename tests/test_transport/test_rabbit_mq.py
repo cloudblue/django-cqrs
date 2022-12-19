@@ -4,6 +4,12 @@ import logging
 from datetime import datetime, timedelta, timezone
 from importlib import import_module, reload
 
+import pytest
+import ujson
+from django.db import DatabaseError
+from pika.adapters.utils.connection_workflow import AMQPConnectorException
+from pika.exceptions import AMQPError, ChannelError, ReentrancyError
+
 from dj_cqrs.constants import (
     DEFAULT_MASTER_AUTO_UPDATE_FIELDS,
     DEFAULT_MASTER_MESSAGE_TTL,
@@ -15,17 +21,7 @@ from dj_cqrs.constants import (
 from dj_cqrs.dataclasses import TransportPayload
 from dj_cqrs.delay import DelayMessage, DelayQueue
 from dj_cqrs.transport.rabbit_mq import RabbitMQTransport
-
-from django.db import DatabaseError
-
-from pika.adapters.utils.connection_workflow import AMQPConnectorException
-from pika.exceptions import AMQPError, ChannelError, ReentrancyError
-
-import pytest
-
 from tests.utils import db_error
-
-import ujson
 
 
 class PublicRabbitMQTransport(RabbitMQTransport):

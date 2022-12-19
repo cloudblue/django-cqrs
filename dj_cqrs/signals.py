@@ -2,14 +2,14 @@
 
 import logging
 
+from django.db import models, transaction
+from django.dispatch import Signal
+from django.utils.timezone import now
+
 from dj_cqrs.constants import SignalType
 from dj_cqrs.controller import producer
 from dj_cqrs.dataclasses import TransportPayload
 from dj_cqrs.utils import get_message_expiration_dt
-
-from django.db import models, transaction
-from django.dispatch import Signal
-from django.utils.timezone import now
 
 
 logger = logging.getLogger('django-cqrs')

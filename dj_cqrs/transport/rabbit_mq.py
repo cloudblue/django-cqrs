@@ -6,6 +6,18 @@ from datetime import timedelta
 from socket import gaierror
 from urllib.parse import unquote, urlparse
 
+import ujson
+from django.conf import settings
+from django.utils import timezone
+from pika import (
+    BasicProperties,
+    BlockingConnection,
+    ConnectionParameters,
+    credentials,
+    exceptions,
+)
+from pika.adapters.utils.connection_workflow import AMQPConnectorException
+
 from dj_cqrs.constants import DEFAULT_DEAD_MESSAGE_TTL, SignalType
 from dj_cqrs.controller import consumer
 from dj_cqrs.dataclasses import TransportPayload
@@ -14,14 +26,6 @@ from dj_cqrs.registries import ReplicaRegistry
 from dj_cqrs.transport import BaseTransport
 from dj_cqrs.transport.mixins import LoggingMixin
 from dj_cqrs.utils import get_delay_queue_max_size, get_messages_prefetch_count_per_worker
-
-from django.conf import settings
-from django.utils import timezone
-
-from pika import BasicProperties, BlockingConnection, ConnectionParameters, credentials, exceptions
-from pika.adapters.utils.connection_workflow import AMQPConnectorException
-
-import ujson
 
 
 logger = logging.getLogger('django-cqrs')

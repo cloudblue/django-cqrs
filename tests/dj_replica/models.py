@@ -1,9 +1,9 @@
 #  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
+from django.db import models
+
 from dj_cqrs.metas import ReplicaMeta
 from dj_cqrs.mixins import RawReplicaMixin, ReplicaMixin
-
-from django.db import models
 
 
 class BasicFieldsModelRef(ReplicaMixin, models.Model):
