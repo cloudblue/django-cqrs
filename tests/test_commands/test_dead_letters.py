@@ -1,11 +1,10 @@
 #  Copyright © 2022 Ingram Micro Inc. All rights reserved.
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 import ujson
 from django.core.management import CommandError, call_command
-from django.utils import timezone
 
 from dj_cqrs.constants import SignalType
 from dj_cqrs.management.commands.cqrs_dead_letters import Command, RabbitMQTransport
