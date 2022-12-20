@@ -10,42 +10,12 @@ on:
     branches: [ master ]
 
 jobs:
-  build_3_6_7_8_django_2_2:
-    name: Build on Python 3.7, 3.8 and django 2.2
+  build_3_8_9_10_11_django_3_2:
+    name: Build on Python 3.8, 3.9, 3.10, 3.11 django 3.2
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.7', '3.8']
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v2
-      with:
-        fetch-depth: 0
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements/dev.txt
-        pip install -r requirements/test.txt
-        pip install pytest-cov
-        pip install djangorestframework==3.13.*
-        pip install django-model-utils==4.2.0
-        pip install django==2.2.*
-    - name: Linting
-      run: |
-        flake8
-    - name: Testing
-      run: |
-        python setup.py test
-  build_3_8_9_10_django_3_2:
-    name: Build on Python 3.8, 3.9, 3.10 django 3.2
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ['3.8', '3.9', '3.10']
+        python-version: ['3.8', '3.9', '3.10', '3.11']
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -98,7 +68,7 @@ jobs:
           python setup.py test
   sonar:
     name: Sonar Checks
-    needs: [build_3_6_7_8_django_2_2, build_3_8_9_10_django_3_2, build_3_10_django_4_0]
+    needs: [build_3_8_9_10_11_django_3_2, build_3_10_django_4_0]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -108,7 +78,7 @@ jobs:
       - name: Set up Python '3.10'
         uses: actions/setup-python@v2
         with:
-          python-version: ['3.10']
+          python-version: '3.10'
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -148,7 +118,7 @@ jobs:
       - name: Set up Python '3.10'
         uses: actions/setup-python@v2
         with:
-          python-version: ['3.10']
+          python-version: '3.10'
       - name: Integration tests
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
