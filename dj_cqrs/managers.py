@@ -40,8 +40,14 @@ class MasterManager(Manager):
         prev_data_mapper = {}
         collect_prev_data = hasattr(self.model, FIELDS_TRACKER_FIELD_NAME)
 
+        # Add filter by list of ids in case of update kwargs
+        # are the same as the chain filter kwargs in the Queryset.
+        # If that happen the .all() method will refresh after update and
+        # result in an empty Queryset that will not send the signal.
+        ids_list = list(queryset.values_list('pk', flat=True))
+
         def list_all():
-            return list(queryset.all())
+            return list(queryset.model.objects.filter(pk__in=ids_list).all())
 
         with transaction.atomic(savepoint=False):
             if collect_prev_data:
