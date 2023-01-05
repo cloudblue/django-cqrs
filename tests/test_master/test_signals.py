@@ -145,30 +145,69 @@ def test_automatic_post_bulk_create(mocker):
         assert payload.previous_data == {'status': None}
 
 
+@pytest.mark.parametrize(
+    'filter_kwargs',
+    ({'name': 'old'}, {'id__in': {0, 1, 2}}),
+)
 @pytest.mark.django_db(transaction=True)
-def test_post_bulk_update_wout_prev_data(mocker):
+def test_post_bulk_update_wout_prev_data(mocker, filter_kwargs):
     for i in range(3):
-        models.SimplestModel.objects.create(id=i)
-    cqrs_updated = models.SimplestModel.objects.get(id=1).cqrs_updated
+        models.SimplestModel.objects.create(id=i, name='old')
+    cqrs_updated = list(
+        models.SimplestModel.objects.all().values_list('cqrs_updated', flat=True),
+    )
 
     publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
     models.SimplestModel.cqrs.bulk_update(
-        queryset=models.SimplestModel.objects.filter(id__in={1}),
+        queryset=models.SimplestModel.objects.filter(**filter_kwargs),
         name='new',
     )
 
-    assert_publisher_once_called_with_args(
-        publisher_mock,
-        SignalType.SAVE, models.SimplestModel.CQRS_ID, {'id': 1, 'name': 'new'}, 1,
-    )
+    assert publisher_mock.call_count == 3
 
-    m = models.SimplestModel.objects.get(id=1)
-    assert m.cqrs_updated > cqrs_updated
-    assert m.cqrs_revision == 1
+    for pk, t0_payload in enumerate(
+        [x[0][0] for x in publisher_mock.call_args_list],
+    ):
+        assert t0_payload.signal_type == SignalType.SAVE
+        assert t0_payload.cqrs_id == models.SimplestModel.CQRS_ID
+        assert t0_payload.pk == pk
+
+        assert_is_sub_dict(
+            {'id': pk, 'name': 'new'},
+            t0_payload.instance_data,
+        )
+
+        m = models.SimplestModel.objects.get(id=pk)
+        assert m.cqrs_updated > cqrs_updated[pk]
+        assert m.cqrs_revision == 1
+        assert m.name == 'new'
 
 
+@pytest.mark.parametrize(
+    ('filter_kwargs', 'cqrs_revision', 'data'),
+    (
+        (
+            {'description': 'old'},
+            1,
+            (
+                (0, {'description': 'old', 'status': None}, 1),
+                (1, {'description': 'old', 'status': 'x'}, 2),
+                (2, {'description': 'old', 'status': None}, 1),
+            ),
+        ),
+        (
+            {'id__in': {0, 1}},
+            0,
+            (
+                (0, {'description': 'old', 'status': None}, 1),
+                (1, {'description': 'old', 'status': 'x'}, 2),
+
+            ),
+        ),
+    ),
+)
 @pytest.mark.django_db(transaction=True)
-def test_post_bulk_update_with_prev_data(mocker):
+def test_post_bulk_update_with_prev_data(mocker, filter_kwargs, cqrs_revision, data):
     for i in range(3):
         models.SimplestTrackedModel.objects.create(id=i, description='old')
 
@@ -177,21 +216,20 @@ def test_post_bulk_update_with_prev_data(mocker):
     m.save()
 
     publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
-    models.SimplestTrackedModel.cqrs.bulk_update(
-        queryset=models.SimplestTrackedModel.objects.filter(id__in={0, 1}).order_by('id'),
+    call_count = models.SimplestTrackedModel.cqrs.bulk_update(
+        queryset=models.SimplestTrackedModel.objects.filter(**filter_kwargs).order_by('id'),
         description='new',
         status=None,
     )
 
     m = models.SimplestTrackedModel.objects.get(id=2)
-    assert m.cqrs_revision == 0
+    assert m.cqrs_revision == cqrs_revision
 
-    assert publisher_mock.call_count == 2
-    for pk, prev_data in (
-        (0, {'description': 'old', 'status': None}),
-        (1, {'description': 'old', 'status': 'x'}),
-    ):
-        t0_payload = publisher_mock.call_args_list[pk][0][0]
+    assert publisher_mock.call_count == call_count
+
+    publisher_call_args_list = sorted(publisher_mock.call_args_list, key=lambda x: x[0][0].pk)
+    for pk, prev_data, revision in data:
+        t0_payload = publisher_call_args_list[pk][0][0]
         assert t0_payload.signal_type == SignalType.SAVE
         assert t0_payload.cqrs_id == models.SimplestTrackedModel.CQRS_ID
         assert t0_payload.pk == pk
@@ -203,7 +241,7 @@ def test_post_bulk_update_with_prev_data(mocker):
         assert t0_payload.previous_data == prev_data
 
         m = models.SimplestTrackedModel.objects.get(id=pk)
-        assert m.cqrs_revision == pk + 1
+        assert m.cqrs_revision == revision
         assert m.description == 'new'
         assert m.status is None
 
