@@ -7,7 +7,7 @@ import time
 import ujson
 from django.core.exceptions import FieldError
 from django.core.management.base import BaseCommand, CommandError
-from django.db import close_old_connections
+from django.db import close_old_connections, connections
 
 from dj_cqrs.management.utils import batch_qs
 from dj_cqrs.registries import MasterRegistry
@@ -69,6 +69,10 @@ class Command(BaseCommand):
         for qs_ in batch_qs(model.relate_cqrs_serialization(qs), batch_size=batch_size):
             ts = time.time()
             cs = counter
+
+            # check if must reconnect
+            if not connections[qs_.db].is_usable():
+                connections[qs_.db].connect()
 
             for instance in qs_:
                 counter += 1
