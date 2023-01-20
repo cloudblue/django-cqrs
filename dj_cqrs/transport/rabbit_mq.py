@@ -73,7 +73,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
                     exceptions.ChannelError,
                     exceptions.ReentrancyError,
                     gaierror):
-                logger.error('AMQP connection error. Reconnecting...', exc_info=True)
+                logger.warning('AMQP connection error. Reconnecting...', exc_info=True)
                 time.sleep(cls.CONSUMER_RETRY_TIMEOUT)
             finally:
                 if connection and not connection.is_closed:
