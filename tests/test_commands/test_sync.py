@@ -2,6 +2,7 @@
 
 import pytest
 from django.core.management import CommandError, call_command
+from django.db import connections
 
 from dj_cqrs.constants import SignalType
 from tests.dj_master.models import Author
@@ -126,3 +127,20 @@ def test_progress(capsys):
     captured = capsys.readouterr()
     assert 'Processing 1 records with batch size 2' in captured.out
     assert '1 of 1 processed - 100% with rate' in captured.out
+
+
+@pytest.mark.django_db(transaction=True)
+def test_reconnect_on_unusable_connection(capsys, mocker):
+    for i in range(1, 11):
+        Author.objects.create(id=i, name='author')
+
+    is_usable_mock = mocker.patch.object(
+        connections['default'],
+        'is_usable',
+        side_effect=[True, False, True],
+    )
+    call_command(COMMAND_NAME, '--cqrs-id=author', '--progress', '-f={}', '--batch=5')  # noqa: P103
+
+    assert is_usable_mock.call_count == 2
+    captured = capsys.readouterr()
+    assert 'Done!\n10 instance(s) synced.\n10 instance(s) processed.' in captured.out
