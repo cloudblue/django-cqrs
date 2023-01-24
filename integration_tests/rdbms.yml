@@ -9,6 +9,8 @@ services:
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=pswd
       - POSTGRES_DB=django_cqrs
+      - POSTGRES_HOST_AUTH_METHOD=md5
+      - POSTGRES_INITDB_ARGS=--auth-host=md5
 
   mysql:
     image: mysql:8.0
