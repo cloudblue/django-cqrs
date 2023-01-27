@@ -1,4 +1,4 @@
-#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2023 Ingram Micro Inc. All rights reserved.
 
 import pytest
 from django.utils.timezone import now
@@ -61,10 +61,10 @@ def test_flow(replica_cursor, clean_rabbit_transport_connection):
         ('int_field', 'cqrs_revision', 'cqrs_updated', 'bool_field'),
     )
     assert (
-       master_instance.int_field,
-       master_instance.cqrs_revision,
-       master_instance.cqrs_updated,
-       master_instance.bool_field,
+        master_instance.int_field,
+        master_instance.cqrs_revision,
+        master_instance.cqrs_updated,
+        master_instance.bool_field,
     ) == updated_replica_tuple
 
     # Delete

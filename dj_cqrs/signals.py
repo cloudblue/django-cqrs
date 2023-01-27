@@ -1,4 +1,4 @@
-#  Copyright © 2022 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2023 Ingram Micro Inc. All rights reserved.
 
 import logging
 
@@ -34,8 +34,8 @@ class MasterSignals:
         """
         Registers signals for a model.
 
-        :param model_cls:  Model class inherited from CQRS MasterMixin.
-        :type model_cls: dj_cqrs.mixins.MasterMixin
+        Args:
+            model_cls (dj_cqrs.mixins.MasterMixin): Model class inherited from CQRS MasterMixin.
         """
 
         models.signals.post_save.connect(cls.post_save, sender=model_cls)
@@ -47,7 +47,8 @@ class MasterSignals:
     @classmethod
     def post_save(cls, sender, **kwargs):
         """
-        :param dj_cqrs.mixins.MasterMixin sender: Class or instance inherited from CQRS MasterMixin.
+        Args:
+            sender (dj_cqrs.mixins.MasterMixin): Class or instance inherited from CQRS MasterMixin.
         """
         if not sender.CQRS_PRODUCE:
             return
@@ -107,7 +108,8 @@ class MasterSignals:
     @classmethod
     def post_delete(cls, sender, **kwargs):
         """
-        :param dj_cqrs.mixins.MasterMixin sender: Class or instance inherited from CQRS MasterMixin.
+        Args:
+            sender (dj_cqrs.mixins.MasterMixin): Class or instance inherited from CQRS MasterMixin.
         """
         if not sender.CQRS_PRODUCE:
             return
@@ -147,14 +149,16 @@ class MasterSignals:
     @classmethod
     def post_bulk_create(cls, sender, **kwargs):
         """
-        :param dj_cqrs.mixins.MasterMixin sender: Class or instance inherited from CQRS MasterMixin.
+        Args:
+            sender (dj_cqrs.mixins.MasterMixin): Class or instance inherited from CQRS MasterMixin.
         """
         cls._post_bulk(sender, **kwargs)
 
     @classmethod
     def post_bulk_update(cls, sender, **kwargs):
         """
-        :param dj_cqrs.mixins.MasterMixin sender: Class or instance inherited from CQRS MasterMixin.
+        Args:
+            sender (dj_cqrs.mixins.MasterMixin): Class or instance inherited from CQRS MasterMixin.
         """
         cls._post_bulk(sender, **kwargs)
 

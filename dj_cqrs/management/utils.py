@@ -1,4 +1,4 @@
-#  Copyright © 2022 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2023 Ingram Micro Inc. All rights reserved.
 
 
 def batch_qs(qs, batch_size=10000):

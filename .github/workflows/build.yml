@@ -11,33 +11,32 @@ on:
 
 jobs:
   build_3_8_9_10_11_django_3_2:
-    name: Build on Python 3.8, 3.9, 3.10, 3.11 django 3.2
+    name: Build on Python ${{ matrix.python-version }} and django 3.2
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.8', '3.9', '3.10', '3.11']
+        python-version: ['3.7', '3.8', '3.9', '3.10', '3.11']
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements/dev.txt
-          pip install -r requirements/test.txt
-          pip install pytest-cov
-          pip install django==3.2.*
+          pip install poetry
+          poetry install
+          poetry run pip install django==3.2.*
       - name: Linting
         run: |
-          flake8
+          poetry run flake8
       - name: Testing
         run: |
-          python setup.py test
+          poetry run pytest
   build_3_10_django_4_0:
     name: Build on Python 3.10 django 4.0
     runs-on: ubuntu-latest
@@ -46,52 +45,77 @@ jobs:
         python-version: ['3.10']
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements/dev.txt
-          pip install -r requirements/test.txt
-          pip install pytest-cov
-          pip install django==4.0.*
+          pip install poetry
+          poetry install
+          poetry run pip install django==4.0.*
       - name: Linting
         run: |
-          flake8
+          poetry run flake8
       - name: Testing
         run: |
-          python setup.py test
+          poetry run pytest
+  build_3_10_django_4_1:
+    name: Build on Python 3.10 django 4.1
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry
+          poetry install
+          poetry run pip install django==4.1.*
+      - name: Linting
+        run: |
+          poetry run flake8
+      - name: Testing
+        run: |
+          poetry run pytest
   sonar:
     name: Sonar Checks
-    needs: [build_3_8_9_10_11_django_3_2, build_3_10_django_4_0]
+    needs: [build_3_8_9_10_11_django_3_2, build_3_10_django_4_0, build_3_10_django_4_1]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - name: Set up Python '3.10'
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: '3.10'
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements/dev.txt
-          pip install -r requirements/test.txt
-          pip install pytest-cov
-          pip install django==4.0.*
+          pip install poetry
+          poetry install
+          poetry run pip install django==4.0.*
       - name: Testing
         run: |
-          python setup.py test
+          poetry run pytest
       - name: Fix coverage report for Sonar
         run: |
-          sed -i 's/\/home\/runner\/work\/django-cqrs\/django-cqrs\//\/github\/workspace\//g' coverage.xml
+          sed -i 's/\/home\/runner\/work\/django-cqrs\/django-cqrs\//\/github\/workspace\//g' ./tests/reports/coverage.xml
       - name: SonarCloud
         uses: SonarSource/sonarcloud-github-action@master
         env:
@@ -112,11 +136,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - name: Set up Python '3.10'
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: '3.10'
       - name: Integration tests

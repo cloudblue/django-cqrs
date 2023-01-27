@@ -1,4 +1,4 @@
-#  Copyright © 2022 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2023 Ingram Micro Inc. All rights reserved.
 
 import logging
 
@@ -133,15 +133,16 @@ class RawMasterMixin(Model):
     def _update_cqrs_fields_default(self):
         return settings.CQRS['master']['CQRS_AUTO_UPDATE_FIELDS']
 
-    def to_cqrs_dict(self, using=None, sync=False):
+    def to_cqrs_dict(self, using: str = None, sync: bool = False) -> dict:
         """CQRS serialization for transport payload.
 
-        :param using: The using argument can be used to force the database
-                      to use, defaults to None
-        :type using: str, optional
-        :type sync: bool, optional
-        :return: The serialized instance data.
-        :rtype: dict
+        Args:
+            using (str): The using argument can be used to force the database to use,
+                defaults to None.
+            sync (bool): optional
+
+        Returns:
+            (dict): The serialized instance data.
         """
         if self.CQRS_SERIALIZER:
             data = self._class_serialization(using, sync=sync)
@@ -150,26 +151,26 @@ class RawMasterMixin(Model):
             data = self._common_serialization(using)
         return data
 
-    def get_tracked_fields_data(self):
+    def get_tracked_fields_data(self) -> dict:
         """CQRS serialization for tracked fields to include
         in the transport payload.
 
-        :return: Previous values for tracked fields.
-        :rtype: dict
+        Returns:
+            (dict): Previous values for tracked fields.
         """
         return getattr(self, TRACKED_FIELDS_ATTR_NAME, None)
 
-    def cqrs_sync(self, using=None, queue=None):
+    def cqrs_sync(self, using: str = None, queue: str = None) -> bool:
         """Manual instance synchronization.
 
-        :param using: The using argument can be used to force the database
-                      to use, defaults to None
-        :type using: str, optional
-        :param queue: Syncing can be executed just for a single queue, defaults to None
-                      (all queues)
-        :type queue: str, optional
-        :return: True if instance can be synced, False otherwise.
-        :rtype: bool
+        Args:
+            using (str): The using argument can be used to force the database
+                to use, defaults to None.
+            queue (str): Syncing can be executed just for a single queue, defaults to None
+                 (all queues).
+
+        Returns:
+            (bool): True if instance can be synced, False otherwise.
         """
         if self._state.adding:
             return False
@@ -185,23 +186,25 @@ class RawMasterMixin(Model):
         )
         return True
 
-    def is_sync_instance(self):
+    def is_sync_instance(self) -> bool:
         """
         This method can be overridden to apply syncing only to instances by some rules.
         For example, only objects with special status or after some creation date, etc.
 
-        :return: True if this instance needs to be synced, False otherwise
-        :rtype: bool
+        Returns:
+            (bool): True if this instance needs to be synced, False otherwise.
         """
         return True
 
-    def get_cqrs_meta(self, **kwargs):
+    def get_cqrs_meta(self, **kwargs: dict) -> dict:
         """
         This method can be overridden to collect model/instance specific metadata.
 
-        :type kwargs: Signal type, payload data, etc.
-        :return: Metadata dictionary if it's provided.
-        :rtype: dict
+        Args:
+            kwargs (dict): Signal type, payload data, etc.
+
+        Returns:
+            (dict): Metadata dictionary if it's provided.
         """
         generic_meta_func = settings.CQRS['master']['meta_function']
         if generic_meta_func:
@@ -217,10 +220,12 @@ class RawMasterMixin(Model):
         when related models must be included into the master model
         representation.
 
-        :param queryset: The initial queryset.
-        :type queryset: django.db.models.QuerySet
-        :return: The optimized queryset.
-        :rtype: django.db.models.QuerySet
+        Args:
+            queryset (django.db.models.QuerySet): The initial queryset.
+
+        Returns:
+            (django.db.models.QuerySet): The optimized queryset.
+
         """
         return queryset
 
@@ -229,13 +234,14 @@ class RawMasterMixin(Model):
         pass
 
     @classmethod
-    def call_post_bulk_create(cls, instances, using=None):
+    def call_post_bulk_create(cls, instances: list, using=None):
         """ Post bulk create signal caller (django doesn't support it by default).
 
-        .. code-block:: python
+        ``` py3
 
             # Used automatically by cqrs.bulk_create()
             instances = model.cqrs.bulk_create(instances)
+        ```
         """
         post_bulk_create.send(cls, instances=instances, using=using)
 
@@ -243,11 +249,12 @@ class RawMasterMixin(Model):
     def call_post_update(cls, instances, using=None):
         """ Post bulk update signal caller (django doesn't support it by default).
 
-        .. code-block:: python
+        ``` py3
 
             # Used automatically by cqrs.bulk_update()
             qs = model.objects.filter(k1=v1)
             model.cqrs.bulk_update(qs, k2=v2)
+        ```
         """
         post_update.send(cls, instances=instances, using=using)
 
@@ -351,15 +358,15 @@ class RawReplicaMixin:
         raise NotImplementedError
 
     @staticmethod
-    def should_retry_cqrs(current_retry, exception=None):
+    def should_retry_cqrs(current_retry: int, exception=None) -> bool:
         """Checks if we should retry the message after current attempt.
 
-        :param current_retry: Current number of message retries.
-        :type current_retry: int
-        :param exception: Exception instance raised during message consume.
-        :type exception: Exception, optional
-        :return: True if message should be retried, False otherwise.
-        :rtype: bool
+        Args:
+            current_retry (int): Current number of message retries.
+            exception (Exception): Exception instance raised during message consume.
+
+        Returns:
+            (bool): True if message should be retried, False otherwise.
         """
         max_retries = settings.CQRS['replica']['CQRS_MAX_RETRIES']
         if max_retries is None:
@@ -369,13 +376,14 @@ class RawReplicaMixin:
         return current_retry < max_retries
 
     @staticmethod
-    def get_cqrs_retry_delay(current_retry):
+    def get_cqrs_retry_delay(current_retry: int) -> int:
         """Returns number of seconds to wait before requeuing the message.
 
-        :param current_retry: Current number of message retries.
-        :type current_retry: int
-        :return: Delay in seconds.
-        :rtype: int
+        Args:
+            current_retry (int): Current number of message retries.
+
+        Returns:
+            (int): Delay in seconds.
         """
         return settings.CQRS['replica']['CQRS_RETRY_DELAY']
 
@@ -414,16 +422,24 @@ class ReplicaMixin(RawReplicaMixin, Model, metaclass=ReplicaMeta):
         abstract = True
 
     @classmethod
-    def cqrs_save(cls, master_data, previous_data=None, sync=False, meta=None):
+    def cqrs_save(
+        cls,
+        master_data: dict,
+        previous_data: dict = None,
+        sync: bool = False,
+        meta: dict = None,
+    ):
         """ This method saves (creates or updates) model instance from CQRS master instance data.
         This method must not be overridden. Otherwise, sync checks need to be implemented manually.
 
-        :param dict master_data: CQRS master instance data.
-        :param dict previous_data: Previous values for tracked fields.
-        :param bool sync: Sync package flag.
-        :param dict or None meta: Payload metadata, if exists.
-        :return: Model instance.
-        :rtype: django.db.models.Model
+        Args:
+            master_data (dict): CQRS master instance data.
+            previous_data (dict): Previous values for tracked fields.
+            sync (bool): Sync package flag.
+            meta (dict): Payload metadata, if exists.
+
+        Returns:
+            (django.db.models.Model): Model instance.
         """
         if cls.CQRS_NO_DB_OPERATIONS:
             return super().cqrs_save(master_data, previous_data=previous_data, sync=sync, meta=meta)
@@ -431,29 +447,45 @@ class ReplicaMixin(RawReplicaMixin, Model, metaclass=ReplicaMeta):
         return cls.cqrs.save_instance(master_data, previous_data, sync, meta)
 
     @classmethod
-    def cqrs_create(cls, sync, mapped_data, previous_data=None, meta=None):
+    def cqrs_create(
+        cls,
+        sync: bool,
+        mapped_data: dict,
+        previous_data: dict = None,
+        meta: dict = None,
+    ):
         """ This method creates model instance from CQRS mapped instance data. It must be overridden
         by replicas of master models with custom serialization.
 
-        :param bool sync: Sync package flag.
-        :param dict mapped_data: CQRS mapped instance data.
-        :param dict previous_data: Previous mapped values for tracked fields.
-        :param dict or None meta: Payload metadata, if exists.
-        :return: Model instance.
-        :rtype: django.db.models.Model
+        Args:
+            sync (dict): Sync package flag.
+            mapped_data (dict): CQRS mapped instance data.
+            previous_data (dict): Previous mapped values for tracked fields.
+            meta (dict): Payload metadata, if exists.
+
+        Returns:
+            (django.db.models.Model): Model instance.
         """
         return cls._default_manager.create(**mapped_data)
 
-    def cqrs_update(self, sync, mapped_data, previous_data=None, meta=None):
+    def cqrs_update(
+        self,
+        sync: bool,
+        mapped_data: dict,
+        previous_data: dict = None,
+        meta: dict = None,
+    ):
         """ This method updates model instance from CQRS mapped instance data. It must be overridden
         by replicas of master models with custom serialization.
 
-        :param bool sync: Sync package flag.
-        :param dict mapped_data: CQRS mapped instance data.
-        :param dict previous_data: Previous mapped values for tracked fields.
-        :param dict or None meta: Payload metadata, if exists.
-        :return: Model instance.
-        :rtype: django.db.models.Model
+        Args:
+            sync (dict): Sync package flag.
+            mapped_data (dict): CQRS mapped instance data.
+            previous_data (dict): Previous mapped values for tracked fields.
+            meta (dict): Payload metadata, if exists.
+
+        Returns:
+            (django.db.models.Model): Model instance.
         """
 
         for key, value in mapped_data.items():
@@ -462,13 +494,15 @@ class ReplicaMixin(RawReplicaMixin, Model, metaclass=ReplicaMeta):
         return self
 
     @classmethod
-    def cqrs_delete(cls, master_data, meta=None):
+    def cqrs_delete(cls, master_data: dict, meta: dict = None) -> bool:
         """ This method deletes model instance from mapped CQRS master instance data.
 
-        :param dict master_data: CQRS master instance data.
-        :param dict or None meta: Payload metadata, if exists.
-        :return: Flag, if delete operation is successful (even if nothing was deleted).
-        :rtype: bool
+        Args:
+            master_data (dict): CQRS master instance data.
+            meta (dict): Payload metadata, if exists.
+
+        Returns:
+            (bool): Flag, if delete operation is successful (even if nothing was deleted).
         """
         if cls.CQRS_NO_DB_OPERATIONS:
             return super().cqrs_delete(master_data, meta=meta)

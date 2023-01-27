@@ -1,4 +1,4 @@
-#  Copyright © 2022 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2023 Ingram Micro Inc. All rights reserved.
 
 import pytest
 from django.conf import settings

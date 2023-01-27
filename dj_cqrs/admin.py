@@ -1,4 +1,4 @@
-#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2023 Ingram Micro Inc. All rights reserved.
 
 from django.utils.translation import gettext_lazy
 
@@ -22,10 +22,11 @@ class CQRSAdminMasterSyncMixin:
         """
         This function is used to adjust the QuerySet before sending the sync signal.
 
-        :param queryset: Original queryset
-        :type queryset: Queryset
-        :return: Updated queryset
-        :rtype: Queryset
+        Args:
+            queryset (Queryset): Original queryset.
+
+        Returns:
+            (Queryset): Updated queryset.
         """
         return queryset
 
@@ -33,6 +34,10 @@ class CQRSAdminMasterSyncMixin:
         """
         This method synchronizes selected items from the Admin Page.
         It is registered as a custom action in Django Admin
+
+        Args:
+            request (Request): Original request.
+            queryset (Queryset): Original queryset.
         """
         items_not_synced = []
         for item in self._cqrs_sync_queryset(queryset):

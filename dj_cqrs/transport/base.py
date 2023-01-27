@@ -1,4 +1,4 @@
-#  Copyright © 2020 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2023 Ingram Micro Inc. All rights reserved.
 
 
 class BaseTransport:
@@ -7,11 +7,12 @@ class BaseTransport:
     All transports need to inherit from this base class.
     Transport must be set in Django settings:
 
-    .. code-block:: python
+    ``` py3
 
         CQRS = {
             'transport': 'dj_cqrs.transport.rabbit_mq.RabbitMQTransport',
         }
+    ```
     """
 
     consumers = {}
@@ -21,7 +22,8 @@ class BaseTransport:
         """
         Send data from master model to replicas.
 
-        :param dj_cqrs.dataclasses.TransportPayload payload: Transport payload from master model.
+        Args:
+            payload (dj_cqrs.dataclasses.TransportPayload): Transport payload from master model.
         """
         raise NotImplementedError
 

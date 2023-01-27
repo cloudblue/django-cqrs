@@ -1,4 +1,4 @@
-#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2023 Ingram Micro Inc. All rights reserved.
 
 import logging
 import time
@@ -32,6 +32,7 @@ logger = logging.getLogger('django-cqrs')
 
 
 class RabbitMQTransport(LoggingMixin, BaseTransport):
+    """Transport class for RabbitMQ."""
     CONSUMER_RETRY_TIMEOUT = 5
     PRODUCER_RETRIES = 1
 
@@ -40,6 +41,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
 
     @classmethod
     def clean_connection(cls):
+        """Clean the RabbitMQ connection."""
         connection = cls._producer_connection
         if connection and not connection.is_closed:
             try:
@@ -52,6 +54,11 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
 
     @classmethod
     def consume(cls, cqrs_ids=None):
+        """Receive data from master model.
+
+        Args:
+            cqrs_ids (str): cqrs ids.
+        """
         consumer_rabbit_settings = cls._get_consumer_settings()
         common_rabbit_settings = cls._get_common_settings()
 
@@ -81,6 +88,12 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
 
     @classmethod
     def produce(cls, payload):
+        """
+        Send data from master model to replicas.
+
+        Args:
+            payload (dj_cqrs.dataclasses.TransportPayload): Transport payload from master model.
+        """
         cls._produce_with_retries(payload, retries=cls.PRODUCER_RETRIES)
 
     @classmethod

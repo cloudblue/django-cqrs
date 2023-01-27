@@ -11,8 +11,12 @@ ENV PYTHONPATH /master
 
 RUN mkdir /master
 COPY ./requirements/ /master/requirements
+#COPY pyproject.toml pyproject.toml
 
 RUN pip install -r /master/requirements/dev.txt -r /master/requirements/test.txt && pip install psycopg2-binary redis django-cqrs==1.3.1
+#RUN pip install poetry
+#RUN poetry config virtualenvs.create false
+#RUN poetry install && pip install psycopg2-binary redis django-cqrs==1.3.1
 
 COPY . /master/
 ADD integration_tests/setup.cfg /master/

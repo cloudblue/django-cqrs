@@ -1,4 +1,4 @@
-#  Copyright © 2022 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2023 Ingram Micro Inc. All rights reserved.
 
 import logging
 
@@ -19,8 +19,9 @@ class MasterManager(Manager):
         Custom bulk create method to support sending of create signals.
         This can be used only in cases, when IDs are generated on client or DB returns IDs.
 
-        :param django.db.models.Model objs: List of objects for creation
-        :param kwargs: Bulk create kwargs
+        Args:
+            objs (List[django.db.models.Model]): List of objects for creation.
+            kwargs (dict): Bulk create kwargs.
         """
         for obj in objs:
             obj.save_tracked_fields()
@@ -34,8 +35,9 @@ class MasterManager(Manager):
     def bulk_update(self, queryset, **kwargs):
         """ Custom update method to support sending of update signals.
 
-        :param django.db.models.QuerySet queryset: Django Queryset (f.e. filter)
-        :param kwargs: Update kwargs
+        Args:
+            queryset (django.db.models.QuerySet): Django Queryset (f.e. filter).
+            kwargs (dict): Update kwargs.
         """
         prev_data_mapper = {}
         collect_prev_data = hasattr(self.model, FIELDS_TRACKER_FIELD_NAME)
@@ -74,15 +76,23 @@ class MasterManager(Manager):
 
 
 class ReplicaManager(Manager):
-    def save_instance(self, master_data, previous_data=None, sync=False, meta=None):
+    def save_instance(
+        self,
+        master_data: dict,
+        previous_data: dict = None,
+        sync: bool = False,
+        meta: dict = None,
+    ):
         """ This method saves (creates or updates) model instance from CQRS master instance data.
 
-        :param dict master_data: CQRS master instance data.
-        :param dict previous_data: Previous values for tracked fields.
-        :param bool sync: Sync package flag.
-        :param dict or None meta: Payload metadata, if exists.
-        :return: Model instance.
-        :rtype: django.db.models.Model
+        Args:
+            master_data (dict): CQRS master instance data.
+            previous_data (dict): Previous values for tracked fields.
+            sync (bool): Sync package flag.
+            meta (dict): Payload metadata, if exists.
+
+        Returns:
+            (django.db.models.Model): Model instance.
         """
         mapped_data = self._map_save_data(master_data)
         mapped_previous_data = self._map_previous_data(previous_data) if previous_data else None
@@ -113,15 +123,23 @@ class ReplicaManager(Manager):
                 meta=meta,
             )
 
-    def create_instance(self, mapped_data, previous_data=None, sync=False, meta=None):
+    def create_instance(
+        self,
+        mapped_data: dict,
+        previous_data: dict = None,
+        sync: bool = False,
+        meta: dict = None,
+    ):
         """ This method creates model instance from mapped CQRS master instance data.
 
-        :param dict mapped_data: Mapped CQRS master instance data.
-        :param dict previous_data: Previous values for tracked fields.
-        :param bool sync: Sync package flag.
-        :param dict or None meta: Payload metadata, if exists.
-        :return: ReplicaMixin model instance.
-        :rtype: django.db.models.Model
+        Args:
+            mapped_data (dict): Mapped CQRS master instance data.
+            previous_data (dict): Previous values for tracked fields.
+            sync (bool): Sync package flag.
+            meta (dict): Payload metadata, if exists.
+
+        Returns:
+            (django.db.models.Model): ReplicaMixin instance.
         """
         f_kw = {'previous_data': previous_data}
         if self.model.CQRS_META:
@@ -138,16 +156,25 @@ class ReplicaManager(Manager):
                 ),
             )
 
-    def update_instance(self, instance, mapped_data, previous_data=None, sync=False, meta=None):
+    def update_instance(
+        self,
+        instance,
+        mapped_data: dict,
+        previous_data: dict = None,
+        sync: bool = False,
+        meta: dict = None,
+    ):
         """ This method updates model instance from mapped CQRS master instance data.
 
-        :param django.db.models.Model instance: ReplicaMixin model instance.
-        :param dict mapped_data: Mapped CQRS master instance data.
-        :param dict previous_data: Previous values for tracked fields.
-        :param dict or None meta: Payload metadata, if exists.
-        :param bool sync: Sync package flag.
-        :return: ReplicaMixin model instance.
-        :rtype: django.db.models.Model
+        Args:
+            instance (django.db.models.Model): ReplicaMixin model instance.
+            mapped_data (dict): Mapped CQRS master instance data.
+            previous_data (dict): Previous values for tracked fields.
+            sync (bool): Sync package flag.
+            meta (dict): Payload metadata, if exists.
+
+        Returns:
+            (django.db.models.Model): ReplicaMixin instance.
         """
         pk_value = mapped_data[self._get_model_pk_name()]
         current_cqrs_revision = mapped_data['cqrs_revision']
@@ -211,12 +238,14 @@ class ReplicaManager(Manager):
                 ),
             )
 
-    def delete_instance(self, master_data):
+    def delete_instance(self, master_data: dict) -> bool:
         """ This method deletes model instance from mapped CQRS master instance data.
 
-        :param dict master_data: CQRS master instance data.
-        :return: Flag, if delete operation is successful (even if nothing was deleted).
-        :rtype: bool
+        Args:
+            master_data (dict): CQRS master instance data.
+
+        Returns:
+            Flag, if delete operation is successful (even if nothing was deleted).
         """
         mapped_data = self._map_delete_data(master_data)
 

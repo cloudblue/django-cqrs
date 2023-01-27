@@ -1,4 +1,4 @@
-#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2023 Ingram Micro Inc. All rights reserved.
 
 import logging
 
@@ -75,6 +75,7 @@ class _KombuConsumer(ConsumerMixin):
 
 
 class KombuTransport(LoggingMixin, BaseTransport):
+    """Transport class for Kombu."""
     CONSUMER_RETRY_TIMEOUT = 5
 
     @classmethod
@@ -84,6 +85,11 @@ class KombuTransport(LoggingMixin, BaseTransport):
 
     @classmethod
     def consume(cls, cqrs_ids=None):
+        """Receive data from master model.
+
+        Args:
+            cqrs_ids (str): cqrs ids.
+        """
         queue_name, prefetch_count = cls._get_consumer_settings()
         url, exchange_name = cls._get_common_settings()
 
@@ -99,6 +105,12 @@ class KombuTransport(LoggingMixin, BaseTransport):
 
     @classmethod
     def produce(cls, payload):
+        """
+        Send data from master model to replicas.
+
+        Args:
+            payload (dj_cqrs.dataclasses.TransportPayload): Transport payload from master model.
+        """
         url, exchange_name = cls._get_common_settings()
 
         connection = None
