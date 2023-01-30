@@ -16,6 +16,8 @@ services:
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=pswd
       - POSTGRES_DB=replica
+      - POSTGRES_HOST_AUTH_METHOD=md5
+      - POSTGRES_INITDB_ARGS=--auth-host=md5
 
   replica:
     build:
