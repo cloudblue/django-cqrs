@@ -11,7 +11,11 @@ ENV PYTHONPATH /replica
 
 RUN mkdir /replica
 COPY ./requirements/ /replica/requirements
+#COPY pyproject.toml pyproject.toml
 RUN pip install -r /replica/requirements/dev.txt -r /replica/requirements/test.txt && pip install psycopg2-binary redis django-cqrs==1.3.1
+#RUN pip install poetry
+#RUN poetry config virtualenvs.create false
+#RUN poetry install && pip install psycopg2-binary redis django-cqrs==1.3.1
 
 COPY . /replica/
 ADD integration_tests/manage.py /replica/

@@ -1,0 +1,20 @@
+:root>* {
+    --md-primary-fg-color: #1565c0;
+    --md-primary-fg-color--light: #1565c0;
+    --md-primary-fg-color--dark: #1565c0;
+}
+
+div.autodoc-docstring {
+    padding-left: 20px;
+    margin-bottom: 30px;
+    border-left: 5px solid rgba(230, 230, 230);
+}
+
+div.autodoc-members {
+    padding-left: 20px;
+    margin-bottom: 15px;
+}
+
+:not([data-md-state="blur"]) + nav {
+    display: none;
+}

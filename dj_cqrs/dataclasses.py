@@ -1,4 +1,4 @@
-#  Copyright © 2022 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2023 Ingram Micro Inc. All rights reserved.
 
 from dateutil.parser import parse as dateutil_parse
 from django.utils import timezone
@@ -10,41 +10,33 @@ from dj_cqrs.utils import get_json_valid_value, get_message_expiration_dt
 class TransportPayload:
     """Transport message payload.
 
-    :param signal_type: Type of the signal for this message.
-    :type signal_type: dj_cqrs.constants.SignalType
-    :param cqrs_id: The unique CQRS identifier of the model.
-    :type cqrs_id: str
-    :param instance_data: Serialized data of the instance that
-                            generates the event.
-    :type instance_data: dict
-    :param instance_pk: Primary key of the instance.
-    :param queue: Queue to synchronize, defaults to None.
-    :type queue: str, optional
-    :param previous_data: Previous values for fields tracked for changes,
-                                defaults to None.
-    :type previous_data: dict, optional
-    :param correlation_id: Correlation ID of process, where this payload is used.
-    :type correlation_id: str, optional
-    :param retries: Current number of message retries.
-    :type retries: int, optional
-    :param expires: Message expiration datetime, infinite if None
-    :type expires: datetime, optional
-    :param meta: Payload metadata
-    :type meta: dict, optional
+    Args:
+        signal_type (dj_cqrs.constants.SignalType): Type of the signal for this message.
+        cqrs_id (str): The unique CQRS identifier of the model.
+        instance_data (dict): Serialized data of the instance that
+            generates the event.
+        instance_pk (str): Primary key of the instance.
+        queue (str): Queue to synchronize, defaults to None.
+        previous_data (dict): Previous values for fields tracked for changes,
+            defaults to None.
+        correlation_id (str): Correlation ID of process, where this payload is used.
+        retries (int): Current number of message retries.
+        expires (datetime): Message expiration datetime, infinite if None
+        meta (dict): Payload metadata
     """
 
     def __init__(
         self,
         signal_type,
-        cqrs_id,
-        instance_data,
-        instance_pk,
-        queue=None,
-        previous_data=None,
-        correlation_id=None,
+        cqrs_id: str,
+        instance_data: dict,
+        instance_pk: str,
+        queue: str = None,
+        previous_data: dict = None,
+        correlation_id: str = None,
         expires=None,
-        retries=0,
-        meta=None,
+        retries: int = 0,
+        meta: dict = None,
     ):
         self.__signal_type = signal_type
         self.__cqrs_id = cqrs_id
@@ -66,10 +58,11 @@ class TransportPayload:
     def from_message(cls, dct):
         """Builds payload from message data.
 
-        :param dct: Deserialized message body data.
-        :type dct: dict
-        :return: TransportPayload instance.
-        :rtype: TransportPayload
+        Args:
+            dct (dict): Deserialized message body data.
+
+        Returns:
+            (TransportPayload): TransportPayload instance.
         """
         if 'expires' in dct:
             expires = dct['expires']
@@ -136,11 +129,11 @@ class TransportPayload:
         assert value >= 0, "Payload retries field should be 0 or positive integer."
         self.__retries = value
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         """Return the payload as a dictionary.
 
-        :return: This payload.
-        :rtype: dict
+        Returns:
+            (dict): This payload.
         """
         expires = self.__expires
         if expires:
@@ -161,8 +154,8 @@ class TransportPayload:
     def is_expired(self):
         """Checks if this payload is expired.
 
-        :return: True if payload is expired, False otherwise.
-        :rtype: bool
+        Returns:
+            (bool): True if payload is expired, False otherwise.
         """
         return (
             self.__expires is not None

@@ -1,0 +1,12 @@
+<!doctype html><html lang="en-US"><head><meta name="referrer" content="same-origin"><meta charset="UTF-8"><meta name="viewport" content="width=1280"><link rel="preload" href="/26.0.671-g1a7b2b5/applicationinsights-sdk.min.js" as="script"><link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700|Roboto+Mono:400,500|Material+Icons" rel="stylesheet"><link id="mock-favicon" rel="shortcut icon" href="#"><script defer="defer" src="/26.0.671-g1a7b2b5/ec1e7ead0cc1757c2a0b.apsconnect.js"></script><link href="/26.0.671-g1a7b2b5/main.45c89579cb91e8827577.css" rel="stylesheet"></head><body><div id="app"></div><div id="updateBrowserWarning"><div class="message"><div class="message__icon"></div><h1 class="message__title">Unsupported browser</h1><p class="message__subtitle">This portal is not supported by the web browser you're currently using</p><p class="message__suggested-browsers">Please use one of the following browsers:<br>Chrome 58+, Firefox 55+, Safari 10+,<br>Opera 47+ or Microsoft Edge 16+</p></div></div><script src="/26.0.671-g1a7b2b5/bowser.min.js"/><script>var minVersions = {
+  "chrome": "58",
+  "msedge": "16",
+  "firefox": "55",
+  "opera": "47",
+  "safari": "10"
+};
+
+if (bowser.isUnsupportedBrowser(minVersions, window.navigator.userAgent)) {
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('updateBrowserWarning').style.display = 'block';
+}</script></body></html>

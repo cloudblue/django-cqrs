@@ -1,4 +1,4 @@
-#  Copyright © 2021 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2023 Ingram Micro Inc. All rights reserved.
 
 import pytest
 import ujson
@@ -27,9 +27,9 @@ def test_bad_cqrs_id():
 
 def test_output_file_exists():
     with pytest.raises(CommandError) as e:
-        call_command(COMMAND_NAME, '--cqrs-id=author', '-o=setup.py')
+        call_command(COMMAND_NAME, '--cqrs-id=author', '-o=pyproject.toml')
 
-    assert 'File setup.py exists!' in str(e)
+    assert 'File pyproject.toml exists!' in str(e)
 
 
 @pytest.mark.django_db

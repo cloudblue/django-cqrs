@@ -1,0 +1,72 @@
+site_name: Django CQRS Library
+site_url: https://github.com/cloudblue/django-cqrs
+repo_name: cloudblue/django-cqrs
+repo_url: https://github.com/cloudblue/django-cqrs
+edit_uri: ""
+copyright: Copyright &copy; 2023 Ingram Micro. All Rights Reserved.
+extra:
+  generator: false
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/cloudblue
+    - icon: material/home
+      link: https://connect.cloudblue.com/community/
+extra_css:
+  - css/custom.css
+theme:
+  name: material
+  logo: images/logo_full.png
+  favicon: images/favicon.ico
+  palette:
+    - scheme: "default"
+      media: "(prefers-color-scheme: light)"
+      toggle:
+        icon: "material/lightbulb"
+        name: "Switch to dark mode"
+    - scheme: "slate"
+      media: "(prefers-color-scheme: dark)"
+      primary: "blue"
+      toggle:
+        icon: "material/lightbulb-outline"
+        name: "Switch to light mode"
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.keys
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+  - attr_list
+  - tables
+plugins:
+  - glightbox
+  - macros:
+      module_name: docs/macros
+  - search:
+      lang: en
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          options:
+            show_signature_annotations: true
+            show_source: false
+            show_bases: false
+            show_root_toc_entry: false
+  - autorefs
+watch:
+  - docs
+  - dj_cqrs
+nav:
+  - Home: index.md
+  - Getting started: getting_started.md
+  - Django admin: admin.md
+  - Custom serialization: custom_serialization.md
+  - Keep track of changes to field: track_fields_changes.md
+  - Transports: transports.md
+  - Message lifecycle: lifecycle.md
+  - Utilities: utilities.md
+  - API Reference: reference.md

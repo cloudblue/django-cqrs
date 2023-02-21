@@ -10,26 +10,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         fetch-depth: 0
     - name: Set up Python 3.8
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
-        python-version: 3.8
+        python-version: '3.8'
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements/dev.txt
-        pip install -r requirements/test.txt
-        pip install pytest-cov
-        pip install django==3.2.*
+        pip install poetry
+        poetry install
+        poetry run pip install django==3.2.*
     - name: Linting
       run: |
-        flake8
+        poetry run flake8
     - name: Testing
       run: |
-        python setup.py test
+        poetry run pytest
     - name: Fix coverage report for Sonar
       run: |
         sed -i 's/\/home\/runner\/work\/django-cqrs\/django-cqrs\//\/github\/workspace\//g' coverage.xml
@@ -47,11 +46,19 @@ jobs:
       timeout-minutes: 5
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    - name: Extract tag name
+      uses: actions/github-script@v6
+      id: tag
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        result-encoding: string
+        script: |
+          return context.payload.ref.replace(/refs\/tags\//, '')
     - name: Publish
       env:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       run: |
-        pip install twine
-        python setup.py sdist
-        twine upload dist/*
+        poetry version ${{ steps.tag.outputs.result }}
+        poetry build
+        poetry publish -u $TWINE_USERNAME -p $TWINE_PASSWORD
