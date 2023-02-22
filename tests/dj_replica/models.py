@@ -149,6 +149,11 @@ class FailModel(ReplicaMixin):
         raise Exception('Test fail Exception')
 
 
+class OnlyDirectSyncModel(ReplicaMixin):
+    CQRS_ID = 'only_direct_sync'
+    CQRS_ONLY_DIRECT_SYNCS = True
+
+
 class CQRSMetaModel(ReplicaMixin):
     CQRS_ID = 'meta'
     CQRS_META = True

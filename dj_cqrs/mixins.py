@@ -411,6 +411,9 @@ class ReplicaMixin(RawReplicaMixin, Model, metaclass=ReplicaMeta):
     CQRS_META = False
     """Set it to True to receive meta data for this model."""
 
+    CQRS_ONLY_DIRECT_SYNCS = False
+    """Set it to True to ignore broadcast sync packages and to receive only direct queue syncs."""
+
     objects = Manager()
     cqrs = ReplicaManager()
     """Manager that adds needed CQRS queryset methods."""
