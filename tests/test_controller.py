@@ -8,6 +8,7 @@ from dj_cqrs.constants import SignalType
 from dj_cqrs.controller.consumer import consume, route_signal_to_replica_model
 from dj_cqrs.controller.producer import produce
 from dj_cqrs.dataclasses import TransportPayload
+from tests.dj_replica.models import OnlyDirectSyncModel
 
 
 def test_producer(mocker):
@@ -30,9 +31,11 @@ def test_producer(mocker):
 
 def test_consumer(mocker):
     factory_mock = mocker.patch('dj_cqrs.controller.consumer.route_signal_to_replica_model')
-    consume(TransportPayload('a', 'b', {}, 'c', previous_data={'e': 'f'}))
+    consume(TransportPayload('a', 'b', {}, 'c', previous_data={'e': 'f'}, queue='xyz'))
 
-    factory_mock.assert_called_once_with('a', 'b', {}, previous_data={'e': 'f'}, meta=None)
+    factory_mock.assert_called_once_with(
+        'a', 'b', {}, previous_data={'e': 'f'}, meta=None, queue='xyz',
+    )
 
 
 def test_changed_payload_data_during_consume(mocker):
@@ -94,3 +97,13 @@ def test_route_signal_to_replica_model_integrity_error(caplog):
 def test_route_signal_to_replica_model_without_db():
     with pytest.raises(NotImplementedError):
         route_signal_to_replica_model(SignalType.SAVE, 'no_db', {})
+
+
+@pytest.mark.parametrize('queue', ('abc', None))
+def test_route_signal_to_replica_with_only_direct_syncs(queue):
+    assert route_signal_to_replica_model(
+        signal_type=SignalType.SYNC,
+        cqrs_id=OnlyDirectSyncModel.CQRS_ID,
+        instance_data={},
+        queue=queue,
+    ) is True
