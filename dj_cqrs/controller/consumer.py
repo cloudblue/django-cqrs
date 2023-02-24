@@ -79,7 +79,8 @@ def route_signal_to_replica_model(
                 return model_cls.cqrs_save(instance_data, **f_kw)
 
     except Error as e:
-        pk_value = instance_data.get(model_cls._meta.pk.name)
+        pk_name = getattr(model_cls._meta.pk, 'name', 'id')
+        pk_value = instance_data.get(pk_name)
         cqrs_revision = instance_data.get('cqrs_revision')
 
         logger.error(
