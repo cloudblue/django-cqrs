@@ -1,6 +1,6 @@
 #  Copyright © 2023 Ingram Micro Inc. All rights reserved.
 
-from django.db import models
+from django.db import DatabaseError, models
 
 from dj_cqrs.metas import ReplicaMeta
 from dj_cqrs.mixins import RawReplicaMixin, ReplicaMixin
@@ -152,6 +152,23 @@ class FailModel(ReplicaMixin):
 class OnlyDirectSyncModel(ReplicaMixin):
     CQRS_ID = 'only_direct_sync'
     CQRS_ONLY_DIRECT_SYNCS = True
+
+
+class AbstractModel(ReplicaMixin):
+    CQRS_ID = 'abstract'
+
+    class Meta:
+        abstract = True
+
+    @classmethod
+    def cqrs_save(
+        cls,
+        master_data: dict,
+        previous_data: dict = None,
+        sync: bool = False,
+        meta: dict = None,
+    ):
+        raise DatabaseError
 
 
 class CQRSMetaModel(ReplicaMixin):

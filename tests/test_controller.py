@@ -8,7 +8,7 @@ from dj_cqrs.constants import SignalType
 from dj_cqrs.controller.consumer import consume, route_signal_to_replica_model
 from dj_cqrs.controller.producer import produce
 from dj_cqrs.dataclasses import TransportPayload
-from tests.dj_replica.models import OnlyDirectSyncModel
+from tests.dj_replica.models import AbstractModel, OnlyDirectSyncModel
 
 
 def test_producer(mocker):
@@ -107,3 +107,15 @@ def test_route_signal_to_replica_with_only_direct_syncs(queue):
         instance_data={},
         queue=queue,
     ) is True
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize('data, pk_repr', (({}, 'None'), ({'id': '123'}, '123')))
+def test_route_signal_to_replica_exception(data, pk_repr, caplog):
+    assert route_signal_to_replica_model(
+        signal_type=SignalType.SAVE,
+        cqrs_id=AbstractModel.CQRS_ID,
+        instance_data=data,
+    ) is None
+
+    assert 'pk = {pk}'.format(pk=pk_repr) in caplog.text
