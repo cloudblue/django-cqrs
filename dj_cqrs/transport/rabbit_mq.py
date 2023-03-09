@@ -112,7 +112,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
             exceptions.AMQPError, exceptions.ChannelError, exceptions.ReentrancyError,
             AMQPConnectorException,
         ):
-            logger.error("CQRS couldn't be published: pk = {0} ({1}).{2}".format(
+            logger.exception("CQRS couldn't be published: pk = {0} ({1}).{2}".format(
                 payload.pk, payload.cqrs_id, " Reconnect..." if retries else "",
             ))
 
