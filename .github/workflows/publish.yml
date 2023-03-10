@@ -31,7 +31,7 @@ jobs:
         poetry run pytest
     - name: Fix coverage report for Sonar
       run: |
-        sed -i 's/\/home\/runner\/work\/django-cqrs\/django-cqrs\//\/github\/workspace\//g' coverage.xml
+        sed -i 's/\/home\/runner\/work\/django-cqrs\/django-cqrs\//\/github\/workspace\//g' ./tests/reports/coverage.xml
     - name: SonarCloud
       uses: SonarSource/sonarcloud-github-action@master
       env:
