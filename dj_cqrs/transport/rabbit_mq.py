@@ -109,18 +109,26 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
             cls._produce_message(channel, exchange, payload)
             cls.log_produced(payload)
         except (
-            exceptions.AMQPError, exceptions.ChannelError, exceptions.ReentrancyError,
+            exceptions.AMQPError,
+            exceptions.ChannelError,
+            exceptions.ReentrancyError,
             AMQPConnectorException,
-        ):
-            logger.exception("CQRS couldn't be published: pk = {0} ({1}).{2}".format(
-                payload.pk, payload.cqrs_id, " Reconnect..." if retries else "",
+        ) as e:
+            base_log_message = "CQRS couldn't be published: pk = {0} ({1}).".format(
+                payload.pk, payload.cqrs_id,
+            )
+
+            if not retries:
+                logger.exception(base_log_message)
+                return
+
+            logger.warning('{0} Error: {1}. Reconnect...'.format(
+                base_log_message, e.__class__.__name__,
             ))
 
             # in case of any error - close connection and try to reconnect
             cls.clean_connection()
-
-            if retries:
-                cls._produce_with_retries(payload, retries - 1)
+            cls._produce_with_retries(payload, retries - 1)
 
     @classmethod
     def _consume_message(cls, ch, method, properties, body, delay_queue):
