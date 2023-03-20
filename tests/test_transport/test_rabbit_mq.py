@@ -8,7 +8,12 @@ import pytest
 import ujson
 from django.db import DatabaseError
 from pika.adapters.utils.connection_workflow import AMQPConnectorException
-from pika.exceptions import AMQPError, ChannelError, ReentrancyError
+from pika.exceptions import (
+    AMQPError,
+    ChannelError,
+    ReentrancyError,
+    StreamLostError,
+)
 
 from dj_cqrs.constants import (
     DEFAULT_MASTER_AUTO_UPDATE_FIELDS,
@@ -223,8 +228,47 @@ def test_produce_retry_on_error(rabbit_transport, mocker, caplog):
             SignalType.SAVE, 'CQRS_ID', {'id': 1}, 1,
         ),
     )
-    assert "CQRS couldn't be published: pk = 1 (CQRS_ID). Reconnect..." in caplog.text
-    assert 'CQRS is published: pk = 1 (CQRS_ID)' in caplog.text
+
+    assert caplog.record_tuples == [
+        (
+            'django-cqrs',
+            logging.WARNING,
+            "CQRS couldn't be published: pk = 1 (CQRS_ID)."
+            " Error: AMQPConnectorException. Reconnect...",
+        ),
+        (
+            'django-cqrs',
+            logging.INFO,
+            'CQRS is published: pk = 1 (CQRS_ID), correlation_id = None.',
+        ),
+    ]
+
+
+def test_produce_retry_on_error_1(rabbit_transport, mocker, caplog):
+    mocker.patch.object(RabbitMQTransport, '_get_producer_rmq_objects', side_effect=[
+        StreamLostError,
+        StreamLostError,
+    ])
+    mocker.patch.object(RabbitMQTransport, '_produce_message', return_value=True)
+
+    rabbit_transport.produce(
+        TransportPayload(
+            SignalType.SAVE, 'CQRS_ID', {'id': 1}, 1,
+        ),
+    )
+
+    assert caplog.record_tuples == [
+        (
+            'django-cqrs',
+            logging.WARNING,
+            "CQRS couldn't be published: pk = 1 (CQRS_ID). Error: StreamLostError. Reconnect...",
+        ),
+        (
+            'django-cqrs',
+            logging.ERROR,
+            "CQRS couldn't be published: pk = 1 (CQRS_ID).",
+        ),
+    ]
 
 
 def test_produce_message_ok(mocker):
