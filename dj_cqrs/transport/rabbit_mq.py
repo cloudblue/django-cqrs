@@ -114,10 +114,12 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
             exceptions.ReentrancyError,
             AMQPConnectorException,
         ) as e:
+            # in case of any error - close connection and try to reconnect
+            cls.clean_connection()
+
             base_log_message = "CQRS couldn't be published: pk = {0} ({1}).".format(
                 payload.pk, payload.cqrs_id,
             )
-
             if not retries:
                 logger.exception(base_log_message)
                 return
@@ -126,8 +128,6 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
                 base_log_message, e.__class__.__name__,
             ))
 
-            # in case of any error - close connection and try to reconnect
-            cls.clean_connection()
             cls._produce_with_retries(payload, retries - 1)
 
     @classmethod
