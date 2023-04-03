@@ -33,5 +33,5 @@ services:
       bash -c '
         dockerize -wait tcp://postgres:5432 -timeout 50s &&
         dockerize -wait tcp://mysql:3306 -timeout 50s &&
-        pytest
+        pytest -v
       '

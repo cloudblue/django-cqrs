@@ -173,7 +173,7 @@ def rabbit_transport(settings):
 
 
 @pytest.mark.parametrize(
-    'exception', (AMQPError, ChannelError, ReentrancyError, AMQPConnectorException),
+    'exception', (AMQPError, ChannelError, ReentrancyError, AMQPConnectorException, AssertionError),
 )
 def test_produce_connection_error(exception, rabbit_transport, mocker, caplog):
     mocker.patch.object(RabbitMQTransport, '_get_producer_rmq_objects', side_effect=exception)
