@@ -113,6 +113,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
             exceptions.ChannelError,
             exceptions.ReentrancyError,
             AMQPConnectorException,
+            AssertionError,
         ) as e:
             # in case of any error - close connection and try to reconnect
             cls.clean_connection()

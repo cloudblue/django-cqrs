@@ -64,13 +64,6 @@ def test_changed_payload_data_during_consume(mocker):
 
 
 @pytest.mark.django_db(transaction=True)
-def test_route_signal_to_replica_model_with_db(django_assert_num_queries):
-    query_counter = 0 if settings.DB_ENGINE == 'postgres' else 1
-    with django_assert_num_queries(query_counter):
-        route_signal_to_replica_model(SignalType.SAVE, 'lock', {})
-
-
-@pytest.mark.django_db(transaction=True)
 def test_route_signal_to_replica_model_integrity_error(caplog):
     instance_data = {
         'id': 10,

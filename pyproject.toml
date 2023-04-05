@@ -15,6 +15,7 @@ classifiers = [
     'Framework :: Django :: 3.2',
     'Framework :: Django :: 4.0',
     'Framework :: Django :: 4.1',
+    'Framework :: Django :: 4.2',
     'Intended Audience :: Developers',
     'License :: OSI Approved :: Apache Software License',
     'Operating System :: Unix',
@@ -45,11 +46,10 @@ python-dateutil = ">=2.4"
 watchfiles = "^0.18.1"
 
 [tool.poetry.group.test.dependencies]
-pytest = ">=6.1.2,<8"
+pytest = ">=7.2.0,<8"
 pytest-cov = ">=2.10.1,<5"
 pytest-mock = "^3.3.1"
 pytest-django = ">=4.4.0"
-pytest-pythonpath = { version = "^0.7.4", python = "<3.8" }
 pytest-randomly = ">=3.12"
 pytest-deadfixtures = "^2.2.1"
 coverage = {extras = ["toml"], version = ">=5.3,<7"}
@@ -86,7 +86,6 @@ python_files = "test_*.py"
 DJANGO_SETTINGS_MODULE = "tests.dj.settings"
 django_find_project = false
 pythonpath = [".", "src"]
-python_paths = ["."]
 
 [tool.coverage.xml]
 output = "tests/reports/coverage.xml"
@@ -102,3 +101,7 @@ use_parentheses = true
 include_trailing_comma = true
 line_length = 100
 lines_after_imports = 2
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
