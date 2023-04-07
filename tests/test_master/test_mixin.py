@@ -387,17 +387,21 @@ def test_serialization_no_related_instance(mocker):
 
 
 @pytest.mark.django_db(transaction=True)
-def test_save_serialization(mocker, django_assert_num_queries):
+def test_save_serialization(mocker, django_assert_num_queries, django_v_trans_q_count_sup):
     publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
 
+    # < Django 4.2
     # 0 - Transaction start (SQLite only)
     # 1 - Publisher
     # 2 - Author
     # 3-4 - Books
     # 5-6 - Serialization with prefetch_related
-    query_counter = 7 if settings.DB_ENGINE == 'sqlite' else 6
+    query_counter = 6 + django_v_trans_q_count_sup
+    if settings.DB_ENGINE == 'sqlite' and django_v_trans_q_count_sup == 0:
+        query_counter = 7
+
     with django_assert_num_queries(query_counter):
-        with transaction.atomic():
+        with transaction.atomic(savepoint=False):
             publisher = models.Publisher.objects.create(id=1, name='publisher')
             author = models.Author.objects.create(id=1, name='author', publisher=publisher)
             for index in range(1, 3):

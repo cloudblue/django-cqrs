@@ -1,5 +1,8 @@
+#  Copyright © 2023 Ingram Micro Inc. All rights reserved.
+
 from copy import deepcopy
 
+import django
 import pytest
 
 
@@ -14,3 +17,8 @@ def restore_cqrs_settings(settings):
         settings.CQRS = deepcopy(settings.CQRS)
 
     yield
+
+
+@pytest.fixture()
+def django_v_trans_q_count_sup():
+    return 2 if django.get_version() >= '4.2' else 0
