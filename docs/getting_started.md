@@ -9,7 +9,7 @@ Getting started
 
 # Requirements
 
-**django-cqrs** works with Python 3.7 or later and has the
+**django-cqrs** works with Python 3.8 or later and has the
 following dependencies:
 
 > -   Django \>= 3.2
