@@ -19,7 +19,6 @@ classifiers = [
     'Intended Audience :: Developers',
     'License :: OSI Approved :: Apache Software License',
     'Operating System :: Unix',
-    'Programming Language :: Python :: 3.7',
     'Programming Language :: Python :: 3.8',
     'Programming Language :: Python :: 3.9',
     'Programming Language :: Python :: 3.10',
@@ -36,7 +35,7 @@ keywords = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.7,<4"
+python = ">=3.8,<4"
 django = ">=3.2"
 pika = ">=1.0.0"
 kombu = ">=4.6.*"
@@ -48,7 +47,7 @@ watchfiles = "^0.18.1"
 [tool.poetry.group.test.dependencies]
 pytest = ">=7.2.0,<8"
 pytest-cov = ">=2.10.1,<5"
-pytest-mock = "^3.3.1"
+pytest-mock = "^3.10"
 pytest-django = ">=4.4.0"
 pytest-randomly = ">=3.12"
 pytest-deadfixtures = "^2.2.1"
@@ -58,12 +57,13 @@ flake8-bugbear = ">=20,<23"
 flake8-cognitive-complexity = "^0.1"
 flake8-commas = "~2.1"
 flake8-future-import = "~0.4"
-flake8-isort = "^5.0"
+flake8-isort = "^6.0"
 flake8-broken-line = ">=0.3,<0.7"
 flake8-comprehensions = "^3.10.1"
 flake8-debugger = "^4.1.2"
 flake8-eradicate = "^1.4.0"
 flake8-string-format = "^0.3.0"
+flake8-pyproject = "^1.2.3"
 djangorestframework = ">=3.12"
 isort = "^5.10"
 django-mptt = "^0.14.0"
@@ -105,3 +105,20 @@ lines_after_imports = 2
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.flake8]
+exclude = [
+    ".idea",
+    ".vscode",
+    ".git",
+    "pg_data",
+    "venv",
+    "*.eggs",
+    "*.egg",
+    "*.egg-info",
+    "examples/*migrations/*",
+]
+show-source = true
+max-line-length = 100
+max-cognitive-complexity = 20
+ignore = ["FI1", "W503", "W605"]
