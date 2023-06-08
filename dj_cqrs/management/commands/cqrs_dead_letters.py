@@ -12,7 +12,6 @@ from dj_cqrs.utils import get_message_expiration_dt
 
 
 class RabbitMQTransportService(RabbitMQTransport):
-
     @classmethod
     def get_consumer_settings(cls):
         return cls._get_consumer_settings()
@@ -50,7 +49,8 @@ class Command(BaseCommand):
 
         queue_name, dead_letter_queue_name, *_ = RabbitMQTransportService.get_consumer_settings()
         dead_letters_queue = RabbitMQTransportService.declare_queue(
-            channel, dead_letter_queue_name,
+            channel,
+            dead_letter_queue_name,
         )
         dead_letters_count = dead_letters_queue.method.message_count
         consumer_generator = channel.consume(
@@ -72,12 +72,15 @@ class Command(BaseCommand):
 
     def check_transport(self):
         if not issubclass(current_transport, RabbitMQTransport):
-            raise CommandError("Dead letters commands available only for RabbitMQTransport.")
+            raise CommandError('Dead letters commands available only for RabbitMQTransport.')
 
     def init_broker(self):
         host, port, creds, exchange = RabbitMQTransportService.get_common_settings()
         connection, channel = RabbitMQTransportService.create_connection(
-            host, port, creds, exchange,
+            host,
+            port,
+            creds,
+            exchange,
         )
 
         queue_name, dead_letter_queue_name, *_ = RabbitMQTransportService.get_consumer_settings()
@@ -96,9 +99,9 @@ class Command(BaseCommand):
         return channel, connection
 
     def handle_retry(self, channel, consumer_generator, dead_letters_count):
-        self.stdout.write("Total dead letters: {0}".format(dead_letters_count))
+        self.stdout.write('Total dead letters: {0}'.format(dead_letters_count))
         for i in range(1, dead_letters_count + 1):
-            self.stdout.write("Retrying: {0}/{1}".format(i, dead_letters_count))
+            self.stdout.write('Retrying: {0}/{1}'.format(i, dead_letters_count))
             method_frame, properties, body = next(consumer_generator)
 
             dct = ujson.loads(body)
@@ -122,7 +125,7 @@ class Command(BaseCommand):
             self.stdout.write(body.decode('utf-8'))
 
     def handle_purge(self, channel, dead_letter_queue_name, dead_letter_count):
-        self.stdout.write("Total dead letters: {0}".format(dead_letter_count))
+        self.stdout.write('Total dead letters: {0}'.format(dead_letter_count))
         if dead_letter_count > 0:
             channel.queue_purge(dead_letter_queue_name)
-            self.stdout.write("Purged")
+            self.stdout.write('Purged')

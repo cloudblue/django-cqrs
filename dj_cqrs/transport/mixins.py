@@ -7,7 +7,7 @@ logger = logging.getLogger('django-cqrs')
 
 
 class LoggingMixin:
-    _BASE_PAYLOAD_LOG_TEMPLATE = "CQRS is %s: pk = %s (%s), correlation_id = %s."
+    _BASE_PAYLOAD_LOG_TEMPLATE = 'CQRS is %s: pk = %s (%s), correlation_id = %s.'
 
     @staticmethod
     def log_consumed(payload):
@@ -15,7 +15,7 @@ class LoggingMixin:
         Args:
             payload (dj_cqrs.dataclasses.TransportPayload): Transport payload from master model.
         """
-        msg = "CQRS is received: pk = %s (%s), correlation_id = %s."
+        msg = 'CQRS is received: pk = %s (%s), correlation_id = %s.'
         logger.info(msg, payload.pk, payload.cqrs_id, payload.correlation_id)
 
     @staticmethod
@@ -24,7 +24,7 @@ class LoggingMixin:
         Args:
             payload (dj_cqrs.dataclasses.TransportPayload): Transport payload from master model.
         """
-        msg = "CQRS is applied: pk = %s (%s), correlation_id = %s."
+        msg = 'CQRS is applied: pk = %s (%s), correlation_id = %s.'
         logger.info(msg, payload.pk, payload.cqrs_id, payload.correlation_id)
 
     @staticmethod
@@ -33,7 +33,7 @@ class LoggingMixin:
         Args:
             payload (dj_cqrs.dataclasses.TransportPayload): Transport payload from master model.
         """
-        msg = "CQRS is denied: pk = %s (%s), correlation_id = %s."
+        msg = 'CQRS is denied: pk = %s (%s), correlation_id = %s.'
         logger.warning(msg, payload.pk, payload.cqrs_id, payload.correlation_id)
 
     @staticmethod
@@ -42,11 +42,13 @@ class LoggingMixin:
         Args:
             payload (dj_cqrs.dataclasses.TransportPayload): Transport payload from master model.
         """
-        msg = (
-            "CQRS is failed: pk = %s (%s), correlation_id = %s, retries = %s.",
-        )
+        msg = ('CQRS is failed: pk = %s (%s), correlation_id = %s, retries = %s.',)
         logger.warning(
-            msg, payload.pk, payload.cqrs_id, payload.correlation_id, payload.retries,
+            msg,
+            payload.pk,
+            payload.cqrs_id,
+            payload.correlation_id,
+            payload.retries,
         )
 
     @staticmethod
@@ -55,7 +57,7 @@ class LoggingMixin:
         Args:
             payload (dj_cqrs.dataclasses.TransportPayload): Transport payload from master model.
         """
-        msg = "CQRS is added to dead letter queue: pk = %s (%s), correlation_id = %s."
+        msg = 'CQRS is added to dead letter queue: pk = %s (%s), correlation_id = %s.'
         logger.warning(msg, payload.pk, payload.cqrs_id, payload.correlation_id)
 
     @staticmethod
@@ -66,11 +68,14 @@ class LoggingMixin:
             delay (int): Seconds to wait before requeuing message.
             eta (datetime): Requeuing datetime.
         """
-        msg = (
-            "CQRS is delayed: pk = %s (%s), correlation_id = %s, delay = %s sec, eta = %s.",
-        )
+        msg = ('CQRS is delayed: pk = %s (%s), correlation_id = %s, delay = %s sec, eta = %s.',)
         logger.warning(
-            msg, payload.pk, payload.cqrs_id, payload.correlation_id, delay, eta,
+            msg,
+            payload.pk,
+            payload.cqrs_id,
+            payload.correlation_id,
+            delay,
+            eta,
         )
 
     @staticmethod
@@ -79,9 +84,7 @@ class LoggingMixin:
         Args:
             payload (dj_cqrs.dataclasses.TransportPayload): Transport payload from master model.
         """
-        msg = (
-            "CQRS is requeued: pk = %s (%s), correlation_id = %s.",
-        )
+        msg = ('CQRS is requeued: pk = %s (%s), correlation_id = %s.',)
         logger.warning(msg, payload.pk, payload.cqrs_id, payload.correlation_id)
 
     @staticmethod
@@ -90,5 +93,5 @@ class LoggingMixin:
         Args:
             payload (dj_cqrs.dataclasses.TransportPayload): Transport payload from master model.
         """
-        msg = "CQRS is published: pk = %s (%s), correlation_id = %s."
+        msg = 'CQRS is published: pk = %s (%s), correlation_id = %s.'
         logger.info(msg, payload.pk, payload.cqrs_id, payload.correlation_id)

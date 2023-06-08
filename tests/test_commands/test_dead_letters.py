@@ -130,4 +130,4 @@ def test_check_transport(settings):
     with pytest.raises(CommandError) as e:
         command.check_transport()
 
-    assert "Dead letters commands available only for RabbitMQTransport." in str(e)
+    assert 'Dead letters commands available only for RabbitMQTransport.' in str(e)

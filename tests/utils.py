@@ -27,8 +27,7 @@ def db_error(*args, **kwargs):
 def assert_tracked_fields(model_cls, fields):
     if model_cls.CQRS_TRACKED_FIELDS == '__all__':
         fields_to_track = {
-            f.attname if f.is_relation else f.name
-            for f in model_cls._meta.concrete_fields
+            f.attname if f.is_relation else f.name for f in model_cls._meta.concrete_fields
         }
     else:
         fields_to_track = set()

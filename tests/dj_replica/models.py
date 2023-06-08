@@ -192,6 +192,7 @@ class CQRSMetaModel(ReplicaMixin):
 
 
 for cqrs_id in ('document1', 'document2'):
+
     class DocCls(RawReplicaMixin):
         CQRS_ID = cqrs_id
         CQRS_META = True

@@ -29,9 +29,13 @@ class Command(BaseCommand):
             for package_line in f:
                 master_data = self.deserialize_in(package_line)
 
-                qs = model._default_manager.filter(
-                    pk__in=master_data.keys(),
-                ).order_by().only('pk', 'cqrs_revision')
+                qs = (
+                    model._default_manager.filter(
+                        pk__in=master_data.keys(),
+                    )
+                    .order_by()
+                    .only('pk', 'cqrs_revision')
+                )
                 replica_data = {instance.pk: instance.cqrs_revision for instance in qs}
 
                 diff_ids = set()

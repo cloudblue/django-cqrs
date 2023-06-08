@@ -8,8 +8,9 @@ from dj_cqrs.mixins import ReplicaMixin
 
 class User(ReplicaMixin, AbstractUser):
     """
-        Simple replica which sync all fields
+    Simple replica which sync all fields
     """
+
     CQRS_ID = 'user'
 
 
@@ -19,8 +20,9 @@ class ProductType(models.Model):
 
 class Product(ReplicaMixin, models.Model):
     """
-        Replica with custom serialization and relation control
+    Replica with custom serialization and relation control
     """
+
     CQRS_ID = 'product'
     CQRS_CUSTOM_SERIALIZATION = True
 
@@ -56,11 +58,12 @@ class Product(ReplicaMixin, models.Model):
 
 class Purchase(ReplicaMixin):
     """
-        Replica model with custom storage mechanism.
+    Replica model with custom storage mechanism.
 
-        To simplify we use redis cache storage for this demo, but any SQL and NoSQL storage can
-        be used.
+    To simplify we use redis cache storage for this demo, but any SQL and NoSQL storage can
+    be used.
     """
+
     CQRS_ID = 'purchase'
     CQRS_CUSTOM_SERIALIZATION = True
 

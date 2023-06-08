@@ -18,19 +18,22 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--cqrs-id', '-cid',
+            '--cqrs-id',
+            '-cid',
             help='CQRS_ID of the master model',
             type=str,
             required=True,
         )
         parser.add_argument(
-            '--filter', '-f',
+            '--filter',
+            '-f',
             help='Filter kwargs',
             type=str,
             default=None,
         )
         parser.add_argument(
-            '--batch', '-b',
+            '--batch',
+            '-b',
             help='Batch size',
             type=int,
             default=10000,

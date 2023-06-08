@@ -133,16 +133,19 @@ def test_to_cqrs_dict_basic_types():
         url_field='http://example.com',
         uuid_field=uid,
     )
-    assert_is_sub_dict({
-        'int_field': 1,
-        'bool_field': False,
-        'char_field': 'str',
-        'date_field': None,
-        'datetime_field': str(dt),
-        'float_field': 1.23,
-        'url_field': 'http://example.com',
-        'uuid_field': str(uid),
-    }, m.to_cqrs_dict())
+    assert_is_sub_dict(
+        {
+            'int_field': 1,
+            'bool_field': False,
+            'char_field': 'str',
+            'date_field': None,
+            'datetime_field': str(dt),
+            'float_field': 1.23,
+            'url_field': 'http://example.com',
+            'uuid_field': str(uid),
+        },
+        m.to_cqrs_dict(),
+    )
 
 
 def test_to_cqrs_dict_all_fields():
@@ -189,7 +192,10 @@ def test_cqrs_sync_not_saved(mocker):
 
     assert_publisher_once_called_with_args(
         publisher_mock,
-        SignalType.SYNC, models.ChosenFieldsModel.CQRS_ID, {'char_field': 'old', 'id': m.pk}, m.pk,
+        SignalType.SYNC,
+        models.ChosenFieldsModel.CQRS_ID,
+        {'char_field': 'old', 'id': m.pk},
+        m.pk,
     )
 
 
@@ -205,7 +211,10 @@ def test_cqrs_sync(mocker):
 
     assert_publisher_once_called_with_args(
         publisher_mock,
-        SignalType.SYNC, models.ChosenFieldsModel.CQRS_ID, {'char_field': 'new', 'id': m.pk}, m.pk,
+        SignalType.SYNC,
+        models.ChosenFieldsModel.CQRS_ID,
+        {'char_field': 'new', 'id': m.pk},
+        m.pk,
     )
 
 
@@ -342,7 +351,10 @@ def test_transaction_commited(mocker):
 
     assert_publisher_once_called_with_args(
         publisher_mock,
-        SignalType.SAVE, models.BasicFieldsModel.CQRS_ID, {'char_field': 'str', 'int_field': 1}, 1,
+        SignalType.SAVE,
+        models.BasicFieldsModel.CQRS_ID,
+        {'char_field': 'str', 'int_field': 1},
+        1,
     )
 
 
@@ -364,7 +376,10 @@ def test_transaction_rollbacked_to_savepoint(mocker):
 
     assert_publisher_once_called_with_args(
         publisher_mock,
-        SignalType.SAVE, models.BasicFieldsModel.CQRS_ID, {'char_field': 'str', 'int_field': 1}, 1,
+        SignalType.SAVE,
+        models.BasicFieldsModel.CQRS_ID,
+        {'char_field': 'str', 'int_field': 1},
+        1,
     )
 
 
@@ -375,14 +390,16 @@ def test_serialization_no_related_instance(mocker):
 
     assert_publisher_once_called_with_args(
         publisher_mock,
-        SignalType.SAVE, models.Author.CQRS_ID,
+        SignalType.SAVE,
+        models.Author.CQRS_ID,
         {
             'id': 1,
             'name': 'author',
             'publisher': None,
             'books': [],
             'cqrs_revision': 0,
-        }, 1,
+        },
+        1,
     )
 
 
@@ -409,7 +426,8 @@ def test_save_serialization(mocker, django_assert_num_queries, django_v_trans_q_
 
     assert_publisher_once_called_with_args(
         publisher_mock,
-        SignalType.SAVE, models.Author.CQRS_ID,
+        SignalType.SAVE,
+        models.Author.CQRS_ID,
         {
             'id': 1,
             'name': 'author',
@@ -417,15 +435,19 @@ def test_save_serialization(mocker, django_assert_num_queries, django_v_trans_q_
                 'id': 1,
                 'name': 'publisher',
             },
-            'books': [{
-                'id': 1,
-                'name': '1',
-            }, {
-                'id': 2,
-                'name': '2',
-            }],
+            'books': [
+                {
+                    'id': 1,
+                    'name': '1',
+                },
+                {
+                    'id': 2,
+                    'name': '2',
+                },
+            ],
             'cqrs_revision': 0,
-        }, 1,
+        },
+        1,
     )
 
 
@@ -455,10 +477,12 @@ def test_create_from_related_table(mocker):
             'id': 1,
             'name': 'author',
             'publisher': None,
-            'books': [{
-                'id': 1,
-                'name': 'title',
-            }],
+            'books': [
+                {
+                    'id': 1,
+                    'name': 'title',
+                },
+            ],
             'cqrs_revision': 1,
         },
         publisher_mock.call_args[0][0].instance_data,
@@ -661,9 +685,15 @@ def test_cqrs_tracked_fields_date_and_datetime_tracking(mocker):
     instance.save()
 
     tracked_data = instance.get_tracked_fields_data()
-    assert publisher_mock.call_args[0][0].previous_data == tracked_data == {
-        'cqrs_revision': 0, 'datetime_field': str(old_dt), 'date_field': str(old_d),
-    }
+    assert (
+        publisher_mock.call_args[0][0].previous_data
+        == tracked_data
+        == {
+            'cqrs_revision': 0,
+            'datetime_field': str(old_dt),
+            'date_field': str(old_d),
+        }
+    )
 
 
 def test_mptt_cqrs_tracked_fields_model_has_tracker():

@@ -12,13 +12,17 @@ from app.models import (
 
 
 def _render_page(request, **kwargs):
-    return render(request, 'main.html', {
-        'users': User.objects.order_by('pk'),
-        'product_types': ProductType.objects.order_by('pk'),
-        'products': Product.objects.order_by('pk'),
-        'purchases': Purchase.objects.order_by('pk'),
-        **kwargs,
-    })
+    return render(
+        request,
+        'main.html',
+        {
+            'users': User.objects.order_by('pk'),
+            'product_types': ProductType.objects.order_by('pk'),
+            'products': Product.objects.order_by('pk'),
+            'purchases': Purchase.objects.order_by('pk'),
+            **kwargs,
+        },
+    )
 
 
 def render_main_page_if_get(f):
@@ -28,6 +32,7 @@ def render_main_page_if_get(f):
         if request.method != 'POST':
             return HttpResponseNotAllowed(['GET', 'POST'])
         return f(request, *args, **kwargs)
+
     return wrap
 
 

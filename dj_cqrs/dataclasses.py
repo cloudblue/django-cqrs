@@ -126,7 +126,7 @@ class TransportPayload:
 
     @retries.setter
     def retries(self, value):
-        assert value >= 0, "Payload retries field should be 0 or positive integer."
+        assert value >= 0, 'Payload retries field should be 0 or positive integer.'
         self.__retries = value
 
     def to_dict(self) -> dict:
@@ -157,7 +157,4 @@ class TransportPayload:
         Returns:
             (bool): True if payload is expired, False otherwise.
         """
-        return (
-            self.__expires is not None
-            and self.__expires <= timezone.now()
-        )
+        return self.__expires is not None and self.__expires <= timezone.now()

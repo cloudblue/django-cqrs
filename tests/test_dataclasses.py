@@ -7,13 +7,15 @@ from dj_cqrs.dataclasses import TransportPayload
 
 
 def test_transport_payload_infinite_expires():
-    payload = TransportPayload.from_message({
-        'signal_type': SignalType.SYNC,
-        'cqrs_id': 'cqrs_id',
-        'instance_data': {},
-        'instance_pk': 'id',
-        'expires': None,
-    })
+    payload = TransportPayload.from_message(
+        {
+            'signal_type': SignalType.SYNC,
+            'cqrs_id': 'cqrs_id',
+            'instance_data': {},
+            'instance_pk': 'id',
+            'expires': None,
+        },
+    )
 
     assert payload.expires is None
 
@@ -25,11 +27,13 @@ def test_transport_payload_without_expires(mocker, settings):
     settings.CQRS['master']['CQRS_MESSAGE_TTL'] = 10
     expected_expires = datetime(2020, 1, 1, second=10, tzinfo=timezone.utc)
 
-    payload = TransportPayload.from_message({
-        'signal_type': SignalType.SYNC,
-        'cqrs_id': 'cqrs_id',
-        'instance_data': {},
-        'instance_pk': 'id',
-    })
+    payload = TransportPayload.from_message(
+        {
+            'signal_type': SignalType.SYNC,
+            'cqrs_id': 'cqrs_id',
+            'instance_data': {},
+            'instance_pk': 'id',
+        },
+    )
 
     assert payload.expires == expected_expires

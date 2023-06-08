@@ -11,7 +11,7 @@ logger = logging.getLogger('django-cqrs')
 class RegistryMixin:
     @classmethod
     def register_model(cls, model_cls):
-        """ Registration of CQRS model identifiers. """
+        """Registration of CQRS model identifiers."""
 
         e = "Two models can't have the same CQRS_ID: {0}.".format(model_cls.CQRS_ID)
         assert model_cls.CQRS_ID not in cls.models, e

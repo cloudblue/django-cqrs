@@ -33,7 +33,7 @@ class MasterManager(Manager):
         return objs
 
     def bulk_update(self, queryset, **kwargs):
-        """ Custom update method to support sending of update signals.
+        """Custom update method to support sending of update signals.
 
         Args:
             queryset (django.db.models.QuerySet): Django Queryset (f.e. filter).
@@ -62,7 +62,9 @@ class MasterManager(Manager):
 
             current_dt = timezone.now()
             result = queryset.update(
-                cqrs_revision=F('cqrs_revision') + 1, cqrs_updated=current_dt, **kwargs,
+                cqrs_revision=F('cqrs_revision') + 1,
+                cqrs_updated=current_dt,
+                **kwargs,
             )
 
             objs = list_all()
@@ -83,7 +85,7 @@ class ReplicaManager(Manager):
         sync: bool = False,
         meta: dict = None,
     ):
-        """ This method saves (creates or updates) model instance from CQRS master instance data.
+        """This method saves (creates or updates) model instance from CQRS master instance data.
 
         Args:
             master_data (dict): CQRS master instance data.
@@ -130,7 +132,7 @@ class ReplicaManager(Manager):
         sync: bool = False,
         meta: dict = None,
     ):
-        """ This method creates model instance from mapped CQRS master instance data.
+        """This method creates model instance from mapped CQRS master instance data.
 
         Args:
             mapped_data (dict): Mapped CQRS master instance data.
@@ -152,7 +154,9 @@ class ReplicaManager(Manager):
 
             logger.error(
                 '{0}\nCQRS create error: pk = {1} ({2}).'.format(
-                    str(e), pk_value, self.model.CQRS_ID,
+                    str(e),
+                    pk_value,
+                    self.model.CQRS_ID,
                 ),
             )
 
@@ -164,7 +168,7 @@ class ReplicaManager(Manager):
         sync: bool = False,
         meta: dict = None,
     ):
-        """ This method updates model instance from mapped CQRS master instance data.
+        """This method updates model instance from mapped CQRS master instance data.
 
         Args:
             instance (django.db.models.Model): ReplicaMixin model instance.
@@ -186,9 +190,14 @@ class ReplicaManager(Manager):
                     'CQRS revision downgrade on sync: pk = {0}, '
                     'cqrs_revision = new {1} / existing {2} ({3}).'
                 )
-                logger.warning(w_tpl.format(
-                    pk_value, current_cqrs_revision, existing_cqrs_revision, self.model.CQRS_ID,
-                ))
+                logger.warning(
+                    w_tpl.format(
+                        pk_value,
+                        current_cqrs_revision,
+                        existing_cqrs_revision,
+                        self.model.CQRS_ID,
+                    ),
+                )
 
         else:
             if existing_cqrs_revision > current_cqrs_revision:
@@ -196,21 +205,29 @@ class ReplicaManager(Manager):
                     'Wrong CQRS sync order: pk = {0}, '
                     'cqrs_revision = new {1} / existing {2} ({3}).'
                 )
-                logger.error(e_tpl.format(
-                    pk_value, current_cqrs_revision, existing_cqrs_revision, self.model.CQRS_ID,
-                ))
+                logger.error(
+                    e_tpl.format(
+                        pk_value,
+                        current_cqrs_revision,
+                        existing_cqrs_revision,
+                        self.model.CQRS_ID,
+                    ),
+                )
                 return instance
 
             if existing_cqrs_revision == current_cqrs_revision:
                 logger.error(
                     'Received duplicate CQRS data: pk = {0}, cqrs_revision = {1} ({2}).'.format(
-                        pk_value, current_cqrs_revision, self.model.CQRS_ID,
+                        pk_value,
+                        current_cqrs_revision,
+                        self.model.CQRS_ID,
                     ),
                 )
                 if current_cqrs_revision == 0:
                     logger.warning(
                         'CQRS potential creation race condition: pk = {0} ({1}).'.format(
-                            pk_value, self.model.CQRS_ID,
+                            pk_value,
+                            self.model.CQRS_ID,
                         ),
                     )
 
@@ -220,10 +237,14 @@ class ReplicaManager(Manager):
                 w_tpl = (
                     'Lost or filtered out {0} CQRS packages: pk = {1}, cqrs_revision = {2} ({3})'
                 )
-                logger.warning(w_tpl.format(
-                    current_cqrs_revision - instance.cqrs_revision - 1,
-                    pk_value, current_cqrs_revision, self.model.CQRS_ID,
-                ))
+                logger.warning(
+                    w_tpl.format(
+                        current_cqrs_revision - instance.cqrs_revision - 1,
+                        pk_value,
+                        current_cqrs_revision,
+                        self.model.CQRS_ID,
+                    ),
+                )
 
         f_kw = {'previous_data': previous_data}
         if self.model.CQRS_META:
@@ -234,12 +255,15 @@ class ReplicaManager(Manager):
         except (Error, ValidationError) as e:
             logger.error(
                 '{0}\nCQRS update error: pk = {1}, cqrs_revision = {2} ({3}).'.format(
-                    str(e), pk_value, current_cqrs_revision, self.model.CQRS_ID,
+                    str(e),
+                    pk_value,
+                    current_cqrs_revision,
+                    self.model.CQRS_ID,
                 ),
             )
 
     def delete_instance(self, master_data: dict) -> bool:
-        """ This method deletes model instance from mapped CQRS master instance data.
+        """This method deletes model instance from mapped CQRS master instance data.
 
         Args:
             master_data (dict): CQRS master instance data.
@@ -258,7 +282,9 @@ class ReplicaManager(Manager):
             except Error as e:
                 logger.error(
                     '{0}\nCQRS delete error: pk = {1} ({2}).'.format(
-                        str(e), pk_value, self.model.CQRS_ID,
+                        str(e),
+                        pk_value,
+                        self.model.CQRS_ID,
                     ),
                 )
 
@@ -308,9 +334,12 @@ class ReplicaManager(Manager):
         }
         for master_name, replica_name in self.model.CQRS_MAPPING.items():
             if master_name not in master_data:
-                logger.error('Bad master-replica mapping for {0} ({1}).'.format(
-                    master_name, self.model.CQRS_ID,
-                ))
+                logger.error(
+                    'Bad master-replica mapping for {0} ({1}).'.format(
+                        master_name,
+                        self.model.CQRS_ID,
+                    ),
+                )
                 return
 
             mapped_data[replica_name] = master_data[master_name]
@@ -318,17 +347,13 @@ class ReplicaManager(Manager):
 
     def _remove_excessive_data(self, data):
         opts = self.model._meta
-        possible_field_names = {
-            f.name for f in opts.fields
-        }
+        possible_field_names = {f.name for f in opts.fields}
         return {k: v for k, v in data.items() if k in possible_field_names}
 
     def _all_required_fields_are_filled(self, mapped_data):
         opts = self.model._meta
 
-        required_field_names = {
-            f.name for f in opts.fields if not f.null
-        }
+        required_field_names = {f.name for f in opts.fields if not f.null}
         if not (required_field_names - set(mapped_data.keys())):
             return True
 

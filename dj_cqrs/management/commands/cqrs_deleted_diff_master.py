@@ -32,7 +32,8 @@ class Command(BaseCommand):
                     model.objects.filter(
                         pk__in=master_data,
                     ).values_list(
-                        'pk', flat=True,
+                        'pk',
+                        flat=True,
                     ),
                 )
                 diff_ids = list(master_data - exist_pks)

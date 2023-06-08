@@ -73,7 +73,7 @@ def test_wrong_cqrs_id(reload_transport):
     with pytest.raises(CommandError) as e:
         call_command(COMMAND_NAME, cqrs_id=['author', 'random', 'no_db'])
 
-    assert "Wrong CQRS ID: random!" in str(e)
+    assert 'Wrong CQRS ID: random!' in str(e)
 
 
 def test_worker_manager_constructor_with_reload(mocker):

@@ -11,28 +11,27 @@ def test_full_configuration():
     def f(*a, **kw):
         pass
 
-    settings = MagicMock(CQRS={
-        'queue': 'start',
-
-        'transport': 'dj_cqrs.transport.rabbit_mq.RabbitMQTransport',
-        'host': 'host',
-        'port': 1234,
-        'user': 'user',
-        'password': 'pswd',
-
-        'master': {
-            'CQRS_AUTO_UPDATE_FIELDS': True,
-            'CQRS_MESSAGE_TTL': 10,
-            'correlation_function': f,
-            'meta_function': f,
+    settings = MagicMock(
+        CQRS={
+            'queue': 'start',
+            'transport': 'dj_cqrs.transport.rabbit_mq.RabbitMQTransport',
+            'host': 'host',
+            'port': 1234,
+            'user': 'user',
+            'password': 'pswd',
+            'master': {
+                'CQRS_AUTO_UPDATE_FIELDS': True,
+                'CQRS_MESSAGE_TTL': 10,
+                'correlation_function': f,
+                'meta_function': f,
+            },
+            'replica': {
+                'CQRS_MAX_RETRIES': 5,
+                'CQRS_RETRY_DELAY': 4,
+                'delay_queue_max_size': 2,
+            },
         },
-
-        'replica': {
-            'CQRS_MAX_RETRIES': 5,
-            'CQRS_RETRY_DELAY': 4,
-            'delay_queue_max_size': 2,
-        },
-    })
+    )
 
     validate_settings(settings)
 
@@ -75,10 +74,12 @@ def test_transport_has_wrong_inheritance():
 
 @pytest.fixture
 def cqrs_settings():
-    return MagicMock(CQRS={
-        'transport': 'dj_cqrs.transport.mock.TransportMock',
-        'queue': 'replica',
-    })
+    return MagicMock(
+        CQRS={
+            'transport': 'dj_cqrs.transport.mock.TransportMock',
+            'queue': 'replica',
+        },
+    )
 
 
 def test_master_configuration_not_set(cqrs_settings):

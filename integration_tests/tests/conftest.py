@@ -36,7 +36,7 @@ def clean_rabbit_transport_connection():
 @pytest.fixture
 def replica_channel(settings):
     if current_transport is not RabbitMQTransport:
-        pytest.skip("Replica channel is implemented only for RabbitMQTransport.")
+        pytest.skip('Replica channel is implemented only for RabbitMQTransport.')
 
     connection = BlockingConnection(
         parameters=URLParameters(settings.CQRS['url']),

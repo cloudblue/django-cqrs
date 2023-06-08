@@ -25,7 +25,6 @@ logger = logging.getLogger('django-cqrs')
 
 
 class _KombuConsumer(ConsumerMixin):
-
     def __init__(self, url, exchange_name, queue_name, prefetch_count, callback, cqrs_ids=None):
         self.connection = Connection(url)
         self.exchange = Exchange(
@@ -76,6 +75,7 @@ class _KombuConsumer(ConsumerMixin):
 
 class KombuTransport(LoggingMixin, BaseTransport):
     """Transport class for Kombu."""
+
     CONSUMER_RETRY_TIMEOUT = 5
 
     @classmethod
@@ -121,9 +121,12 @@ class KombuTransport(LoggingMixin, BaseTransport):
             cls._produce_message(channel, exchange, payload)
             cls.log_produced(payload)
         except KombuError:
-            logger.error("CQRS couldn't be published: pk = {0} ({1}).".format(
-                payload.pk, payload.cqrs_id,
-            ))
+            logger.error(
+                "CQRS couldn't be published: pk = {0} ({1}).".format(
+                    payload.pk,
+                    payload.cqrs_id,
+                ),
+            )
         finally:
             if connection:
                 connection.close()

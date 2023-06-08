@@ -173,14 +173,18 @@ def rabbit_transport(settings):
 
 
 @pytest.mark.parametrize(
-    'exception', (AMQPError, ChannelError, ReentrancyError, AMQPConnectorException, AssertionError),
+    'exception',
+    (AMQPError, ChannelError, ReentrancyError, AMQPConnectorException, AssertionError),
 )
 def test_produce_connection_error(exception, rabbit_transport, mocker, caplog):
     mocker.patch.object(RabbitMQTransport, '_get_producer_rmq_objects', side_effect=exception)
 
     rabbit_transport.produce(
         TransportPayload(
-            SignalType.SAVE, 'CQRS_ID', {'id': 1}, 1,
+            SignalType.SAVE,
+            'CQRS_ID',
+            {'id': 1},
+            1,
         ),
     )
     assert "CQRS couldn't be published: pk = 1 (CQRS_ID)." in caplog.text
@@ -188,13 +192,18 @@ def test_produce_connection_error(exception, rabbit_transport, mocker, caplog):
 
 def test_produce_publish_error(rabbit_transport, mocker, caplog):
     mocker.patch.object(
-        RabbitMQTransport, '_get_producer_rmq_objects', return_value=(mocker.MagicMock(), None),
+        RabbitMQTransport,
+        '_get_producer_rmq_objects',
+        return_value=(mocker.MagicMock(), None),
     )
     mocker.patch.object(RabbitMQTransport, '_produce_message', side_effect=AMQPError)
 
     rabbit_transport.produce(
         TransportPayload(
-            SignalType.SAVE, 'CQRS_ID', {'id': 1}, 1,
+            SignalType.SAVE,
+            'CQRS_ID',
+            {'id': 1},
+            1,
         ),
     )
     assert "CQRS couldn't be published: pk = 1 (CQRS_ID)." in caplog.text
@@ -203,13 +212,18 @@ def test_produce_publish_error(rabbit_transport, mocker, caplog):
 def test_produce_ok(rabbit_transport, mocker, caplog):
     caplog.set_level(logging.INFO)
     mocker.patch.object(
-        RabbitMQTransport, '_get_producer_rmq_objects', return_value=(mocker.MagicMock(), None),
+        RabbitMQTransport,
+        '_get_producer_rmq_objects',
+        return_value=(mocker.MagicMock(), None),
     )
     mocker.patch.object(RabbitMQTransport, '_produce_message', return_value=True)
 
     rabbit_transport.produce(
         TransportPayload(
-            SignalType.SAVE, 'CQRS_ID', {'id': 1}, 1,
+            SignalType.SAVE,
+            'CQRS_ID',
+            {'id': 1},
+            1,
         ),
     )
     assert 'CQRS is published: pk = 1 (CQRS_ID)' in caplog.text
@@ -217,15 +231,22 @@ def test_produce_ok(rabbit_transport, mocker, caplog):
 
 def test_produce_retry_on_error(rabbit_transport, mocker, caplog):
     caplog.set_level(logging.INFO)
-    mocker.patch.object(RabbitMQTransport, '_get_producer_rmq_objects', side_effect=[
-        AMQPConnectorException,
-        (mocker.MagicMock(), None),
-    ])
+    mocker.patch.object(
+        RabbitMQTransport,
+        '_get_producer_rmq_objects',
+        side_effect=[
+            AMQPConnectorException,
+            (mocker.MagicMock(), None),
+        ],
+    )
     mocker.patch.object(RabbitMQTransport, '_produce_message', return_value=True)
 
     rabbit_transport.produce(
         TransportPayload(
-            SignalType.SAVE, 'CQRS_ID', {'id': 1}, 1,
+            SignalType.SAVE,
+            'CQRS_ID',
+            {'id': 1},
+            1,
         ),
     )
 
@@ -234,7 +255,7 @@ def test_produce_retry_on_error(rabbit_transport, mocker, caplog):
             'django-cqrs',
             logging.WARNING,
             "CQRS couldn't be published: pk = 1 (CQRS_ID)."
-            " Error: AMQPConnectorException. Reconnect...",
+            ' Error: AMQPConnectorException. Reconnect...',
         ),
         (
             'django-cqrs',
@@ -245,15 +266,22 @@ def test_produce_retry_on_error(rabbit_transport, mocker, caplog):
 
 
 def test_produce_retry_on_error_1(rabbit_transport, mocker, caplog):
-    mocker.patch.object(RabbitMQTransport, '_get_producer_rmq_objects', side_effect=[
-        StreamLostError,
-        StreamLostError,
-    ])
+    mocker.patch.object(
+        RabbitMQTransport,
+        '_get_producer_rmq_objects',
+        side_effect=[
+            StreamLostError,
+            StreamLostError,
+        ],
+    )
     mocker.patch.object(RabbitMQTransport, '_produce_message', return_value=True)
 
     rabbit_transport.produce(
         TransportPayload(
-            SignalType.SAVE, 'CQRS_ID', {'id': 1}, 1,
+            SignalType.SAVE,
+            'CQRS_ID',
+            {'id': 1},
+            1,
         ),
     )
 
@@ -353,7 +381,9 @@ def test_produce_sync_message_queue(mocker):
 
 def test_consume_connection_error(rabbit_transport, mocker, caplog):
     mocker.patch.object(
-        RabbitMQTransport, '_get_consumer_rmq_objects', side_effect=AMQPError,
+        RabbitMQTransport,
+        '_get_consumer_rmq_objects',
+        side_effect=AMQPError,
     )
     mocker.patch('time.sleep', side_effect=db_error)
 
@@ -371,7 +401,9 @@ def test_consume_ok(rabbit_transport, mocker):
         return_value=(None, None, consumer_generator),
     )
     mocker.patch.object(
-        RabbitMQTransport, '_consume_message', db_error,
+        RabbitMQTransport,
+        '_consume_message',
+        db_error,
     )
 
     with pytest.raises(DatabaseError):
@@ -463,15 +495,23 @@ def test_consume_message_expired(mocker, caplog):
 
 def test_consume_message_json_parsing_error(mocker, caplog):
     PublicRabbitMQTransport.consume_message(
-        mocker.MagicMock(), mocker.MagicMock(), None, '{bad_payload:', mocker.MagicMock(),
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        None,
+        '{bad_payload:',
+        mocker.MagicMock(),
     )
 
-    assert ": {bad_payload:." in caplog.text
+    assert ': {bad_payload:.' in caplog.text
 
 
 def test_consume_message_package_structure_error(mocker, caplog):
     PublicRabbitMQTransport.consume_message(
-        mocker.MagicMock(), mocker.MagicMock(), None, 'inv{"pk":"1"}', mocker.MagicMock(),
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        None,
+        'inv{"pk":"1"}',
+        mocker.MagicMock(),
     )
 
     assert """CQRS couldn't be parsed: inv{"pk":"1"}""" in caplog.text
@@ -498,7 +538,12 @@ def test_message_without_retry_dead_letter(settings, mocker, caplog):
 
     channel = mocker.MagicMock()
     payload = TransportPayload(
-        SignalType.SAVE, 'basic', {'id': 1}, 1, correlation_id='abc', retries=2,
+        SignalType.SAVE,
+        'basic',
+        {'id': 1},
+        1,
+        correlation_id='abc',
+        retries=2,
     )
     delay_queue = DelayQueue()
 
@@ -514,9 +559,7 @@ def test_message_without_retry_dead_letter(settings, mocker, caplog):
     assert getattr(produce_message, 'is_dead_letter', False)
 
     assert 'CQRS is failed: pk = 1 (basic), correlation_id = abc, retries = 2.' in caplog.text
-    assert (
-        'CQRS is added to dead letter queue: pk = 1 (basic), correlation_id = abc' in caplog.text
-    )
+    assert 'CQRS is added to dead letter queue: pk = 1 (basic), correlation_id = abc' in caplog.text
 
 
 def test_fail_message_invalid_model(mocker, caplog):
@@ -528,7 +571,11 @@ def test_fail_message_invalid_model(mocker, caplog):
 
     delivery_tag = 101
     PublicRabbitMQTransport.fail_message(
-        mocker.MagicMock(), delivery_tag, payload, None, delay_queue,
+        mocker.MagicMock(),
+        delivery_tag,
+        payload,
+        None,
+        delay_queue,
     )
 
     assert delay_queue.qsize() == 0
@@ -602,14 +649,16 @@ def test_delay_message_with_requeue(mocker, caplog):
     exceeding_delay = 0
     exceeding_payload = TransportPayload(SignalType.SAVE, 'CQRS_ID', {'id': 4}, 4)
     PublicRabbitMQTransport.delay_message(
-        channel, 4, exceeding_payload, exceeding_delay, delay_queue,
+        channel,
+        4,
+        exceeding_payload,
+        exceeding_delay,
+        delay_queue,
     )
 
     assert delay_queue.qsize() == 3
     assert delay_queue.get().payload is exceeding_payload
-    assert (
-        'CQRS is delayed: pk = 4 (CQRS_ID), correlation_id = None, delay = 0 sec' in caplog.text
-    )
+    assert 'CQRS is delayed: pk = 4 (CQRS_ID), correlation_id = None, delay = 0 sec' in caplog.text
 
     assert requeue_message.call_count == 1
 

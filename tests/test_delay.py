@@ -97,4 +97,4 @@ def test_delay_queue_invalid_max_size():
     with pytest.raises(AssertionError) as e:
         DelayQueue(max_size=0)
 
-    assert e.value.args[0] == "Delay queue max_size should be positive integer."
+    assert e.value.args[0] == 'Delay queue max_size should be positive integer.'

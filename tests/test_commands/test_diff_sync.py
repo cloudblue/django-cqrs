@@ -112,9 +112,11 @@ def test_sync_no_queue(mocker):
     mocker.patch.object(sys, 'stdin', StringIO('author,dt,{0}\n[1]\n'.format(NO_QUEUE)))
     call_command(COMMAND_NAME, '--progress')
 
-    sync_mock.assert_called_once_with(**{
-        'cqrs_id': 'author',
-        'filter': '{"id__in": [1]}',
-        'batch': 10000,
-        'progress': True,
-    })
+    sync_mock.assert_called_once_with(
+        **{
+            'cqrs_id': 'author',
+            'filter': '{"id__in": [1]}',
+            'batch': 10000,
+            'progress': True,
+        }
+    )

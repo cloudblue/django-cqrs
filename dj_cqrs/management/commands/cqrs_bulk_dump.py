@@ -17,30 +17,35 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--cqrs-id', '-c',
+            '--cqrs-id',
+            '-c',
             help='CQRS_ID of the master model',
             type=str,
             required=True,
         )
         parser.add_argument(
-            '--output', '-o',
+            '--output',
+            '-o',
             help='Output file for dumping (- for writing to stdout)',
             type=str,
             default=None,
         )
         parser.add_argument(
-            '--batch', '-b',
+            '--batch',
+            '-b',
             help='Batch size',
             type=int,
             default=10000,
         )
         parser.add_argument(
-            '--progress', '-p',
+            '--progress',
+            '-p',
             help='Display progress',
             action='store_true',
         )
         parser.add_argument(
-            '--force', '-f',
+            '--force',
+            '-f',
             help='Override output file',
             action='store_true',
         )
@@ -63,8 +68,8 @@ class Command(BaseCommand):
                     file=sys.stderr,
                 )
             for qs in batch_qs(
-                    model.relate_cqrs_serialization(model._default_manager.order_by().all()),
-                    batch_size=batch_size,
+                model.relate_cqrs_serialization(model._default_manager.order_by().all()),
+                batch_size=batch_size,
             ):
                 ts = time.time()
                 cs = counter
@@ -76,9 +81,14 @@ class Command(BaseCommand):
                         )
                         success_counter += 1
                     except Exception as e:
-                        print('\nDump record failed for pk={0}: {1}: {2}'.format(
-                            instance.pk, type(e).__name__, str(e),
-                        ), file=sys.stderr)
+                        print(
+                            '\nDump record failed for pk={0}: {1}: {2}'.format(
+                                instance.pk,
+                                type(e).__name__,
+                                str(e),
+                            ),
+                            file=sys.stderr,
+                        )
                 if progress:
                     rate = (counter - cs) / (time.time() - ts)
                     percent = 100 * counter / db_count
@@ -86,13 +96,23 @@ class Command(BaseCommand):
                     sys.stderr.write(
                         '\r{0} of {1} processed - {2}% with '
                         'rate {3:.1f} rps, to go {4} ...{5:20}'.format(
-                            counter, db_count, int(percent), rate, str(eta), ' ',
-                        ))
+                            counter,
+                            db_count,
+                            int(percent),
+                            rate,
+                            str(eta),
+                            ' ',
+                        ),
+                    )
                     sys.stderr.flush()
 
-        print('Done!\n{0} instance(s) saved.\n{1} instance(s) processed.'.format(
-            success_counter, counter,
-        ), file=sys.stderr)
+        print(
+            'Done!\n{0} instance(s) saved.\n{1} instance(s) processed.'.format(
+                success_counter,
+                counter,
+            ),
+            file=sys.stderr,
+        )
 
     @staticmethod
     def _get_model(options):

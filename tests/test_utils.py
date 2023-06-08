@@ -73,13 +73,16 @@ def test_get_messaged_prefetch_count_per_worker_with_delay_queue(settings):
     assert get_messages_prefetch_count_per_worker() == 5
 
 
-@pytest.mark.parametrize('value,result', (
-    (None, None),
-    (1, 1),
-    (datetime(2022, 1, 1, second=0, tzinfo=timezone.utc), '2022-01-01 00:00:00+00:00'),
-    (date(2022, 2, 1), '2022-02-01'),
-    (UUID('0419d87b-d477-44e4-82c4-310f56faa3c7'), '0419d87b-d477-44e4-82c4-310f56faa3c7'),
-    ('abc', 'abc'),
-))
+@pytest.mark.parametrize(
+    'value,result',
+    (
+        (None, None),
+        (1, 1),
+        (datetime(2022, 1, 1, second=0, tzinfo=timezone.utc), '2022-01-01 00:00:00+00:00'),
+        (date(2022, 2, 1), '2022-02-01'),
+        (UUID('0419d87b-d477-44e4-82c4-310f56faa3c7'), '0419d87b-d477-44e4-82c4-310f56faa3c7'),
+        ('abc', 'abc'),
+    ),
+)
 def test_get_json_valid_value(value, result):
     assert get_json_valid_value(value) == result

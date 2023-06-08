@@ -6,8 +6,9 @@ from app.models import Purchase
 
 class ProductSerializer:
     """
-        Simple serializer
+    Simple serializer
     """
+
     def __init__(self, instance):
         self.instance = instance
 
@@ -25,8 +26,9 @@ class ProductSerializer:
 
 class PurchaseSerializer(serializers.ModelSerializer):
     """
-        Django REST Framework serializers are compatible
+    Django REST Framework serializers are compatible
     """
+
     product_name = serializers.CharField(source='product.name')
 
     class Meta:

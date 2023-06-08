@@ -23,6 +23,7 @@ class RabbitMQTransportWithEvents(RabbitMQTransport):
     @staticmethod
     def log_consumed(payload):
         from tests.dj_replica.models import Event
+
         Event.objects.create(
             pid=os.getpid(),
             cqrs_id=payload.cqrs_id,
@@ -34,6 +35,7 @@ class KombuTransportWithEvents(KombuTransport):
     @staticmethod
     def log_consumed(payload):
         from tests.dj_replica.models import Event
+
         Event.objects.create(
             pid=os.getpid(),
             cqrs_id=payload.cqrs_id,

@@ -34,7 +34,12 @@ def test_consumer(mocker):
     consume(TransportPayload('a', 'b', {}, 'c', previous_data={'e': 'f'}, queue='xyz'))
 
     factory_mock.assert_called_once_with(
-        'a', 'b', {}, previous_data={'e': 'f'}, meta=None, queue='xyz',
+        'a',
+        'b',
+        {},
+        previous_data={'e': 'f'},
+        meta=None,
+        queue='xyz',
     )
 
 
@@ -94,21 +99,27 @@ def test_route_signal_to_replica_model_without_db():
 
 @pytest.mark.parametrize('queue', ('abc', None))
 def test_route_signal_to_replica_with_only_direct_syncs(queue):
-    assert route_signal_to_replica_model(
-        signal_type=SignalType.SYNC,
-        cqrs_id=OnlyDirectSyncModel.CQRS_ID,
-        instance_data={},
-        queue=queue,
-    ) is True
+    assert (
+        route_signal_to_replica_model(
+            signal_type=SignalType.SYNC,
+            cqrs_id=OnlyDirectSyncModel.CQRS_ID,
+            instance_data={},
+            queue=queue,
+        )
+        is True
+    )
 
 
 @pytest.mark.django_db
 @pytest.mark.parametrize('data, pk_repr', (({}, 'None'), ({'id': '123'}, '123')))
 def test_route_signal_to_replica_exception(data, pk_repr, caplog):
-    assert route_signal_to_replica_model(
-        signal_type=SignalType.SAVE,
-        cqrs_id=AbstractModel.CQRS_ID,
-        instance_data=data,
-    ) is None
+    assert (
+        route_signal_to_replica_model(
+            signal_type=SignalType.SAVE,
+            cqrs_id=AbstractModel.CQRS_ID,
+            instance_data=data,
+        )
+        is None
+    )
 
     assert 'pk = {pk}'.format(pk=pk_repr) in caplog.text
