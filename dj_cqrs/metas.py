@@ -50,12 +50,12 @@ class MasterMeta(base.ModelBase):
             _MetaUtils._check_unexisting_names(model_cls, tracked_fields, 'CQRS_TRACKED_FIELDS')
             return
 
-        e = "Model {0}: Invalid configuration for CQRS_TRACKED_FIELDS".format(model_cls.__name__)
+        e = 'Model {0}: Invalid configuration for CQRS_TRACKED_FIELDS'.format(model_cls.__name__)
         assert isinstance(tracked_fields, str) and tracked_fields == ALL_BASIC_FIELDS, e
 
     @staticmethod
     def _check_correct_configuration(model_cls):
-        """ Check that model has correct CQRS configuration.
+        """Check that model has correct CQRS configuration.
 
         :param dj_cqrs.mixins.MasterMixin model_cls: CQRS Master Model.
         :raises: AssertionError
@@ -68,7 +68,7 @@ class MasterMeta(base.ModelBase):
 
     @staticmethod
     def _check_cqrs_fields(model_cls):
-        """ Check that model has correct CQRS fields configuration.
+        """Check that model has correct CQRS fields configuration.
 
         :param dj_cqrs.mixins.MasterMixin model_cls: CQRS Master Model.
         :raises: AssertionError
@@ -95,7 +95,7 @@ class ReplicaMeta(base.ModelBase):
 
     @staticmethod
     def _check_cqrs_mapping(model_cls):
-        """ Check that model has correct CQRS mapping configuration.
+        """Check that model has correct CQRS mapping configuration.
 
         :param dj_cqrs.mixins.ReplicaMixin model_cls: CQRS Replica Model.
         :raises: AssertionError
@@ -115,7 +115,7 @@ class _MetaUtils:
 
     @staticmethod
     def check_cqrs_id(model_cls):
-        """ Check that CQRS Model has CQRS_ID set up. """
+        """Check that CQRS Model has CQRS_ID set up."""
         assert model_cls.CQRS_ID, 'CQRS_ID must be set for every model, that uses CQRS.'
 
     @staticmethod

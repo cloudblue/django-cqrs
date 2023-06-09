@@ -28,7 +28,8 @@ See dj_cqrs.mixins.RawMasterMixin.call_post_update.
 
 
 class MasterSignals:
-    """ Signals registry and handlers for CQRS master models. """
+    """Signals registry and handlers for CQRS master models."""
+
     @classmethod
     def register_model(cls, model_cls):
         """

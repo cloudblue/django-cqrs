@@ -29,7 +29,8 @@ def test_flow(replica_cursor, clean_rabbit_transport_connection):
     assert count_replica_rows(replica_cursor, REPLICA_BASIC_TABLE) == 1
 
     replica_tuple = get_replica_first(
-        replica_cursor, REPLICA_BASIC_TABLE,
+        replica_cursor,
+        REPLICA_BASIC_TABLE,
         ('int_field', 'char_field', 'date_field', 'cqrs_revision', 'cqrs_updated', 'bool_field'),
     )
     assert (
@@ -57,7 +58,8 @@ def test_flow(replica_cursor, clean_rabbit_transport_connection):
     assert count_replica_rows(replica_cursor, REPLICA_BASIC_TABLE) == 1
 
     updated_replica_tuple = get_replica_first(
-        replica_cursor, REPLICA_BASIC_TABLE,
+        replica_cursor,
+        REPLICA_BASIC_TABLE,
         ('int_field', 'cqrs_revision', 'cqrs_updated', 'bool_field'),
     )
     assert (

@@ -18,13 +18,15 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--batch', '-b',
+            '--batch',
+            '-b',
             help='Batch size',
             type=int,
             default=DEFAULT_BATCH,
         )
         parser.add_argument(
-            '--progress', '-p',
+            '--progress',
+            '-p',
             help='Display progress',
             action='store_true',
         )

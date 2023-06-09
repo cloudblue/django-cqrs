@@ -25,7 +25,10 @@ def test_post_save_create(mocker):
 
     assert_publisher_once_called_with_args(
         publisher_mock,
-        SignalType.SAVE, models.SimplestModel.CQRS_ID, {'id': 1, 'name': None}, 1,
+        SignalType.SAVE,
+        models.SimplestModel.CQRS_ID,
+        {'id': 1, 'name': None},
+        1,
     )
 
 
@@ -57,7 +60,10 @@ def test_post_save_update(mocker):
 
     assert_publisher_once_called_with_args(
         publisher_mock,
-        SignalType.SAVE, models.SimplestModel.CQRS_ID, {'id': 1, 'name': 'new'}, 1,
+        SignalType.SAVE,
+        models.SimplestModel.CQRS_ID,
+        {'id': 1, 'name': 'new'},
+        1,
     )
 
 
@@ -70,7 +76,10 @@ def test_post_save_delete(mocker):
 
     assert_publisher_once_called_with_args(
         publisher_mock,
-        SignalType.DELETE, models.SimplestModel.CQRS_ID, {'id': 1, 'cqrs_revision': 1}, 1,
+        SignalType.DELETE,
+        models.SimplestModel.CQRS_ID,
+        {'id': 1, 'cqrs_revision': 1},
+        1,
     )
 
     cqrs_updated = publisher_mock.call_args[0][0].to_dict()['instance_data']['cqrs_updated']
@@ -83,8 +92,7 @@ def test_post_save_instance_doesnt_exist(caplog):
         models.Author.objects.create(id=1, name='The author')
         models.Author.objects.get(id=1).delete()
     assert (
-        "Can't produce message from master model 'Author': "
-        "The instance doesn't exist (pk=1)"
+        "Can't produce message from master model 'Author': " "The instance doesn't exist (pk=1)"
     ) in caplog.text
 
 
@@ -123,9 +131,9 @@ def test_manual_post_bulk_create(mocker):
 def test_automatic_post_bulk_create(mocker):
     publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
 
-    instances = models.SimplestTrackedModel.cqrs.bulk_create([
-        models.SimplestTrackedModel(id=i, status='new') for i in range(1, 4)
-    ])
+    instances = models.SimplestTrackedModel.cqrs.bulk_create(
+        [models.SimplestTrackedModel(id=i, status='new') for i in range(1, 4)],
+    )
 
     assert len(instances) == 3
     for index in range(3):
@@ -201,7 +209,6 @@ def test_post_bulk_update_wout_prev_data(mocker, filter_kwargs):
             (
                 (0, {'description': 'old', 'status': None}, 1),
                 (1, {'description': 'old', 'status': 'x'}, 2),
-
             ),
         ),
     ),

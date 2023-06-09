@@ -17,13 +17,15 @@ def test_both_consumers_consume(replica_cursor, clean_rabbit_transport_connectio
     assert count_replica_rows(replica_cursor, REPLICA_BASIC_TABLE) == 0
     assert count_replica_rows(replica_cursor, REPLICA_EVENT_TABLE) == 0
 
-    BasicFieldsModel.cqrs.bulk_create([
-        BasicFieldsModel(
-            int_field=index,
-            char_field='text',
-        )
-        for index in range(1, 10)
-    ])
+    BasicFieldsModel.cqrs.bulk_create(
+        [
+            BasicFieldsModel(
+                int_field=index,
+                char_field='text',
+            )
+            for index in range(1, 10)
+        ],
+    )
 
     transport_delay(3)
     assert count_replica_rows(replica_cursor, REPLICA_BASIC_TABLE) == 9

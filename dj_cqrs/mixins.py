@@ -64,12 +64,14 @@ class RawMasterMixin(Model):
     """Manager that adds needed CQRS queryset methods."""
 
     cqrs_revision = IntegerField(
-        default=0, help_text="This field must be incremented on any model update. "
-                             "It's used to for CQRS sync.",
+        default=0,
+        help_text='This field must be incremented on any model update. '
+        "It's used to for CQRS sync.",
     )
     cqrs_updated = DateTimeField(
-        auto_now=True, help_text="This field must be incremented on every model update. "
-                                 "It's used to for CQRS sync.",
+        auto_now=True,
+        help_text='This field must be incremented on every model update. '
+        "It's used to for CQRS sync.",
     )
 
     class Meta:
@@ -182,7 +184,11 @@ class RawMasterMixin(Model):
                 return False
 
         MasterSignals.post_save(
-            self._meta.model, instance=self, using=using, queue=queue, sync=True,
+            self._meta.model,
+            instance=self,
+            using=using,
+            queue=queue,
+            sync=True,
         )
         return True
 
@@ -230,12 +236,12 @@ class RawMasterMixin(Model):
         return queryset
 
     def get_custom_cqrs_delete_data(self):
-        """ This method should be overridden when additional data is needed in DELETE payload. """
+        """This method should be overridden when additional data is needed in DELETE payload."""
         pass
 
     @classmethod
     def call_post_bulk_create(cls, instances: list, using=None):
-        """ Post bulk create signal caller (django doesn't support it by default).
+        """Post bulk create signal caller (django doesn't support it by default).
 
         ``` py3
 
@@ -247,7 +253,7 @@ class RawMasterMixin(Model):
 
     @classmethod
     def call_post_update(cls, instances, using=None):
-        """ Post bulk update signal caller (django doesn't support it by default).
+        """Post bulk update signal caller (django doesn't support it by default).
 
         ``` py3
 
@@ -322,7 +328,7 @@ class RawMasterMixin(Model):
 
     @property
     def _cqrs_serializer_cls(self):
-        """ Serialization class loader. """
+        """Serialization class loader."""
         if hasattr(self.__class__, '_cqrs_serializer_class'):
             return self.__class__._cqrs_serializer_class
 
@@ -340,6 +346,7 @@ class MasterMixin(RawMasterMixin, metaclass=MasterMeta):
     """
     Mixin for the master CQRS model, that will send data updates to it's replicas.
     """
+
     class Meta:
         abstract = True
 
@@ -393,6 +400,7 @@ class ReplicaMixin(RawReplicaMixin, Model, metaclass=ReplicaMeta):
     Mixin for the replica CQRS model, that will receive data updates from master. Models, using
     this mixin should be readonly, but this is not enforced (f.e. for admin).
     """
+
     CQRS_ID = None
     """Unique CQRS identifier for all microservices."""
 
@@ -432,7 +440,7 @@ class ReplicaMixin(RawReplicaMixin, Model, metaclass=ReplicaMeta):
         sync: bool = False,
         meta: dict = None,
     ):
-        """ This method saves (creates or updates) model instance from CQRS master instance data.
+        """This method saves (creates or updates) model instance from CQRS master instance data.
         This method must not be overridden. Otherwise, sync checks need to be implemented manually.
 
         Args:
@@ -457,7 +465,7 @@ class ReplicaMixin(RawReplicaMixin, Model, metaclass=ReplicaMeta):
         previous_data: dict = None,
         meta: dict = None,
     ):
-        """ This method creates model instance from CQRS mapped instance data. It must be overridden
+        """This method creates model instance from CQRS mapped instance data. It must be overridden
         by replicas of master models with custom serialization.
 
         Args:
@@ -478,7 +486,7 @@ class ReplicaMixin(RawReplicaMixin, Model, metaclass=ReplicaMeta):
         previous_data: dict = None,
         meta: dict = None,
     ):
-        """ This method updates model instance from CQRS mapped instance data. It must be overridden
+        """This method updates model instance from CQRS mapped instance data. It must be overridden
         by replicas of master models with custom serialization.
 
         Args:
@@ -498,7 +506,7 @@ class ReplicaMixin(RawReplicaMixin, Model, metaclass=ReplicaMeta):
 
     @classmethod
     def cqrs_delete(cls, master_data: dict, meta: dict = None) -> bool:
-        """ This method deletes model instance from mapped CQRS master instance data.
+        """This method deletes model instance from mapped CQRS master instance data.
 
         Args:
             master_data (dict): CQRS master instance data.

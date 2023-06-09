@@ -17,7 +17,9 @@ def test_add_to_dead_letter(settings, replica_cursor, replica_channel):
     assert queue.method.message_count == 0
 
     dead_queue = replica_channel.queue_declare(
-        'dead_letter_replica', durable=True, exclusive=False,
+        'dead_letter_replica',
+        durable=True,
+        exclusive=False,
     )
     assert dead_queue.method.message_count == 1
 
@@ -39,13 +41,17 @@ def test_dead_letter_expire(settings, replica_cursor, replica_channel):
     transport_delay(5)
 
     dead_queue = replica_channel.queue_declare(
-        'dead_letter_replica', durable=True, exclusive=False,
+        'dead_letter_replica',
+        durable=True,
+        exclusive=False,
     )
     assert dead_queue.method.message_count == 1
 
     transport_delay(5)
 
     dead_queue = replica_channel.queue_declare(
-        'dead_letter_replica', durable=True, exclusive=False,
+        'dead_letter_replica',
+        durable=True,
+        exclusive=False,
     )
     assert dead_queue.method.message_count == 0

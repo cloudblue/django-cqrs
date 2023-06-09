@@ -22,31 +22,36 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--cqrs-id', '-cid',
+            '--cqrs-id',
+            '-cid',
             help='CQRS_ID of the master model',
             type=str,
             required=True,
         )
         parser.add_argument(
-            '--filter', '-f',
+            '--filter',
+            '-f',
             help='Filter kwargs',
             type=str,
             default=None,
         )
         parser.add_argument(
-            '--queue', '-q',
+            '--queue',
+            '-q',
             help='Name of the specific replica queue',
             type=str,
             default=None,
         )
         parser.add_argument(
-            '--batch', '-b',
+            '--batch',
+            '-b',
             help='Batch size',
             type=int,
             default=DEFAULT_BATCH,
         )
         parser.add_argument(
-            '--progress', '-p',
+            '--progress',
+            '-p',
             help='Display progress',
             action='store_true',
         )
@@ -80,9 +85,13 @@ class Command(BaseCommand):
                     instance.cqrs_sync(queue=options['queue'])
                     success_counter += 1
                 except Exception as e:
-                    print('\nSync record failed for pk={0}: {1}: {2}'.format(
-                        instance.pk, type(e).__name__, str(e),
-                    ))
+                    print(
+                        '\nSync record failed for pk={0}: {1}: {2}'.format(
+                            instance.pk,
+                            type(e).__name__,
+                            str(e),
+                        ),
+                    )
                     close_old_connections()
 
             if progress:
@@ -92,13 +101,22 @@ class Command(BaseCommand):
                 sys.stdout.write(
                     '\r{0} of {1} processed - {2}% with '
                     'rate {3:.1f} rps, to go {4} ...{5:20}'.format(
-                        counter, db_count, int(percent), rate, str(eta), ' ',
-                    ))
+                        counter,
+                        db_count,
+                        int(percent),
+                        rate,
+                        str(eta),
+                        ' ',
+                    ),
+                )
                 sys.stdout.flush()
 
-        print('Done!\n{0} instance(s) synced.\n{1} instance(s) processed.'.format(
-            success_counter, counter,
-        ))
+        print(
+            'Done!\n{0} instance(s) synced.\n{1} instance(s) processed.'.format(
+                success_counter,
+                counter,
+            ),
+        )
 
     @staticmethod
     def _prepare_qs(model, options):

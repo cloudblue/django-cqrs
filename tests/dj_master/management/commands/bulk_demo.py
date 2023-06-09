@@ -13,7 +13,11 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--count', '-c', help='Simulation of N signals.', type=int, default=3000,
+            '--count',
+            '-c',
+            help='Simulation of N signals.',
+            type=int,
+            default=3000,
         )
 
     @staticmethod

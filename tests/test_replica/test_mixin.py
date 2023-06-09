@@ -84,16 +84,18 @@ def test_cqrs_fields_duplicates(mocker):
 
 @pytest.mark.django_db
 def test_create_simple():
-    instance = models.BasicFieldsModelRef.cqrs_save({
-        'int_field': 1,
-        'cqrs_revision': 0,
-        'cqrs_updated': now(),
-        'char_field': 'text',
-        'bool_field': False,
-        'date_field': None,
-        'datetime_field': now(),
-        'float_field': 1.25,
-    })
+    instance = models.BasicFieldsModelRef.cqrs_save(
+        {
+            'int_field': 1,
+            'cqrs_revision': 0,
+            'cqrs_updated': now(),
+            'char_field': 'text',
+            'bool_field': False,
+            'date_field': None,
+            'datetime_field': now(),
+            'float_field': 1.25,
+        },
+    )
     assert isinstance(instance, models.BasicFieldsModelRef)
 
     instance.refresh_from_db()
@@ -103,35 +105,41 @@ def test_create_simple():
 
 @pytest.mark.django_db
 def test_create_simple_excessive_data():
-    instance = models.BasicFieldsModelRef.cqrs_save({
-        'int_field': 1,
-        'cqrs_revision': 0,
-        'cqrs_updated': now(),
-        'char_field': 'text',
-        'unexpected_field': 'value',
-    })
+    instance = models.BasicFieldsModelRef.cqrs_save(
+        {
+            'int_field': 1,
+            'cqrs_revision': 0,
+            'cqrs_updated': now(),
+            'char_field': 'text',
+            'unexpected_field': 'value',
+        },
+    )
     assert isinstance(instance, models.BasicFieldsModelRef)
 
 
 @pytest.mark.django_db
 def test_create_simple_insufficient_data(caplog):
-    models.BasicFieldsModelRef.cqrs_save({
-        'int_field': 1,
-        'cqrs_revision': 0,
-        'cqrs_updated': now(),
-    })
+    models.BasicFieldsModelRef.cqrs_save(
+        {
+            'int_field': 1,
+            'cqrs_revision': 0,
+            'cqrs_updated': now(),
+        },
+    )
 
     assert 'Not all required CQRS fields are provided in data (basic).' in caplog.text
 
 
 @pytest.mark.django_db
 def test_create_mapped(caplog):
-    instance = models.MappedFieldsModelRef.cqrs_save({
-        'int_field': 1,
-        'cqrs_revision': 0,
-        'cqrs_updated': now(),
-        'char_field': 'text',
-    })
+    instance = models.MappedFieldsModelRef.cqrs_save(
+        {
+            'int_field': 1,
+            'cqrs_revision': 0,
+            'cqrs_updated': now(),
+            'char_field': 'text',
+        },
+    )
     assert isinstance(instance, models.MappedFieldsModelRef)
 
     instance.refresh_from_db()
@@ -141,12 +149,14 @@ def test_create_mapped(caplog):
 
 @pytest.mark.django_db
 def test_create_mapped_bad_mapping(caplog):
-    models.BadMappingModelRef.cqrs_save({
-        'int_field': 1,
-        'cqrs_revision': 0,
-        'cqrs_updated': now(),
-        'char_field': 'text',
-    })
+    models.BadMappingModelRef.cqrs_save(
+        {
+            'int_field': 1,
+            'cqrs_revision': 0,
+            'cqrs_updated': now(),
+            'char_field': 'text',
+        },
+    )
 
     assert 'Bad master-replica mapping for invalid_field (basic_3).' in caplog.text
 
@@ -155,31 +165,37 @@ def test_create_mapped_bad_mapping(caplog):
 def test_create_db_error(mocker, caplog):
     mocker.patch.object(models.BasicFieldsModelRef.objects, 'create', side_effect=db_error)
 
-    models.BasicFieldsModelRef.cqrs_save({
-        'int_field': 1,
-        'cqrs_revision': 0,
-        'cqrs_updated': now(),
-        'char_field': 'text',
-    })
+    models.BasicFieldsModelRef.cqrs_save(
+        {
+            'int_field': 1,
+            'cqrs_revision': 0,
+            'cqrs_updated': now(),
+            'char_field': 'text',
+        },
+    )
     assert 'CQRS create error: pk = 1 (basic).' in caplog.text
 
 
 @pytest.mark.django_db
 def test_update_ok():
-    models.BasicFieldsModelRef.objects.create(**{
-        'int_field': 1,
-        'cqrs_revision': 0,
-        'cqrs_updated': now(),
-        'char_field': 'text',
-    })
+    models.BasicFieldsModelRef.objects.create(
+        **{
+            'int_field': 1,
+            'cqrs_revision': 0,
+            'cqrs_updated': now(),
+            'char_field': 'text',
+        }
+    )
 
-    instance = models.BasicFieldsModelRef.cqrs_save({
-        'int_field': 1,
-        'cqrs_revision': 1,
-        'cqrs_updated': now(),
-        'char_field': 'new_text',
-        'float_field': 1.30,
-    })
+    instance = models.BasicFieldsModelRef.cqrs_save(
+        {
+            'int_field': 1,
+            'cqrs_revision': 1,
+            'cqrs_updated': now(),
+            'char_field': 'new_text',
+            'float_field': 1.30,
+        },
+    )
 
     assert isinstance(instance, models.BasicFieldsModelRef)
 
@@ -191,39 +207,47 @@ def test_update_ok():
 
 @pytest.mark.django_db
 def test_update_db_error(mocker, caplog):
-    models.BasicFieldsModelRef.objects.create(**{
-        'int_field': 1,
-        'cqrs_revision': 0,
-        'cqrs_updated': now(),
-        'char_field': 'text',
-    })
+    models.BasicFieldsModelRef.objects.create(
+        **{
+            'int_field': 1,
+            'cqrs_revision': 0,
+            'cqrs_updated': now(),
+            'char_field': 'text',
+        }
+    )
 
     mocker.patch.object(models.BasicFieldsModelRef, 'save', side_effect=db_error)
 
-    models.BasicFieldsModelRef.cqrs_save({
-        'int_field': 1,
-        'cqrs_revision': 1,
-        'cqrs_updated': now(),
-        'char_field': 'text',
-    })
+    models.BasicFieldsModelRef.cqrs_save(
+        {
+            'int_field': 1,
+            'cqrs_revision': 1,
+            'cqrs_updated': now(),
+            'char_field': 'text',
+        },
+    )
     assert 'CQRS update error: pk = 1, cqrs_revision = 1 (basic).' in caplog.text
 
 
 @pytest.mark.django_db
 def test_delete_ok():
     dt = now()
-    models.BasicFieldsModelRef.objects.create(**{
-        'int_field': 1,
-        'cqrs_revision': 0,
-        'cqrs_updated': dt,
-        'char_field': 'text',
-    })
+    models.BasicFieldsModelRef.objects.create(
+        **{
+            'int_field': 1,
+            'cqrs_revision': 0,
+            'cqrs_updated': dt,
+            'char_field': 'text',
+        }
+    )
 
-    is_deleted = models.BasicFieldsModelRef.cqrs_delete({
-        'id': 1,
-        'cqrs_revision': 0,
-        'cqrs_updated': dt,
-    })
+    is_deleted = models.BasicFieldsModelRef.cqrs_delete(
+        {
+            'id': 1,
+            'cqrs_revision': 0,
+            'cqrs_updated': dt,
+        },
+    )
 
     assert is_deleted
     assert models.BasicFieldsModelRef.objects.count() == 0
@@ -231,11 +255,13 @@ def test_delete_ok():
 
 @pytest.mark.django_db
 def test_delete_non_existing_id():
-    is_deleted = models.BasicFieldsModelRef.cqrs_delete({
-        'id': 1,
-        'cqrs_revision': 0,
-        'cqrs_updated': now(),
-    })
+    is_deleted = models.BasicFieldsModelRef.cqrs_delete(
+        {
+            'id': 1,
+            'cqrs_revision': 0,
+            'cqrs_updated': now(),
+        },
+    )
 
     assert is_deleted
     assert models.BasicFieldsModelRef.objects.count() == 0
@@ -245,11 +271,13 @@ def test_delete_non_existing_id():
 def test_delete_db_error(mocker, caplog):
     mocker.patch.object(models.BasicFieldsModelRef.objects, 'filter', side_effect=db_error)
 
-    is_deleted = models.BasicFieldsModelRef.cqrs_delete({
-        'id': 1,
-        'cqrs_revision': 0,
-        'cqrs_updated': now(),
-    })
+    is_deleted = models.BasicFieldsModelRef.cqrs_delete(
+        {
+            'id': 1,
+            'cqrs_revision': 0,
+            'cqrs_updated': now(),
+        },
+    )
 
     assert not is_deleted
     assert 'CQRS delete error: pk = 1' in caplog.text
@@ -257,44 +285,52 @@ def test_delete_db_error(mocker, caplog):
 
 @pytest.mark.django_db
 def test_save_bad_master_data_field_type(caplog):
-    models.BadTypeModelRef.cqrs_save({
-        'int_field': 1,
-        'cqrs_revision': 0,
-        'cqrs_updated': now(),
-        'datetime_field': now(),
-    })
+    models.BadTypeModelRef.cqrs_save(
+        {
+            'int_field': 1,
+            'cqrs_revision': 0,
+            'cqrs_updated': now(),
+            'datetime_field': now(),
+        },
+    )
     assert 'CQRS create error: pk = 1 (basic_1).' in caplog.text
 
 
 @pytest.mark.django_db
 def test_save_no_pk_in_master_data(caplog):
-    models.BasicFieldsModelRef.cqrs_save({
-        'id': 1,
-        'cqrs_revision': 0,
-        'cqrs_updated': now(),
-        'char_field': 'text',
-    })
+    models.BasicFieldsModelRef.cqrs_save(
+        {
+            'id': 1,
+            'cqrs_revision': 0,
+            'cqrs_updated': now(),
+            'char_field': 'text',
+        },
+    )
 
     assert 'CQRS PK is not provided in data (basic).' in caplog.text
 
 
 @pytest.mark.django_db
 def test_save_no_cqrs_fields_in_master_data(caplog):
-    models.BasicFieldsModelRef.cqrs_save({
-        'int_field': 1,
-        'cqrs_revision': 0,
-        'char_field': 'text',
-    })
+    models.BasicFieldsModelRef.cqrs_save(
+        {
+            'int_field': 1,
+            'cqrs_revision': 0,
+            'char_field': 'text',
+        },
+    )
 
     assert 'CQRS sync fields are not provided in data (basic).' in caplog.text
 
 
 @pytest.mark.django_db
 def test_delete_no_id_in_master_data(caplog):
-    is_deleted = models.BasicFieldsModelRef.cqrs_delete({
-        'cqrs_revision': 0,
-        'cqrs_updated': now(),
-    })
+    is_deleted = models.BasicFieldsModelRef.cqrs_delete(
+        {
+            'cqrs_revision': 0,
+            'cqrs_updated': now(),
+        },
+    )
 
     assert not is_deleted
     assert 'CQRS PK is not provided in data (basic).' in caplog.text
@@ -302,10 +338,12 @@ def test_delete_no_id_in_master_data(caplog):
 
 @pytest.mark.django_db
 def test_delete_no_cqrs_fields_in_master_data(caplog):
-    is_deleted = models.BasicFieldsModelRef.cqrs_delete({
-        'id': 1,
-        'cqrs_revision': 0,
-    })
+    is_deleted = models.BasicFieldsModelRef.cqrs_delete(
+        {
+            'id': 1,
+            'cqrs_revision': 0,
+        },
+    )
 
     assert not is_deleted
     assert 'CQRS sync fields are not provided in data (basic).' in caplog.text
@@ -356,12 +394,14 @@ def test_update_before_create_is_over(caplog):
 
 @pytest.mark.django_db(transaction=True)
 def test_wrong_update_order(caplog):
-    models.BasicFieldsModelRef.objects.create(**{
-        'int_field': 1,
-        'cqrs_revision': 0,
-        'cqrs_updated': now(),
-        'char_field': 'text',
-    })
+    models.BasicFieldsModelRef.objects.create(
+        **{
+            'int_field': 1,
+            'cqrs_revision': 0,
+            'cqrs_updated': now(),
+            'char_field': 'text',
+        }
+    )
 
     update_data_1 = {
         'int_field': 1,
@@ -391,12 +431,14 @@ def test_wrong_update_order(caplog):
 
 @pytest.mark.django_db(transaction=True)
 def test_de_duplication(caplog):
-    models.BasicFieldsModelRef.objects.create(**{
-        'int_field': 1,
-        'cqrs_revision': 0,
-        'cqrs_updated': now(),
-        'char_field': 'text',
-    })
+    models.BasicFieldsModelRef.objects.create(
+        **{
+            'int_field': 1,
+            'cqrs_revision': 0,
+            'cqrs_updated': now(),
+            'char_field': 'text',
+        }
+    )
 
     update_data = {
         'int_field': 1,
@@ -421,12 +463,14 @@ def test_create_before_delete_is_over(caplog):
     #  and are not unique in the infinite timeline.
     # This will lead to expected inconsistency.
 
-    models.BasicFieldsModelRef.objects.create(**{
-        'int_field': 1,
-        'cqrs_revision': 0,
-        'cqrs_updated': now(),
-        'char_field': 'text',
-    })
+    models.BasicFieldsModelRef.objects.create(
+        **{
+            'int_field': 1,
+            'cqrs_revision': 0,
+            'cqrs_updated': now(),
+            'char_field': 'text',
+        }
+    )
 
     delete_data = {
         'id': 1,
@@ -450,19 +494,23 @@ def test_create_before_delete_is_over(caplog):
 
 @pytest.mark.django_db
 def test_updates_were_lost(caplog):
-    models.BasicFieldsModelRef.objects.create(**{
-        'int_field': 1,
-        'cqrs_revision': 0,
-        'cqrs_updated': now(),
-        'char_field': 'text',
-    })
+    models.BasicFieldsModelRef.objects.create(
+        **{
+            'int_field': 1,
+            'cqrs_revision': 0,
+            'cqrs_updated': now(),
+            'char_field': 'text',
+        }
+    )
 
-    models.BasicFieldsModelRef.cqrs_save({
-        'int_field': 1,
-        'cqrs_revision': 5,
-        'cqrs_updated': now(),
-        'char_field': 'text1',
-    })
+    models.BasicFieldsModelRef.cqrs_save(
+        {
+            'int_field': 1,
+            'cqrs_revision': 5,
+            'cqrs_updated': now(),
+            'char_field': 'text1',
+        },
+    )
 
     assert 'Lost or filtered out 4 CQRS packages: pk = 1, cqrs_revision = 5 (basic)' in caplog.text
 
@@ -495,14 +543,18 @@ def test_tracked_fields_mapped(mocker):
 @pytest.mark.django_db
 def test_select_for_update_lock(mocker):
     m = mocker.patch.object(
-        QuerySet, 'select_for_update', return_value=models.LockModelRef.objects.all(),
+        QuerySet,
+        'select_for_update',
+        return_value=models.LockModelRef.objects.all(),
     )
 
-    instance = models.LockModelRef.cqrs_save({
-        'id': 1,
-        'cqrs_revision': 0,
-        'cqrs_updated': now(),
-    })
+    instance = models.LockModelRef.cqrs_save(
+        {
+            'id': 1,
+            'cqrs_revision': 0,
+            'cqrs_updated': now(),
+        },
+    )
 
     assert instance.id == 1
     m.assert_called_once()
@@ -518,7 +570,8 @@ def test_nodb(mocker):
 
 
 @pytest.mark.parametrize(
-    'cqrs_max_retries, current_retry, expected_result', [
+    'cqrs_max_retries, current_retry, expected_result',
+    [
         (5, 0, True),
         (5, 5, False),
         (-1, 0, False),
@@ -583,7 +636,10 @@ def test_support_for_meta_update():
     )
 
     assert t == (
-        True, {'id': 2, 'cqrs_revision': 1, 'cqrs_updated': cqrs_updated}, None, [1, 2, 3],
+        True,
+        {'id': 2, 'cqrs_revision': 1, 'cqrs_updated': cqrs_updated},
+        None,
+        [1, 2, 3],
     )
 
 

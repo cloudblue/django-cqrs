@@ -86,7 +86,10 @@ class Author(MasterMixin, models.Model):
     name = models.CharField(max_length=20)
 
     publisher = models.ForeignKey(
-        Publisher, related_name='authors', on_delete=models.SET_NULL, null=True,
+        Publisher,
+        related_name='authors',
+        on_delete=models.SET_NULL,
+        null=True,
     )
 
     @classmethod
@@ -120,7 +123,11 @@ class NonMetaClassModel(MPTTModel, RawMasterMixin):
 
     name = models.CharField(max_length=50, unique=True)
     parent = TreeForeignKey(
-        'self', on_delete=models.CASCADE, null=True, blank=True, related_name='children',
+        'self',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='children',
     )
 
 
@@ -162,7 +169,11 @@ class MPTTWithTrackingModel(MPTTModel, RawMasterMixin):
 
     name = models.CharField(max_length=50, unique=True)
     parent = TreeForeignKey(
-        'self', on_delete=models.CASCADE, null=True, blank=True, related_name='children',
+        'self',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='children',
     )
 
 

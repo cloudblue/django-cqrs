@@ -17,9 +17,11 @@ logger = logging.getLogger('django-cqrs')
 
 def consume(**kwargs):
     import django
+
     django.setup()
 
     from dj_cqrs.transport import current_transport
+
     try:
         current_transport.consume(**kwargs)
     except KeyboardInterrupt:
@@ -34,15 +36,14 @@ def _display_path(path):
 
 
 class WorkersManager:
-
     def __init__(
-            self,
-            consume_kwargs,
-            workers=1,
-            reload=False,
-            ignore_paths=None,
-            sigint_timeout=5,
-            sigkill_timeout=1,
+        self,
+        consume_kwargs,
+        workers=1,
+        reload=False,
+        ignore_paths=None,
+        sigint_timeout=5,
+        sigkill_timeout=1,
     ):
         self.pool = []
         self.workers = workers
@@ -137,10 +138,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--reload',
             '-r',
-            help=(
-                'Enable reload signal SIGHUP and autoreload '
-                'on file changes'
-            ),
+            help=('Enable reload signal SIGHUP and autoreload ' 'on file changes'),
             action='store_true',
             default=False,
         )
@@ -170,17 +168,16 @@ class Command(BaseCommand):
         )
 
     def handle(
-            self,
-            *args,
-            workers=1,
-            cqrs_id=None,
-            reload=False,
-            ignore_paths=None,
-            sigint_timeout=5,
-            sigkill_timeout=1,
-            **options,
+        self,
+        *args,
+        workers=1,
+        cqrs_id=None,
+        reload=False,
+        ignore_paths=None,
+        sigint_timeout=5,
+        sigkill_timeout=1,
+        **options,
     ):
-
         paths_to_ignore = None
         if ignore_paths:
             paths_to_ignore = [Path(p).resolve() for p in ignore_paths.split(',')]

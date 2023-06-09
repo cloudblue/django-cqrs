@@ -100,7 +100,10 @@ def test_produce_connection_error(kombu_transport, mocker, caplog):
 
     kombu_transport.produce(
         TransportPayload(
-            SignalType.SAVE, 'CQRS_ID', {'id': 1}, 1,
+            SignalType.SAVE,
+            'CQRS_ID',
+            {'id': 1},
+            1,
         ),
     )
     assert "CQRS couldn't be published: pk = 1 (CQRS_ID)." in caplog.text
@@ -108,13 +111,18 @@ def test_produce_connection_error(kombu_transport, mocker, caplog):
 
 def test_produce_publish_error(kombu_transport, mocker, caplog):
     mocker.patch.object(
-        KombuTransport, '_get_producer_kombu_objects', return_value=(mocker.MagicMock(), None),
+        KombuTransport,
+        '_get_producer_kombu_objects',
+        return_value=(mocker.MagicMock(), None),
     )
     mocker.patch.object(KombuTransport, '_produce_message', side_effect=kombu_error)
 
     kombu_transport.produce(
         TransportPayload(
-            SignalType.SAVE, 'CQRS_ID', {'id': 1}, 1,
+            SignalType.SAVE,
+            'CQRS_ID',
+            {'id': 1},
+            1,
         ),
     )
     assert "CQRS couldn't be published: pk = 1 (CQRS_ID)." in caplog.text
@@ -123,13 +131,18 @@ def test_produce_publish_error(kombu_transport, mocker, caplog):
 def test_produce_ok(kombu_transport, mocker, caplog):
     caplog.set_level(logging.INFO)
     mocker.patch.object(
-        KombuTransport, '_get_producer_kombu_objects', return_value=(mocker.MagicMock(), None),
+        KombuTransport,
+        '_get_producer_kombu_objects',
+        return_value=(mocker.MagicMock(), None),
     )
     mocker.patch.object(KombuTransport, '_produce_message', return_value=True)
 
     kombu_transport.produce(
         TransportPayload(
-            SignalType.SAVE, 'CQRS_ID', {'id': 1}, 1,
+            SignalType.SAVE,
+            'CQRS_ID',
+            {'id': 1},
+            1,
         ),
     )
     assert 'CQRS is published: pk = 1 (CQRS_ID)' in caplog.text
@@ -138,7 +151,11 @@ def test_produce_ok(kombu_transport, mocker, caplog):
 def test_produce_message_ok(mocker):
     channel = mocker.MagicMock()
     payload = TransportPayload(
-        SignalType.SAVE, 'cqrs_id', {}, 'id', previous_data={'e': 'f'},
+        SignalType.SAVE,
+        'cqrs_id',
+        {},
+        'id',
+        previous_data={'e': 'f'},
     )
     exchange = PublicKombuTransport.create_exchange('exchange')
 
@@ -251,8 +268,7 @@ def test_consume_message_ack_deprecated_structure(mocker, caplog):
     consumer_mock = mocker.patch('dj_cqrs.controller.consumer.consume')
 
     PublicKombuTransport.consume_message(
-        '{"signal_type":"signal","cqrs_id":"cqrs_id",'
-        '"instance_data":{},"previous_data":null}',
+        '{"signal_type":"signal","cqrs_id":"cqrs_id",' '"instance_data":{},"previous_data":null}',
         mocker.MagicMock(),
     )
 
@@ -295,7 +311,7 @@ def test_consume_message_json_parsing_error(mocker, caplog):
         mocker.MagicMock(),
     )
 
-    assert ": {bad_payload:." in caplog.text
+    assert ': {bad_payload:.' in caplog.text
 
 
 def test_consume_message_package_structure_error(mocker, caplog):

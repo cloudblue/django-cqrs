@@ -33,6 +33,7 @@ logger = logging.getLogger('django-cqrs')
 
 class RabbitMQTransport(LoggingMixin, BaseTransport):
     """Transport class for RabbitMQ."""
+
     CONSUMER_RETRY_TIMEOUT = 5
     PRODUCER_RETRIES = 1
 
@@ -47,7 +48,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
             try:
                 connection.close()
             except (exceptions.StreamLostError, exceptions.ConnectionClosed, ConnectionError):
-                logger.warning("Connection was closed or is closing. Skip it...")
+                logger.warning('Connection was closed or is closing. Skip it...')
 
         cls._producer_connection = None
         cls._producer_channel = None
@@ -67,19 +68,26 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
             try:
                 delay_queue = DelayQueue(max_size=get_delay_queue_max_size())
                 connection, channel, consumer_generator = cls._get_consumer_rmq_objects(
-                    *(common_rabbit_settings + consumer_rabbit_settings), cqrs_ids=cqrs_ids,
+                    *(common_rabbit_settings + consumer_rabbit_settings),
+                    cqrs_ids=cqrs_ids,
                 )
 
                 for method_frame, properties, body in consumer_generator:
                     if method_frame is not None:
                         cls._consume_message(
-                            channel, method_frame, properties, body, delay_queue,
+                            channel,
+                            method_frame,
+                            properties,
+                            body,
+                            delay_queue,
                         )
                     cls._process_delay_messages(channel, delay_queue)
-            except (exceptions.AMQPError,
-                    exceptions.ChannelError,
-                    exceptions.ReentrancyError,
-                    gaierror):
+            except (
+                exceptions.AMQPError,
+                exceptions.ChannelError,
+                exceptions.ReentrancyError,
+                gaierror,
+            ):
                 logger.warning('AMQP connection error. Reconnecting...', exc_info=True)
                 time.sleep(cls.CONSUMER_RETRY_TIMEOUT)
             finally:
@@ -103,7 +111,8 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
             exchange = rmq_settings[-1]
             # Decided not to create context-manager to stay within the class
             _, channel = cls._get_producer_rmq_objects(
-                *rmq_settings, signal_type=payload.signal_type,
+                *rmq_settings,
+                signal_type=payload.signal_type,
             )
 
             cls._produce_message(channel, exchange, payload)
@@ -119,15 +128,19 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
             cls.clean_connection()
 
             base_log_message = "CQRS couldn't be published: pk = {0} ({1}).".format(
-                payload.pk, payload.cqrs_id,
+                payload.pk,
+                payload.cqrs_id,
             )
             if not retries:
                 logger.exception(base_log_message)
                 return
 
-            logger.warning('{0} Error: {1}. Reconnect...'.format(
-                base_log_message, e.__class__.__name__,
-            ))
+            logger.warning(
+                '{0} Error: {1}. Reconnect...'.format(
+                    base_log_message,
+                    e.__class__.__name__,
+                ),
+            )
 
             cls._produce_with_retries(payload, retries - 1)
 
@@ -162,13 +175,17 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
             instance = consumer.consume(payload)
         except Exception as e:
             exception = e
-            logger.error("CQRS service exception", exc_info=True)
+            logger.error('CQRS service exception', exc_info=True)
 
         if instance and exception is None:
             cls._ack(ch, delivery_tag, payload)
         else:
             cls._fail_message(
-                ch, delivery_tag, payload, exception, delay_queue,
+                ch,
+                delivery_tag,
+                payload,
+                exception,
+                delay_queue,
             )
 
     @classmethod
@@ -176,7 +193,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         cls.log_consumed_failed(payload)
         model_cls = ReplicaRegistry.get_model_by_cqrs_id(payload.cqrs_id)
         if model_cls is None:
-            logger.error("Model for cqrs_id {0} is not found.".format(payload.cqrs_id))
+            logger.error('Model for cqrs_id {0} is not found.'.format(payload.cqrs_id))
             cls._nack(channel, delivery_tag)
             return
 
@@ -361,7 +378,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         scheme = urlparse(url).scheme
         assert scheme == 'amqp', 'Scheme must be "amqp" for RabbitMQTransport.'
 
-        schemeless = url[len(scheme) + 3:]
+        schemeless = url[len(scheme) + 3 :]
         parts = urlparse('http://' + schemeless)
 
         return (

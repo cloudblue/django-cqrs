@@ -17,13 +17,15 @@ def test_flow(replica_cursor, clean_rabbit_transport_connection):
     assert count_replica_rows(replica_cursor, REPLICA_BASIC_TABLE) == 0
 
     # Create
-    BasicFieldsModel.cqrs.bulk_create([
-        BasicFieldsModel(
-            int_field=index,
-            char_field='text',
-        )
-        for index in range(1, 4)
-    ])
+    BasicFieldsModel.cqrs.bulk_create(
+        [
+            BasicFieldsModel(
+                int_field=index,
+                char_field='text',
+            )
+            for index in range(1, 4)
+        ],
+    )
 
     transport_delay()
     assert count_replica_rows(replica_cursor, REPLICA_BASIC_TABLE) == 3
@@ -42,8 +44,12 @@ def test_flow(replica_cursor, clean_rabbit_transport_connection):
     assert count_replica_rows(replica_cursor, REPLICA_BASIC_TABLE) == 3
 
     assert ['new_text', 'new_text', 'text'] == [
-        t[0] for t in get_replica_all(
-            replica_cursor, REPLICA_BASIC_TABLE, ('char_field',), order_asc_by='int_field',
+        t[0]
+        for t in get_replica_all(
+            replica_cursor,
+            REPLICA_BASIC_TABLE,
+            ('char_field',),
+            order_asc_by='int_field',
         )
     ]
 
@@ -54,5 +60,7 @@ def test_flow(replica_cursor, clean_rabbit_transport_connection):
     assert count_replica_rows(replica_cursor, REPLICA_BASIC_TABLE) == 1
 
     assert (2, 'new_text', 1) == get_replica_first(
-        replica_cursor, REPLICA_BASIC_TABLE, ('int_field', 'char_field', 'cqrs_revision'),
+        replica_cursor,
+        REPLICA_BASIC_TABLE,
+        ('int_field', 'char_field', 'cqrs_revision'),
     )

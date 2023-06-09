@@ -76,9 +76,10 @@ def _validate_master(cqrs_settings):
 
 def _validate_master_auto_update_fields(master_settings):
     if 'CQRS_AUTO_UPDATE_FIELDS' in master_settings:
-        assert isinstance(master_settings['CQRS_AUTO_UPDATE_FIELDS'], bool), (
-            'CQRS master CQRS_AUTO_UPDATE_FIELDS must be bool.'
-        )
+        assert isinstance(
+            master_settings['CQRS_AUTO_UPDATE_FIELDS'],
+            bool,
+        ), 'CQRS master CQRS_AUTO_UPDATE_FIELDS must be bool.'
     else:
         master_settings['CQRS_AUTO_UPDATE_FIELDS'] = DEFAULT_MASTER_AUTO_UPDATE_FIELDS
 
@@ -94,7 +95,8 @@ def _validate_master_message_ttl(master_settings):
             # TODO: raise error in 2.0.0
             logger.warning(
                 'Settings CQRS_MESSAGE_TTL=%s is invalid, using default %s.',
-                message_ttl, DEFAULT_MASTER_MESSAGE_TTL,
+                message_ttl,
+                DEFAULT_MASTER_MESSAGE_TTL,
             )
             master_settings['CQRS_MESSAGE_TTL'] = DEFAULT_MASTER_MESSAGE_TTL
     else:
@@ -167,7 +169,8 @@ def _validate_replica_max_retries(replica_settings):
             # TODO: raise error in 2.0.0
             logger.warning(
                 'Replica setting CQRS_MAX_RETRIES=%s is invalid, using default %s.',
-                max_retries, DEFAULT_REPLICA_MAX_RETRIES,
+                max_retries,
+                DEFAULT_REPLICA_MAX_RETRIES,
             )
             replica_settings['CQRS_MAX_RETRIES'] = DEFAULT_REPLICA_MAX_RETRIES
     else:
@@ -184,7 +187,8 @@ def _validate_replica_retry_delay(replica_settings):
         # TODO: raise error in 2.0.0
         logger.warning(
             'Replica setting CQRS_RETRY_DELAY=%s is invalid, using default %s.',
-            retry_delay, DEFAULT_REPLICA_RETRY_DELAY,
+            retry_delay,
+            DEFAULT_REPLICA_RETRY_DELAY,
         )
         replica_settings['CQRS_RETRY_DELAY'] = DEFAULT_REPLICA_RETRY_DELAY
 
@@ -199,7 +203,8 @@ def _validate_replica_delay_queue_max_size(replica_settings):
         # TODO: raise error in 2.0.0
         logger.warning(
             'Settings delay_queue_max_size=%s is invalid, using default %s.',
-            max_qsize, DEFAULT_REPLICA_DELAY_QUEUE_MAX_SIZE,
+            max_qsize,
+            DEFAULT_REPLICA_DELAY_QUEUE_MAX_SIZE,
         )
         max_qsize = DEFAULT_REPLICA_DELAY_QUEUE_MAX_SIZE
 

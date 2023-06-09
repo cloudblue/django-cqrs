@@ -18,12 +18,15 @@ def test_duplicate_cqrs_id(registry):
     assert str(e.value) == "Two models can't have the same CQRS_ID: basic."
 
 
-@pytest.mark.parametrize('model,registry', (
-    (master_models.SimplestModel, MasterRegistry),
-    (master_models.AutoFieldsModel, MasterRegistry),
-    (replica_models.BasicFieldsModelRef, ReplicaRegistry),
-    (replica_models.BadTypeModelRef, ReplicaRegistry),
-))
+@pytest.mark.parametrize(
+    'model,registry',
+    (
+        (master_models.SimplestModel, MasterRegistry),
+        (master_models.AutoFieldsModel, MasterRegistry),
+        (replica_models.BasicFieldsModelRef, ReplicaRegistry),
+        (replica_models.BadTypeModelRef, ReplicaRegistry),
+    ),
+)
 def test_models_are_registered(model, registry):
     assert registry.models[model.CQRS_ID] == model
     assert registry.get_model_by_cqrs_id(model.CQRS_ID) == model

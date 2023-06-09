@@ -15,19 +15,23 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--input', '-i',
+            '--input',
+            '-i',
             help='Input file for loading (- for reading from stdin)',
-            type=str, required=True,
+            type=str,
+            required=True,
         )
         parser.add_argument(
-            '--clear', '-c',
+            '--clear',
+            '-c',
             help='Delete existing models',
             type=bool,
             required=False,
             default=False,
         )
         parser.add_argument(
-            '--batch', '-b',
+            '--batch',
+            '-b',
             help='Batch size',
             type=int,
             default=10000,
@@ -58,7 +62,7 @@ class Command(BaseCommand):
                     try:
                         model._default_manager.all().delete()
                     except DatabaseError:
-                        raise CommandError("Delete operation fails!")
+                        raise CommandError('Delete operation fails!')
 
             self._process(f, model, batch_size)
 

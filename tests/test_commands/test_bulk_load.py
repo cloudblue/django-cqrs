@@ -29,14 +29,14 @@ def test_empty_file():
     with pytest.raises(CommandError) as e:
         call_command(COMMAND_NAME, '-i={0}empty_file.dump'.format(DUMPS_PATH))
 
-    assert "empty_file.dump is empty!" in str(e)
+    assert 'empty_file.dump is empty!' in str(e)
 
 
 def test_no_cqrs_id():
     with pytest.raises(CommandError) as e:
         call_command(COMMAND_NAME, '-i={0}bad_cqrs_id.dump'.format(DUMPS_PATH))
 
-    assert "Wrong CQRS ID: publisher!" in str(e)
+    assert 'Wrong CQRS ID: publisher!' in str(e)
 
 
 @pytest.mark.django_db
@@ -98,7 +98,7 @@ def test_delete_operation_fails(mocker):
     with pytest.raises(CommandError) as e:
         call_command(COMMAND_NAME, '--input={0}no_rows.dump'.format(DUMPS_PATH), '--clear=true')
 
-    assert "Delete operation fails!" in str(e)
+    assert 'Delete operation fails!' in str(e)
 
 
 @pytest.mark.django_db
