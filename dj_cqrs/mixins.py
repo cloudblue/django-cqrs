@@ -355,6 +355,7 @@ class RawReplicaMixin:
     CQRS_ID = None
     CQRS_NO_DB_OPERATIONS = True
     CQRS_META = False
+    CQRS_ONLY_DIRECT_SYNCS = False
 
     @classmethod
     def cqrs_save(cls, master_data, **kwargs):
