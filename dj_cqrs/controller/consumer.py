@@ -109,6 +109,15 @@ def _apply_query_timeouts(model_cls):  # pragma: no cover
 
     model_db = model_cls._default_manager.db
     conn = transaction.get_connection(using=model_db)
-    if getattr(conn, 'vendor', 'postgresql'):
-        with conn.cursor() as cursor:
-            cursor.execute('SET statement_timeout TO %s', params=(query_timeout,))
+    conn_vendor = getattr(conn, 'vendor', '')
+
+    if conn_vendor not in {'postgresql', 'mysql'}:
+        return
+
+    if conn_vendor == 'postgresql':
+        statement = 'SET statement_timeout TO %s'
+    else:
+        statement = 'SET SESSION MAX_EXECUTION_TIME=%s'
+
+    with conn.cursor() as cursor:
+        cursor.execute(statement, params=(query_timeout,))
