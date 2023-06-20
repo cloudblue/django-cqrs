@@ -65,6 +65,9 @@ def route_signal_to_replica_model(
 
     is_meta_supported = model_cls.CQRS_META
     try:
+        if db_is_needed:
+            _apply_query_timeouts(model_cls)
+
         with transaction.atomic(savepoint=False) if db_is_needed else ExitStack():
             if signal_type == SignalType.DELETE:
                 if is_meta_supported:
@@ -97,3 +100,24 @@ def route_signal_to_replica_model(
                 model_cls.CQRS_ID,
             ),
         )
+
+
+def _apply_query_timeouts(model_cls):  # pragma: no cover
+    query_timeout = int(settings.CQRS['replica'].get('CQRS_QUERY_TIMEOUT', 0))
+    if query_timeout <= 0:
+        return
+
+    model_db = model_cls._default_manager.db
+    conn = transaction.get_connection(using=model_db)
+    conn_vendor = getattr(conn, 'vendor', '')
+
+    if conn_vendor not in {'postgresql', 'mysql'}:
+        return
+
+    if conn_vendor == 'postgresql':
+        statement = 'SET statement_timeout TO %s'
+    else:
+        statement = 'SET SESSION MAX_EXECUTION_TIME=%s'
+
+    with conn.cursor() as cursor:
+        cursor.execute(statement, params=(query_timeout,))
