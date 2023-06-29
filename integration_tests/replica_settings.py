@@ -66,6 +66,8 @@ CQRS = {
         'delay_queue_max_size': 50,
         'dead_letter_queue': 'dead_letter_replica',
         'dead_message_ttl': 5,
+        'CQRS_QUERY_TIMEOUT': 10000,
+        'CQRS_LOG_TIMED_OUT_QUERIES': 1,
     },
 }
 

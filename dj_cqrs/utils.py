@@ -5,7 +5,11 @@ from datetime import date, datetime, timedelta
 from uuid import UUID
 
 from django.conf import settings
+from django.db import transaction
 from django.utils import timezone
+
+from dj_cqrs.constants import DB_VENDOR_PG, SUPPORTED_TIMEOUT_DB_VENDORS
+from dj_cqrs.logger import install_last_query_capturer
 
 
 logger = logging.getLogger('django-cqrs')
@@ -54,3 +58,25 @@ def get_messages_prefetch_count_per_worker():
 
 def get_json_valid_value(value):
     return str(value) if isinstance(value, (date, datetime, UUID)) else value
+
+
+def apply_query_timeouts(model_cls):  # pragma: no cover
+    query_timeout = int(settings.CQRS['replica'].get('CQRS_QUERY_TIMEOUT', 0))
+    if query_timeout <= 0:
+        return
+
+    model_db = model_cls._default_manager.db
+    conn = transaction.get_connection(using=model_db)
+    conn_vendor = getattr(conn, 'vendor', '')
+    if conn_vendor not in SUPPORTED_TIMEOUT_DB_VENDORS:
+        return
+
+    if conn_vendor == DB_VENDOR_PG:
+        statement = 'SET statement_timeout TO %s'
+    else:
+        statement = 'SET SESSION MAX_EXECUTION_TIME=%s'
+
+    with conn.cursor() as cursor:
+        cursor.execute(statement, params=(query_timeout,))
+
+    install_last_query_capturer(model_cls)

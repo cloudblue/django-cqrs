@@ -8,7 +8,9 @@ from django.conf import settings
 from django.db import Error, close_old_connections, transaction
 
 from dj_cqrs.constants import SignalType
+from dj_cqrs.logger import log_timed_out_queries
 from dj_cqrs.registries import ReplicaRegistry
+from dj_cqrs.utils import apply_query_timeouts
 
 
 logger = logging.getLogger('django-cqrs')
@@ -66,7 +68,7 @@ def route_signal_to_replica_model(
     is_meta_supported = model_cls.CQRS_META
     try:
         if db_is_needed:
-            _apply_query_timeouts(model_cls)
+            apply_query_timeouts(model_cls)
 
         with transaction.atomic(savepoint=False) if db_is_needed else ExitStack():
             if signal_type == SignalType.DELETE:
@@ -101,23 +103,4 @@ def route_signal_to_replica_model(
             ),
         )
 
-
-def _apply_query_timeouts(model_cls):  # pragma: no cover
-    query_timeout = int(settings.CQRS['replica'].get('CQRS_QUERY_TIMEOUT', 0))
-    if query_timeout <= 0:
-        return
-
-    model_db = model_cls._default_manager.db
-    conn = transaction.get_connection(using=model_db)
-    conn_vendor = getattr(conn, 'vendor', '')
-
-    if conn_vendor not in {'postgresql', 'mysql'}:
-        return
-
-    if conn_vendor == 'postgresql':
-        statement = 'SET statement_timeout TO %s'
-    else:
-        statement = 'SET SESSION MAX_EXECUTION_TIME=%s'
-
-    with conn.cursor() as cursor:
-        cursor.execute(statement, params=(query_timeout,))
+        log_timed_out_queries(e, model_cls)
