@@ -6,16 +6,19 @@ from datetime import (
     timedelta,
     timezone,
 )
+from unittest.mock import patch
 from uuid import UUID
 
 import pytest
 
 from dj_cqrs.utils import (
+    apply_query_timeouts,
     get_delay_queue_max_size,
     get_json_valid_value,
     get_message_expiration_dt,
     get_messages_prefetch_count_per_worker,
 )
+from tests.dj_replica import models
 
 
 def test_get_message_expiration_dt_fixed(mocker, settings):
@@ -86,3 +89,23 @@ def test_get_messaged_prefetch_count_per_worker_with_delay_queue(settings):
 )
 def test_get_json_valid_value(value, result):
     assert get_json_valid_value(value) == result
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    'engine, p_count',
+    [
+        ('sqlite', 0),
+        ('postgres', 1),
+        ('mysql', 1),
+    ],
+)
+def test_apply_query_timeouts(settings, engine, p_count):
+    if settings.DB_ENGINE != engine:
+        return
+
+    settings.CQRS['replica']['CQRS_QUERY_TIMEOUT'] = 1
+    with patch('dj_cqrs.utils.install_last_query_capturer') as p:
+        assert apply_query_timeouts(models.BasicFieldsModelRef) is None
+
+    assert p.call_count == p_count
