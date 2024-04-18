@@ -26,7 +26,6 @@ logger = logging.getLogger('django-cqrs')
 
 
 class RawMasterMixin(Model):
-
     """Base class for MasterMixin. **Users shouldn't use this
     class directly.**"""
 
