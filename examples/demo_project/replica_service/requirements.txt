@@ -1,5 +1,5 @@
 django==3.2.20
-djangorestframework==3.12.4
+djangorestframework==3.15.2
 mysqlclient
 django-redis
 django-cqrs
