@@ -1,4 +1,4 @@
-#  Copyright © 2023 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2024 Ingram Micro Inc. All rights reserved.
 
 from datetime import datetime, timezone
 
@@ -8,6 +8,7 @@ from django.db.models.signals import post_delete, post_save
 
 from dj_cqrs.constants import SignalType
 from dj_cqrs.signals import post_bulk_create, post_update
+from dj_cqrs.utils import bulk_relate_cqrs_serialization
 from tests.dj_master import models
 from tests.utils import assert_is_sub_dict, assert_publisher_once_called_with_args
 
@@ -125,6 +126,28 @@ def test_manual_post_bulk_create(mocker):
     models.AutoFieldsModel.call_post_bulk_create(created_models)
 
     assert publisher_mock.call_count == 3
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize('count', (1, 3, 5))
+def test_bulk_relate_cqrs_serialization(
+    django_assert_num_queries,
+    django_v_trans_q_count_sup,
+    mocker,
+    count,
+):
+    mocker.patch('dj_cqrs.controller.producer.produce')
+
+    opt_query_count = count + 2 + django_v_trans_q_count_sup
+    with django_assert_num_queries(opt_query_count):
+        with bulk_relate_cqrs_serialization():
+            with transaction.atomic(savepoint=False):
+                [models.Author.objects.create(id=i) for i in range(count)]
+
+    not_opt_query_count = count + count * 2 + django_v_trans_q_count_sup
+    with django_assert_num_queries(not_opt_query_count):
+        with transaction.atomic(savepoint=False):
+            [models.Author.objects.create(id=10 + i) for i in range(count)]
 
 
 @pytest.mark.django_db(transaction=True)

@@ -1,6 +1,8 @@
-#  Copyright © 2023 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2024 Ingram Micro Inc. All rights reserved.
 
 import logging
+from collections import defaultdict
+from contextlib import ContextDecorator
 from datetime import date, datetime, timedelta
 from uuid import UUID
 
@@ -10,6 +12,7 @@ from django.utils import timezone
 
 from dj_cqrs.constants import DB_VENDOR_PG, SUPPORTED_TIMEOUT_DB_VENDORS
 from dj_cqrs.logger import install_last_query_capturer
+from dj_cqrs.state import cqrs_state
 
 
 logger = logging.getLogger('django-cqrs')
@@ -80,3 +83,55 @@ def apply_query_timeouts(model_cls):  # pragma: no cover
         cursor.execute(statement, params=(query_timeout,))
 
     install_last_query_capturer(model_cls)
+
+
+class _BulkRelateCM(ContextDecorator):
+    def __init__(self, cqrs_id=None):
+        self._cqrs_id = cqrs_id
+        self._mapping = defaultdict(lambda: defaultdict(list))
+        self._cache = {}
+
+    def register(self, instance, using):
+        instance_cqrs_id = getattr(instance, 'CQRS_ID', None)
+        if self._cqrs_id and instance_cqrs_id != self._cqrs_id:
+            return
+
+        self._mapping[instance_cqrs_id][using].append(instance.pk)
+
+    def get_cached_instance(self, instance, using):
+        instance_cqrs_id = getattr(instance, 'CQRS_ID', None)
+        if self._cqrs_id and instance_cqrs_id != self._cqrs_id:
+            return
+
+        instance_pk = instance.pk
+        cached_instances = self._cache.get(instance_cqrs_id, {}).get(using, {})
+        if cached_instances:
+            return cached_instances.get(instance_pk)
+
+        cached_pks = self._mapping[instance_cqrs_id][using]
+        if not cached_pks:
+            return
+
+        qs = instance.__class__._default_manager.using(using)
+        instances_cache = {
+            instance.pk: instance
+            for instance in instance.__class__.relate_cqrs_serialization(qs).filter(
+                pk__in=cached_pks,
+            ).order_by().all()
+        }
+        self._cache.update({
+            instance_cqrs_id: {
+                using: instances_cache,
+            },
+        })
+        return instances_cache.get(instance_pk)
+
+    def __enter__(self):
+        cqrs_state.bulk_relate_cm = self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        cqrs_state.bulk_relate_cm = None
+
+
+def bulk_relate_cqrs_serialization(cqrs_id=None):
+    return _BulkRelateCM(cqrs_id=cqrs_id)
