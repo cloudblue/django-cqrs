@@ -135,16 +135,22 @@ def test_bulk_relate_cqrs_serialization(
     django_v_trans_q_count_sup,
     mocker,
     count,
+    settings,
 ):
     mocker.patch('dj_cqrs.controller.producer.produce')
 
-    opt_query_count = count + 2 + django_v_trans_q_count_sup
+    if settings.DB_ENGINE == 'sqlite' and django_v_trans_q_count_sup == 0:
+        suppl = 1
+    else:
+        suppl = django_v_trans_q_count_sup
+
+    opt_query_count = count + 2 + suppl
     with django_assert_num_queries(opt_query_count):
         with bulk_relate_cqrs_serialization():
             with transaction.atomic(savepoint=False):
                 [models.Author.objects.create(id=i) for i in range(count)]
 
-    not_opt_query_count = count + count * 2 + django_v_trans_q_count_sup
+    not_opt_query_count = count + count * 2 + suppl
     with django_assert_num_queries(not_opt_query_count):
         with transaction.atomic(savepoint=False):
             [models.Author.objects.create(id=10 + i) for i in range(count)]
