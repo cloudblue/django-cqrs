@@ -228,8 +228,8 @@ Unit testing
 
 Run tests with various RDBMS:
 - `cd integration_tests`
-- `DB=postgres docker-compose -f docker-compose.yml -f rdbms.yml run app_test`
-- `DB=mysql docker-compose -f docker-compose.yml -f rdbms.yml run app_test`
+- `DB=postgres docker compose -f docker-compose.yml -f rdbms.yml run app_test`
+- `DB=mysql docker compose -f docker-compose.yml -f rdbms.yml run app_test`
 
 Check code style: `flake8`
 Run tests: `pytest`
@@ -244,6 +244,6 @@ To generate HTML coverage reports use:
 
 Integrational testing
 ------
-1. docker-compose
+1. docker compose
 2. `cd integration_tests`
-3. `docker-compose run master`
+3. `docker compose run master`
