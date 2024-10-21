@@ -88,19 +88,19 @@ def apply_query_timeouts(model_cls):  # pragma: no cover
 class _BulkRelateCM(ContextDecorator):
     def __init__(self, cqrs_id=None):
         self._cqrs_id = cqrs_id
-        self._mapping = defaultdict(lambda: defaultdict(list))
+        self._mapping = defaultdict(lambda: defaultdict(set))
         self._cache = {}
 
-    def register(self, instance, using):
+    def register(self, instance, using=None):
         instance_cqrs_id = getattr(instance, 'CQRS_ID', None)
-        if self._cqrs_id and instance_cqrs_id != self._cqrs_id:
+        if (not instance_cqrs_id) or (self._cqrs_id and instance_cqrs_id != self._cqrs_id):
             return
 
-        self._mapping[instance_cqrs_id][using].append(instance.pk)
+        self._mapping[instance_cqrs_id][using].add(instance.pk)
 
-    def get_cached_instance(self, instance, using):
+    def get_cached_instance(self, instance, using=None):
         instance_cqrs_id = getattr(instance, 'CQRS_ID', None)
-        if self._cqrs_id and instance_cqrs_id != self._cqrs_id:
+        if (not instance_cqrs_id) or (self._cqrs_id and instance_cqrs_id != self._cqrs_id):
             return
 
         instance_pk = instance.pk
@@ -115,15 +115,20 @@ class _BulkRelateCM(ContextDecorator):
         qs = instance.__class__._default_manager.using(using)
         instances_cache = {
             instance.pk: instance
-            for instance in instance.__class__.relate_cqrs_serialization(qs).filter(
+            for instance in instance.__class__.relate_cqrs_serialization(qs)
+            .filter(
                 pk__in=cached_pks,
-            ).order_by().all()
+            )
+            .order_by()
+            .all()
         }
-        self._cache.update({
-            instance_cqrs_id: {
-                using: instances_cache,
-            },
-        })
+        self._cache.update(
+            {
+                instance_cqrs_id: {
+                    using: instances_cache,
+                },
+            }
+        )
         return instances_cache.get(instance_pk)
 
     def __enter__(self):
