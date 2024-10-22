@@ -8,12 +8,12 @@ It's a simple demo project contains 2 services:
 ## Start project:
 
 ```
-docker-compose up -d db_pgsql db_mysql
-docker-compose run master ./manage.py migrate
-docker-compose run replica ./manage.py migrate
-docker-compose up -d
-docker-compose run master ./manage.py cqrs_sync --cqrs-id=user -f={}
-docker-compose run master ./manage.py cqrs_sync --cqrs-id=product -f={}
+docker compose up -d db_pgsql db_mysql
+docker compose run master ./manage.py migrate
+docker compose run replica ./manage.py migrate
+docker compose up -d
+docker compose run master ./manage.py cqrs_sync --cqrs-id=user -f={}
+docker compose run master ./manage.py cqrs_sync --cqrs-id=product -f={}
 ```
 
 It starts master WEB app on [http://127.0.0.1:8000](http://127.0.0.1:8000) and replica on [http://127.0.0.1:8001](http://127.0.0.1:8001)

@@ -1,4 +1,4 @@
-#  Copyright © 2023 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2024 Ingram Micro Inc. All rights reserved.
 
 import logging
 
@@ -20,6 +20,7 @@ from dj_cqrs.constants import ALL_BASIC_FIELDS, FIELDS_TRACKER_FIELD_NAME, TRACK
 from dj_cqrs.managers import MasterManager, ReplicaManager
 from dj_cqrs.metas import MasterMeta, ReplicaMeta
 from dj_cqrs.signals import MasterSignals, post_bulk_create, post_update
+from dj_cqrs.state import cqrs_state
 
 
 logger = logging.getLogger('django-cqrs')
@@ -292,9 +293,16 @@ class RawMasterMixin(Model):
         if sync:
             instance = self
         else:
+            instance = None
             db = using if using is not None else self._state.db
-            qs = self.__class__._default_manager.using(db)
-            instance = self.relate_cqrs_serialization(qs).get(pk=self.pk)
+
+            bulk_relate_cm = cqrs_state.bulk_relate_cm
+            if bulk_relate_cm:
+                instance = bulk_relate_cm.get_cached_instance(self, db)
+
+            if not instance:
+                qs = self.__class__._default_manager.using(db)
+                instance = self.relate_cqrs_serialization(qs).get(pk=self.pk)
 
         data = self._cqrs_serializer_cls(instance).data
         data['cqrs_revision'] = instance.cqrs_revision

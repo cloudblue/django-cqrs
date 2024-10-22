@@ -1,4 +1,4 @@
-#  Copyright © 2023 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2024 Ingram Micro Inc. All rights reserved.
 
 import logging
 
@@ -9,6 +9,7 @@ from django.utils.timezone import now
 from dj_cqrs.constants import SignalType
 from dj_cqrs.controller import producer
 from dj_cqrs.dataclasses import TransportPayload
+from dj_cqrs.state import cqrs_state
 from dj_cqrs.utils import get_message_expiration_dt
 
 
@@ -63,6 +64,10 @@ class MasterSignals:
             return
 
         using = kwargs['using']
+
+        bulk_relate_cm = cqrs_state.bulk_relate_cm
+        if bulk_relate_cm:
+            bulk_relate_cm.register(instance, using)
 
         sync = kwargs.get('sync', False)
         queue = kwargs.get('queue', None)
