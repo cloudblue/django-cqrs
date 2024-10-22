@@ -296,7 +296,7 @@ class RawMasterMixin(Model):
             instance = None
             db = using if using is not None else self._state.db
 
-            bulk_relate_cm = cqrs_state.bulk_relate_cm
+            bulk_relate_cm = getattr(cqrs_state, 'bulk_relate_cm', None)
             if bulk_relate_cm:
                 instance = bulk_relate_cm.get_cached_instance(self, db)
 

@@ -65,7 +65,7 @@ class MasterSignals:
 
         using = kwargs['using']
 
-        bulk_relate_cm = cqrs_state.bulk_relate_cm
+        bulk_relate_cm = getattr(cqrs_state, 'bulk_relate_cm', None)
         if bulk_relate_cm:
             bulk_relate_cm.register(instance, using)
 
