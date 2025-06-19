@@ -1,4 +1,4 @@
-#  Copyright © 2023 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2025 CloudBlue Micro Inc. All rights reserved.
 
 from datetime import datetime, timezone
 
@@ -58,7 +58,7 @@ def test_handle_retry(settings, capsys, mocker):
     method_frame = mocker.MagicMock()
     method_frame.delivery_tag = 12
 
-    fake_now = datetime(2020, 1, 1, second=0, tzinfo=timezone.utc)
+    fake_now = datetime(2025, 1, 1, second=0, tzinfo=timezone.utc)
     mocker.patch('django.utils.timezone.now', return_value=fake_now)
     message = {
         'signal_type': SignalType.SAVE,
@@ -67,7 +67,7 @@ def test_handle_retry(settings, capsys, mocker):
         'instance_pk': 1,
         'previous_data': None,
         'correlation_id': None,
-        'expires': '2020-01-01T00:00:00+00:00',
+        'expires': '2025-01-01T00:00:00+00:00',
         'retries': 30,
     }
     consumer_generator = (v for v in [(method_frame, None, ujson.dumps(message))])
@@ -82,7 +82,7 @@ def test_handle_retry(settings, capsys, mocker):
 
     produce_message = ujson.loads(produce_kwargs['body'])
     assert produce_message['instance_data'] == message['instance_data']
-    assert produce_message['expires'] == '2020-01-02T00:00:00+00:00'
+    assert produce_message['expires'] == '2025-01-02T00:00:00+00:00'
     assert produce_message['retries'] == 0
 
     captured = capsys.readouterr()
@@ -90,7 +90,7 @@ def test_handle_retry(settings, capsys, mocker):
 
     assert total_msg == 'Total dead letters: 1'
     assert retrying_msg == 'Retrying: 1/1'
-    assert '2020-01-02T00:00:00+00:00' in body_msg
+    assert '2025-01-02T00:00:00+00:00' in body_msg
 
     assert channel.basic_nack.call_count == 1
     assert channel.basic_nack.call_args[0][0] == 12

@@ -1,4 +1,4 @@
-#  Copyright © 2023 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2025 CloudBlue Micro Inc. All rights reserved.
 
 from datetime import datetime, timedelta, timezone
 from queue import Full
@@ -9,7 +9,7 @@ from dj_cqrs.delay import DelayMessage, DelayQueue
 
 
 def test_delay_message(mocker):
-    fake_now = datetime(2020, 1, 1, second=0, tzinfo=timezone.utc)
+    fake_now = datetime(2025, 1, 1, second=0, tzinfo=timezone.utc)
     eta = fake_now + timedelta(seconds=10)
     mocker.patch('django.utils.timezone.now', return_value=fake_now)
 
@@ -18,12 +18,12 @@ def test_delay_message(mocker):
     assert delay_message.delivery_tag == 1
     assert delay_message.payload == {'test': 'data'}
 
-    expected_eta = datetime(2020, 1, 1, second=10, tzinfo=timezone.utc)
+    expected_eta = datetime(2025, 1, 1, second=10, tzinfo=timezone.utc)
     assert delay_message.eta == expected_eta
 
 
 def test_delay_queue_put():
-    fake_now = datetime(2020, 1, 1, second=0, tzinfo=timezone.utc)
+    fake_now = datetime(2025, 1, 1, second=0, tzinfo=timezone.utc)
     delay_message = DelayMessage(1, {'test': 'data'}, fake_now)
 
     delay_queue = DelayQueue()
@@ -36,7 +36,7 @@ def test_delay_queue_put():
 
 
 def test_delay_queue_put_same_eta():
-    eta = datetime(2020, 1, 1, second=0, tzinfo=timezone.utc)
+    eta = datetime(2025, 1, 1, second=0, tzinfo=timezone.utc)
     delay_messages = [DelayMessage(delivery_tag, None, eta) for delivery_tag in range(10)]
 
     delay_queue = DelayQueue()
@@ -48,7 +48,7 @@ def test_delay_queue_put_same_eta():
 
 
 def test_delay_queue_put_full():
-    eta = datetime(2020, 1, 1, second=0, tzinfo=timezone.utc)
+    eta = datetime(2025, 1, 1, second=0, tzinfo=timezone.utc)
     delay_queue = DelayQueue(max_size=1)
 
     delay_queue.put(
@@ -64,7 +64,7 @@ def test_delay_queue_put_full():
 
 
 def test_delay_queue_get_ready(mocker):
-    fake_put_now = datetime(2020, 1, 1, second=0, tzinfo=timezone.utc)
+    fake_put_now = datetime(2025, 1, 1, second=0, tzinfo=timezone.utc)
     mocker.patch('django.utils.timezone.now', return_value=fake_put_now)
 
     delay_queue = DelayQueue()
@@ -76,7 +76,7 @@ def test_delay_queue_get_ready(mocker):
         delay_messages.append(delay_message)
     mocker.stopall()
 
-    fake_get_ready_now = datetime(2020, 1, 1, second=3, tzinfo=timezone.utc)
+    fake_get_ready_now = datetime(2025, 1, 1, second=3, tzinfo=timezone.utc)
     mocker.patch('django.utils.timezone.now', return_value=fake_get_ready_now)
 
     ready_messages = list(delay_queue.get_ready())

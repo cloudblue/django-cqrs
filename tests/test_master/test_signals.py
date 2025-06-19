@@ -1,4 +1,4 @@
-#  Copyright © 2024 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2025 CloudBlue Micro Inc. All rights reserved.
 
 from datetime import datetime, timezone
 
@@ -35,11 +35,11 @@ def test_post_save_create(mocker):
 
 @pytest.mark.django_db(transaction=True)
 def test_post_save_create_with_retry_fields(settings, mocker):
-    fake_now = datetime(2020, 1, 1, second=0, tzinfo=timezone.utc)
+    fake_now = datetime(2025, 1, 1, second=0, tzinfo=timezone.utc)
     mocker.patch('django.utils.timezone.now', return_value=fake_now)
 
     settings.CQRS['master']['CQRS_MESSAGE_TTL'] = 10
-    expected_expires = datetime(2020, 1, 1, second=10, tzinfo=timezone.utc)
+    expected_expires = datetime(2025, 1, 1, second=10, tzinfo=timezone.utc)
 
     publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
     models.SimplestModel.objects.create(id=1)
@@ -101,11 +101,11 @@ def test_post_save_instance_doesnt_exist(caplog):
 def test_post_save_delete_with_retry_fields(settings, mocker):
     m = models.SimplestModel.objects.create(id=1)
 
-    fake_now = datetime(2020, 1, 1, second=0, tzinfo=timezone.utc)
+    fake_now = datetime(2025, 1, 1, second=0, tzinfo=timezone.utc)
     mocker.patch('django.utils.timezone.now', return_value=fake_now)
 
     settings.CQRS['master']['CQRS_MESSAGE_TTL'] = 10
-    expected_expires = datetime(2020, 1, 1, second=10, tzinfo=timezone.utc)
+    expected_expires = datetime(2025, 1, 1, second=10, tzinfo=timezone.utc)
 
     publisher_mock = mocker.patch('dj_cqrs.controller.producer.produce')
     m.delete()

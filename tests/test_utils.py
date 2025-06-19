@@ -1,4 +1,4 @@
-#  Copyright © 2023 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2025 CloudBlue Micro Inc. All rights reserved.
 
 from datetime import (
     date,
@@ -27,7 +27,7 @@ from tests.dj_replica import models
 
 def test_get_message_expiration_dt_fixed(mocker, settings):
     settings.CQRS['master']['CQRS_MESSAGE_TTL'] = 3600
-    fake_now = datetime(2020, 1, 1, second=0, tzinfo=timezone.utc)
+    fake_now = datetime(2025, 1, 1, second=0, tzinfo=timezone.utc)
     mocker.patch('django.utils.timezone.now', return_value=fake_now)
 
     result = get_message_expiration_dt()
@@ -37,7 +37,7 @@ def test_get_message_expiration_dt_fixed(mocker, settings):
 
 
 def test_get_message_expiration_dt_fixed_from_parameter(mocker, settings):
-    fake_now = datetime(2020, 1, 1, second=0, tzinfo=timezone.utc)
+    fake_now = datetime(2025, 1, 1, second=0, tzinfo=timezone.utc)
     mocker.patch('django.utils.timezone.now', return_value=fake_now)
 
     result = get_message_expiration_dt(message_ttl=2200)
@@ -48,7 +48,7 @@ def test_get_message_expiration_dt_fixed_from_parameter(mocker, settings):
 
 def test_get_message_expiration_dt_infinite(mocker, settings):
     settings.CQRS['master']['CQRS_MESSAGE_TTL'] = None
-    fake_now = datetime(2020, 1, 1, second=0, tzinfo=timezone.utc)
+    fake_now = datetime(2025, 1, 1, second=0, tzinfo=timezone.utc)
     mocker.patch('django.utils.timezone.now', return_value=fake_now)
 
     result = get_message_expiration_dt()
@@ -85,8 +85,8 @@ def test_get_messaged_prefetch_count_per_worker_with_delay_queue(settings):
     (
         (None, None),
         (1, 1),
-        (datetime(2022, 1, 1, second=0, tzinfo=timezone.utc), '2022-01-01 00:00:00+00:00'),
-        (date(2022, 2, 1), '2022-02-01'),
+        (datetime(2025, 1, 1, second=0, tzinfo=timezone.utc), '2025-01-01 00:00:00+00:00'),
+        (date(2025, 2, 1), '2025-02-01'),
         (UUID('0419d87b-d477-44e4-82c4-310f56faa3c7'), '0419d87b-d477-44e4-82c4-310f56faa3c7'),
         ('abc', 'abc'),
     ),
