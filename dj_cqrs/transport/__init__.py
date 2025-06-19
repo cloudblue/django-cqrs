@@ -1,4 +1,4 @@
-#  Copyright © 2023 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2025 CloudBlue Inc. All rights reserved.
 
 from django.conf import settings
 from django.utils.module_loading import import_string
