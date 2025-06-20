@@ -1,3 +1,3 @@
-#  Copyright © 2023 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2025 CloudBlue All rights reserved.
 
 urlpatterns = []

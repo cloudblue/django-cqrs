@@ -1,4 +1,4 @@
-#  Copyright © 2023 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2025 CloudBlue All rights reserved.
 
 
 def batch_qs(qs, batch_size=10000):

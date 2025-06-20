@@ -1,4 +1,4 @@
-#  Copyright © 2024 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2025 CloudBlue All rights reserved.
 
 import threading
 

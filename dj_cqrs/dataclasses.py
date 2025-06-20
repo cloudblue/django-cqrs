@@ -1,4 +1,4 @@
-#  Copyright © 2023 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2025 CloudBlue All rights reserved.
 
 from dateutil.parser import parse as dateutil_parse
 from django.utils import timezone
