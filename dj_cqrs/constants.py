@@ -1,4 +1,4 @@
-#  Copyright © 2023 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2025 CloudBlue Inc. All rights reserved.
 
 ALL_BASIC_FIELDS = '__all__'
 
