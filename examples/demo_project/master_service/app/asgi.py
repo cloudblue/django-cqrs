@@ -1,4 +1,4 @@
-#  Copyright © 2023 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2023 CloudBlue Inc. All rights reserved.
 
 """
 ASGI config for master_service project.

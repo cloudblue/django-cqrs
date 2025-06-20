@@ -1,4 +1,4 @@
-#  Copyright © 2023 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2023 CloudBlue Inc. All rights reserved.
 
 import ujson
 from django.core.management.base import BaseCommand, CommandError

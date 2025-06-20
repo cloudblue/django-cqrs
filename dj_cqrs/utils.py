@@ -1,4 +1,4 @@
-#  Copyright © 2024 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2024 CloudBlue Inc. All rights reserved.
 
 import logging
 from collections import defaultdict
