@@ -1,4 +1,4 @@
-#  Copyright © 2023 Ingram Micro Inc. All rights reserved.
+#  Copyright © 2025 CloudBlue Inc. All rights reserved.
 from rest_framework import serializers
 
 from app.models import Purchase

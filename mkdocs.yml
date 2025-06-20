@@ -3,7 +3,7 @@ site_url: https://github.com/cloudblue/django-cqrs
 repo_name: cloudblue/django-cqrs
 repo_url: https://github.com/cloudblue/django-cqrs
 edit_uri: ""
-copyright: Copyright &copy; 2023 Ingram Micro. All Rights Reserved.
+copyright: Copyright &copy; 2025 CloudBlue. All rights reserved.
 extra:
   generator: false
   social:
