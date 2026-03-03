@@ -21,8 +21,8 @@ class RabbitMQTransportService(RabbitMQTransport):
         return cls._get_common_settings()
 
     @classmethod
-    def create_connection(cls, host, port, creds, exchange):
-        return cls._create_connection(host, port, creds, exchange)
+    def create_connection(cls, host, port, creds, virtual_host, exchange):
+        return cls._create_connection(host, port, creds, virtual_host, exchange)
 
     @classmethod
     def declare_queue(cls, channel, queue_name):
@@ -75,11 +75,12 @@ class Command(BaseCommand):
             raise CommandError('Dead letters commands available only for RabbitMQTransport.')
 
     def init_broker(self):
-        host, port, creds, exchange = RabbitMQTransportService.get_common_settings()
+        host, port, creds, virtual_host, exchange = RabbitMQTransportService.get_common_settings()
         connection, channel = RabbitMQTransportService.create_connection(
             host,
             port,
             creds,
+            virtual_host,
             exchange,
         )
 

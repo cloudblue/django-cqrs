@@ -68,7 +68,8 @@ def test_default_settings():
     assert s[0] == 'localhost'
     assert s[1] == 5672
     assert s[2].username == 'guest' and s[2].password == 'guest'
-    assert s[3] == 'cqrs'
+    assert s[3] == '/'
+    assert s[4] == 'cqrs'
 
 
 def test_non_default_settings(settings, caplog):
@@ -78,6 +79,7 @@ def test_non_default_settings(settings, caplog):
         'port': 8000,
         'user': 'usr',
         'password': 'pswd',
+        'virtual_host': 'test',
         'exchange': 'exchange',
     }
 
@@ -85,7 +87,8 @@ def test_non_default_settings(settings, caplog):
     assert s[0] == 'rabbit'
     assert s[1] == 8000
     assert s[2].username == 'usr' and s[2].password == 'pswd'
-    assert s[3] == 'exchange'
+    assert s[3] == 'test'
+    assert s[4] == 'exchange'
 
 
 def test_default_url_settings(settings):
@@ -97,20 +100,22 @@ def test_default_url_settings(settings):
     assert s[0] == 'localhost'
     assert s[1] == 5672
     assert s[2].username == 'guest' and s[2].password == 'guest'
-    assert s[3] == 'cqrs'
+    assert s[3] == '/'
+    assert s[4] == 'cqrs'
 
 
 def test_non_default_url_settings(settings):
     settings.CQRS = {
         'transport': 'dj_cqrs.transport.rabbit_mq.RabbitMQTransport',
-        'url': 'amqp://usr:pswd@rabbit:8000',
+        'url': 'amqp://usr:pswd@rabbit:8000/test',
         'exchange': 'exchange',
     }
     s = PublicRabbitMQTransport.get_common_settings()
     assert s[0] == 'rabbit'
     assert s[1] == 8000
     assert s[2].username == 'usr' and s[2].password == 'pswd'
-    assert s[3] == 'exchange'
+    assert s[3] == 'test'
+    assert s[4] == 'exchange'
 
 
 def test_invalid_url_settings(settings):
