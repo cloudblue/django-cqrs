@@ -19,10 +19,9 @@ classifiers = [
     'Intended Audience :: Developers',
     'License :: OSI Approved :: Apache Software License',
     'Operating System :: Unix',
-    'Programming Language :: Python :: 3.8',
-    'Programming Language :: Python :: 3.9',
     'Programming Language :: Python :: 3.10',
     'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
     'Topic :: Communications',
     'Topic :: Database',
 ]
@@ -35,41 +34,40 @@ keywords = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.8,<4"
-django = ">=3.2"
-pika = ">=1.0.0"
-kombu = ">=4.6.*"
-ujson = ">=5.4.0"
-django-model-utils = ">=4.0.0,<4.5"
-python-dateutil = ">=2.4"
-watchfiles = "^0.18.1"
+python = ">=3.10,<4"
+django = ">=3.2,<6"
+pika = ">=1,<2"
+kombu = ">=5,<6"
+ujson = ">=5.4,<6"
+django-model-utils = ">=4,<4.5"
+python-dateutil = ">=2.4,<3"
+watchfiles = ">=0.18,<2"
 
 [tool.poetry.group.test.dependencies]
-black = ">=23.3"
-pytest = ">=7.2.0,<8"
-pytest-cov = ">=2.10.1,<5"
-pytest-mock = "^3.10"
-pytest-django = ">=4.4.0"
-pytest-randomly = ">=3.12"
-pytest-deadfixtures = "^2.2.1"
-coverage = {extras = ["toml"], version = ">=5.3,<7"}
-flake8 = ">=3.8,<6"
-flake8-black = ">=0.3"
-flake8-bugbear = ">=20,<23"
-flake8-cognitive-complexity = "^0.1"
-flake8-commas = "~2.1"
-flake8-future-import = "~0.4"
-flake8-isort = "^6.0"
-flake8-broken-line = ">=0.3,<0.7"
-flake8-comprehensions = "^3.10.1"
-flake8-debugger = "^4.1.2"
-flake8-eradicate = "^1.4.0"
-flake8-string-format = "^0.3.0"
-flake8-pyproject = "^1.2.3"
-djangorestframework = ">=3.12"
-isort = "^5.10"
-django-mptt = "^0.14.0"
-importlib-metadata = "<5"
+black = "23.*"
+coverage = {extras = ["toml"], version = "7.*"}
+django-mptt = "0.*"
+djangorestframework = "3.*"
+flake8 = "7.*"
+flake8-black = "0.*"
+flake8-broken-line = "1.*"
+flake8-bugbear = "25.*"
+flake8-cognitive-complexity = "0.*"
+flake8-commas = "4.*"
+flake8-comprehensions = "3.*"
+flake8-debugger = "4.*"
+flake8-eradicate = "1.*"
+flake8-future-import = "0.*"
+flake8-isort = "7.*"
+flake8-string-format = "0.*"
+flake8-pyproject = "1.*"
+isort = "5.*"
+pytest = "7.*"
+pytest-cov = "3.*"
+pytest-deadfixtures = "2.*"
+pytest-django = "4.*"
+pytest-mock = "3.*"
+pytest-randomly = "3.*"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = ">=1.4"

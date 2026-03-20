@@ -1,6 +1,6 @@
 black
 coverage
-flake8<5
+flake8
 pytest
 pytest-cov
 pytest-django
