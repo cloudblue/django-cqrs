@@ -210,7 +210,7 @@ kubectl exec -i REPLICA_CONTAINER -- python manage.py cqrs_deleted_diff_replica 
 Development
 ===========
 
-1. Python >= 3.8
+1. Python >= 3.10
 2. Install dependencies `requirements/dev.txt`
 3. We use `isort` library to order and format our imports, and `black` - to format the code. 
 We check it using `flake8-isort` and `flake8-black` libraries (automatically on `flake8` run).  
@@ -222,7 +222,7 @@ Testing
 
 Unit testing
 ------
-1. Python >= 3.8
+1. Python >= 3.10
 2. Install dependencies `requirements/test.txt`
 3. `export PYTHONPATH=/your/path/to/django-cqrs/`
 
