@@ -68,7 +68,8 @@ def test_default_settings():
     assert s[0] == 'localhost'
     assert s[1] == 5672
     assert s[2].username == 'guest' and s[2].password == 'guest'
-    assert s[3] == 'cqrs'
+    assert s[3] == '/'
+    assert s[4] == 'cqrs'
 
 
 def test_non_default_settings(settings, caplog):
@@ -78,6 +79,7 @@ def test_non_default_settings(settings, caplog):
         'port': 8000,
         'user': 'usr',
         'password': 'pswd',
+        'virtual_host': 'test',
         'exchange': 'exchange',
     }
 
@@ -85,7 +87,8 @@ def test_non_default_settings(settings, caplog):
     assert s[0] == 'rabbit'
     assert s[1] == 8000
     assert s[2].username == 'usr' and s[2].password == 'pswd'
-    assert s[3] == 'exchange'
+    assert s[3] == 'test'
+    assert s[4] == 'exchange'
 
 
 def test_default_url_settings(settings):
@@ -97,20 +100,50 @@ def test_default_url_settings(settings):
     assert s[0] == 'localhost'
     assert s[1] == 5672
     assert s[2].username == 'guest' and s[2].password == 'guest'
-    assert s[3] == 'cqrs'
+    assert s[3] == '/'
+    assert s[4] == 'cqrs'
 
 
 def test_non_default_url_settings(settings):
     settings.CQRS = {
         'transport': 'dj_cqrs.transport.rabbit_mq.RabbitMQTransport',
-        'url': 'amqp://usr:pswd@rabbit:8000',
+        'url': 'amqp://usr:pswd@rabbit:8000/test',
         'exchange': 'exchange',
     }
     s = PublicRabbitMQTransport.get_common_settings()
     assert s[0] == 'rabbit'
     assert s[1] == 8000
     assert s[2].username == 'usr' and s[2].password == 'pswd'
-    assert s[3] == 'exchange'
+    assert s[3] == 'test'
+    assert s[4] == 'exchange'
+
+
+def test_root_virtual_host_url_settings(settings):
+    settings.CQRS = {
+        'transport': 'dj_cqrs.transport.rabbit_mq.RabbitMQTransport',
+        'url': 'amqp://usr:pswd@rabbit:8000/',
+        'exchange': 'exchange',
+    }
+    s = PublicRabbitMQTransport.get_common_settings()
+    assert s[0] == 'rabbit'
+    assert s[1] == 8000
+    assert s[2].username == 'usr' and s[2].password == 'pswd'
+    assert s[3] == '/'
+    assert s[4] == 'exchange'
+
+
+def test_nested_virtual_host_url_settings(settings):
+    settings.CQRS = {
+        'transport': 'dj_cqrs.transport.rabbit_mq.RabbitMQTransport',
+        'url': 'amqp://usr:pswd@rabbit:8000/foo/bar',
+        'exchange': 'exchange',
+    }
+    s = PublicRabbitMQTransport.get_common_settings()
+    assert s[0] == 'rabbit'
+    assert s[1] == 8000
+    assert s[2].username == 'usr' and s[2].password == 'pswd'
+    assert s[3] == 'foo/bar'
+    assert s[4] == 'exchange'
 
 
 def test_invalid_url_settings(settings):
@@ -149,6 +182,103 @@ def test_consumer_non_default_settings(settings, caplog):
     assert s[1] == 'dead_letter_q'
     assert s[2] == 0  # Infinite
     assert "The 'consumer_prefetch_count' setting is ignored for RabbitMQTransport." in caplog.text
+
+
+def test_get_consumer_rmq_objects_passes_virtual_host(mocker):
+    connection = mocker.MagicMock()
+    channel = mocker.MagicMock()
+    consumer_generator = iter(())
+
+    connection.channel.return_value = channel
+    channel.consume.return_value = consumer_generator
+
+    connection_parameters = mocker.sentinel.connection_parameters
+    connection_parameters_cls = mocker.patch(
+        'dj_cqrs.transport.rabbit_mq.ConnectionParameters',
+        return_value=connection_parameters,
+    )
+    blocking_connection = mocker.patch(
+        'dj_cqrs.transport.rabbit_mq.BlockingConnection',
+        return_value=connection,
+    )
+
+    creds = mocker.MagicMock()
+    result = RabbitMQTransport._get_consumer_rmq_objects(
+        host='rabbit',
+        port=5672,
+        creds=creds,
+        virtual_host='custom-vhost',
+        exchange='cqrs',
+        queue_name='replica',
+        dead_letter_queue_name='dead_letter_replica',
+        prefetch_count=10,
+    )
+
+    connection_parameters_cls.assert_called_once_with(
+        host='rabbit',
+        port=5672,
+        credentials=creds,
+        virtual_host='custom-vhost',
+    )
+    blocking_connection.assert_called_once_with(connection_parameters)
+    assert result == (connection, channel, consumer_generator)
+
+
+def test_get_producer_rmq_objects_passes_virtual_host_for_async(mocker):
+    creds = mocker.MagicMock()
+    create_connection = mocker.patch.object(
+        RabbitMQTransport,
+        '_create_connection',
+        return_value=(mocker.MagicMock(), mocker.MagicMock()),
+    )
+
+    RabbitMQTransport._get_producer_rmq_objects(
+        host='rabbit',
+        port=5672,
+        creds=creds,
+        virtual_host='custom-vhost',
+        exchange='cqrs',
+    )
+
+    create_connection.assert_called_once_with('rabbit', 5672, creds, 'custom-vhost', 'cqrs')
+
+
+def test_get_producer_rmq_objects_passes_virtual_host_for_sync(mocker):
+    RabbitMQTransport._producer_connection = None
+    RabbitMQTransport._producer_channel = None
+
+    connection = mocker.MagicMock()
+    channel = mocker.MagicMock()
+    creds = mocker.MagicMock()
+    create_connection = mocker.patch.object(
+        RabbitMQTransport,
+        '_create_connection',
+        return_value=(connection, channel),
+    )
+
+    first_result = RabbitMQTransport._get_producer_rmq_objects(
+        host='rabbit',
+        port=5672,
+        creds=creds,
+        virtual_host='custom-vhost',
+        exchange='cqrs',
+        signal_type=SignalType.SYNC,
+    )
+    second_result = RabbitMQTransport._get_producer_rmq_objects(
+        host='rabbit',
+        port=5672,
+        creds=creds,
+        virtual_host='another-vhost',
+        exchange='cqrs',
+        signal_type=SignalType.SYNC,
+    )
+
+    create_connection.assert_called_once_with('rabbit', 5672, creds, 'custom-vhost', 'cqrs')
+    assert first_result == (connection, channel)
+    assert second_result == (connection, channel)
+
+    RabbitMQTransport._producer_connection = None
+    RabbitMQTransport._producer_channel = None
 
 
 @pytest.fixture

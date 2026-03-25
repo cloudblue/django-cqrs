@@ -80,6 +80,7 @@ CQRS = {
     'port': RABBITMQ_PORT,
     'user': RABBITMQ_USERNAME,
     'password': RABBITMQ_PASSWORD,
+    'virtual_host': RABBITMQ_VIRTUAL_HOST,
 }
 
 ```
@@ -119,6 +120,7 @@ CQRS = {
     'port': RABBITMQ_PORT,
     'user': RABBITMQ_USERNAME,
     'password': RABBITMQ_PASSWORD,
+    'virtual_host': RABBITMQ_VIRTUAL_HOST,
 }
 ```
 * Apply migrations on both services
