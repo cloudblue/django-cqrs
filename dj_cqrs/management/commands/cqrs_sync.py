@@ -99,9 +99,7 @@ class Command(BaseCommand):
                 rate = (counter - cs) / elapsed if elapsed else 0
                 percent = 100 * counter / db_count
                 eta = (
-                    datetime.timedelta(seconds=int((db_count - counter) / rate))
-                    if rate
-                    else 'n/a'
+                    datetime.timedelta(seconds=int((db_count - counter) / rate)) if rate else 'n/a'
                 )
                 sys.stdout.write(
                     '\r{0} of {1} processed - {2}% with '
