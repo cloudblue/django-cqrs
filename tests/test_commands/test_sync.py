@@ -129,6 +129,33 @@ def test_progress(capsys):
     assert '1 of 1 processed - 100% with rate' in captured.out
 
 
+@pytest.mark.django_db
+def test_progress_empty_batch_no_zero_division(capsys, mocker):
+    # A non-static DB state (e.g. concurrent deletes during a production
+    # migration) can make batch_qs yield an empty batch while db_count > 0.
+    # That leaves rate == 0 and must not raise ZeroDivisionError (LITE-34660).
+    Author.objects.create(id=2, name='2')
+    mocker.patch(
+        'dj_cqrs.management.commands.cqrs_sync.batch_qs',
+        return_value=[Author.objects.none()],
+    )
+    call_command(COMMAND_NAME, '--cqrs-id=author', '--progress', '-f={}', '--batch=2')  # noqa: P103
+
+    captured = capsys.readouterr()
+    assert '0 of 1 processed - 0% with rate 0.0 rps, to go n/a' in captured.out
+
+
+@pytest.mark.django_db
+def test_progress_zero_elapsed_no_zero_division(capsys, mocker):
+    # A batch processed within the clock resolution yields elapsed == 0.
+    Author.objects.create(id=2, name='2')
+    mocker.patch('dj_cqrs.management.commands.cqrs_sync.time.time', return_value=1.0)
+    call_command(COMMAND_NAME, '--cqrs-id=author', '--progress', '-f={}', '--batch=2')  # noqa: P103
+
+    captured = capsys.readouterr()
+    assert '1 of 1 processed - 100% with rate 0.0 rps, to go n/a' in captured.out
+
+
 @pytest.mark.django_db(transaction=True)
 def test_reconnect_on_unusable_connection(capsys, mocker):
     for i in range(1, 11):

@@ -90,9 +90,14 @@ class Command(BaseCommand):
                             file=sys.stderr,
                         )
                 if progress:
-                    rate = (counter - cs) / (time.time() - ts)
+                    elapsed = time.time() - ts
+                    rate = (counter - cs) / elapsed if elapsed else 0
                     percent = 100 * counter / db_count
-                    eta = datetime.timedelta(seconds=int((db_count - counter) / rate))
+                    eta = (
+                        datetime.timedelta(seconds=int((db_count - counter) / rate))
+                        if rate
+                        else 'n/a'
+                    )
                     sys.stderr.write(
                         '\r{0} of {1} processed - {2}% with '
                         'rate {3:.1f} rps, to go {4} ...{5:20}'.format(
