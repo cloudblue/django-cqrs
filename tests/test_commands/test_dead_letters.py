@@ -23,7 +23,7 @@ def test_dump(capsys, mocker):
     mocker.patch.object(
         RabbitMQTransport,
         '_get_common_settings',
-        return_value=('host', 'port', mocker.MagicMock(), 'exchange'),
+        return_value=('host', 'port', mocker.MagicMock(), '/', 'exchange'),
     )
 
     queue = mocker.MagicMock()

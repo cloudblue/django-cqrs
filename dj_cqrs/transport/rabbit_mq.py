@@ -287,6 +287,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         host,
         port,
         creds,
+        virtual_host,
         exchange,
         queue_name,
         dead_letter_queue_name,
@@ -294,7 +295,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         cqrs_ids=None,
     ):
         connection = BlockingConnection(
-            ConnectionParameters(host=host, port=port, credentials=creds),
+            ConnectionParameters(host=host, port=port, credentials=creds, virtual_host=virtual_host),
         )
         channel = connection.channel()
         channel.basic_qos(prefetch_count=prefetch_count)
@@ -333,29 +334,30 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         return connection, channel, consumer_generator
 
     @classmethod
-    def _get_producer_rmq_objects(cls, host, port, creds, exchange, signal_type=None):
+    def _get_producer_rmq_objects(cls, host, port, creds, virtual_host, exchange, signal_type=None):
         """
         Use shared connection in case of sync mode, otherwise create new connection for each
         message
         """
         if signal_type == SignalType.SYNC:
             if cls._producer_connection is None:
-                connection, channel = cls._create_connection(host, port, creds, exchange)
+                connection, channel = cls._create_connection(host, port, creds, virtual_host, exchange)
 
                 cls._producer_connection = connection
                 cls._producer_channel = channel
 
             return cls._producer_connection, cls._producer_channel
         else:
-            return cls._create_connection(host, port, creds, exchange)
+            return cls._create_connection(host, port, creds, virtual_host, exchange)
 
     @classmethod
-    def _create_connection(cls, host, port, creds, exchange):
+    def _create_connection(cls, host, port, creds, virtual_host, exchange):
         connection = BlockingConnection(
             ConnectionParameters(
                 host=host,
                 port=port,
                 credentials=creds,
+                virtual_host=virtual_host,
                 blocked_connection_timeout=10,
             ),
         )
@@ -386,22 +388,28 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
             parts.port or ConnectionParameters.DEFAULT_PORT,
             unquote(parts.username or '') or ConnectionParameters.DEFAULT_USERNAME,
             unquote(parts.password or '') or ConnectionParameters.DEFAULT_PASSWORD,
+            unquote(parts.path.lstrip('/')) or ConnectionParameters.DEFAULT_VIRTUAL_HOST,
         )
 
     @classmethod
     def _get_common_settings(cls):
         if 'url' in settings.CQRS:
-            host, port, user, password = cls._parse_url(settings.CQRS.get('url'))
+            host, port, user, password, virtual_host = cls._parse_url(settings.CQRS.get('url'))
         else:
             host = settings.CQRS.get('host', ConnectionParameters.DEFAULT_HOST)
             port = settings.CQRS.get('port', ConnectionParameters.DEFAULT_PORT)
             user = settings.CQRS.get('user', ConnectionParameters.DEFAULT_USERNAME)
             password = settings.CQRS.get('password', ConnectionParameters.DEFAULT_PASSWORD)
+            virtual_host = settings.CQRS.get(
+                'virtual_host',
+                ConnectionParameters.DEFAULT_VIRTUAL_HOST,
+            )
         exchange = settings.CQRS.get('exchange', 'cqrs')
         return (
             host,
             port,
             credentials.PlainCredentials(user, password, erase_on_connect=True),
+            virtual_host,
             exchange,
         )
 

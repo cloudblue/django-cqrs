@@ -19,6 +19,29 @@ CQRS = {
 }
 ```
 
+The virtual host is optional and defaults to `/` (root vhost). To specify a custom virtual host,
+include it in the URL path:
+
+``` py3
+# Using root virtual host (default)
+CQRS = {
+    'transport': 'dj_cqrs.transport.RabbitMQTransport',
+    'url': 'amqp://guest:guest@rabbit:5672/'
+}
+
+# Using a custom virtual host
+CQRS = {
+    'transport': 'dj_cqrs.transport.RabbitMQTransport',
+    'url': 'amqp://guest:guest@rabbit:5672/my_vhost'
+}
+
+# Using nested virtual host paths
+CQRS = {
+    'transport': 'dj_cqrs.transport.RabbitMQTransport',
+    'url': 'amqp://guest:guest@rabbit:5672/production/app1'
+}
+```
+
 !!! warning
 
     Previous versions of the `RabbitMQTransport` use the attributes `host`,
