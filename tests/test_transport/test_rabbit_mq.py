@@ -1,16 +1,23 @@
 #  Copyright © 2025 CloudBlue. All rights reserved.
 
 import logging
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from importlib import import_module, reload
 
 import pytest
 import ujson
 from django.db import DatabaseError
+from pika import PlainCredentials
 from pika.adapters.utils.connection_workflow import AMQPConnectorException
 from pika.exceptions import (
+    AMQPConnectionError,
     AMQPError,
+    AMQPHeartbeatTimeout,
     ChannelError,
+    ConnectionClosed,
+    ConnectionWrongStateError,
     ReentrancyError,
     StreamLostError,
 )
@@ -665,3 +672,249 @@ def test_delay_message_with_requeue(mocker, caplog):
     requeue_payload = requeue_message.call_args[0][2]
     min_eta_delay_message = sorted(delay_messages, key=lambda x: x.eta)[0]
     assert requeue_payload is min_eta_delay_message.payload
+
+
+PRODUCER_RMQ_ARGS = ('rabbit', 5672, PlainCredentials('user', 'password'), 'exchange')
+PRODUCER_IDLE_MAX_SECONDS = RabbitMQTransport.PRODUCER_IDLE_MAX_SECONDS
+
+
+@pytest.fixture(autouse=True)
+def clean_producer_local():
+    """Give every test an empty per-thread producer cache.
+
+    A connection cached by a previous test, possibly on the same worker thread, would
+    otherwise leak into the assertions.
+    """
+    RabbitMQTransport._producer_local = threading.local()
+    yield
+    RabbitMQTransport._producer_local = threading.local()
+
+
+@pytest.fixture
+def producer_clock(mocker):
+    """Replace the clock the transport reads with a virtual one the test moves explicitly.
+
+    The transport reads time.monotonic several times per call, so a fixed side effect list
+    would silently shift as soon as one of those reads disappears. The returned setter keeps
+    the virtual time steady within a call and moves it only when the test says so.
+    """
+    now = {'value': 0}
+
+    mocker.patch(
+        'dj_cqrs.transport.rabbit_mq.time.monotonic',
+        side_effect=lambda: now['value'],
+    )
+
+    return lambda value: now.update(value=value)
+
+
+@pytest.fixture
+def blocking_connection(mocker):
+    """Replace BlockingConnection with a factory building a new open connection on every call.
+
+    Every connection gets its own channel mock and is appended to the `connections` list of
+    the returned mock, so tests can count opened connections and tell them apart.
+    """
+    connections = []
+
+    def _factory(*args, **kwargs):
+        connection = mocker.MagicMock()
+        connection.is_open = True
+        connection.channel.return_value = mocker.MagicMock()
+        connections.append(connection)
+        return connection
+
+    factory = mocker.patch(
+        'dj_cqrs.transport.rabbit_mq.BlockingConnection',
+        side_effect=_factory,
+    )
+    factory.connections = connections
+
+    return factory
+
+
+@pytest.mark.parametrize(
+    ('first_signal_type', 'second_signal_type'),
+    (
+        (SignalType.SAVE, SignalType.SYNC),
+        (SignalType.SYNC, SignalType.DELETE),
+        (SignalType.SAVE, SignalType.SAVE),
+    ),
+)
+def test_producer_same_thread_reuses_connection(
+    blocking_connection,
+    first_signal_type,
+    second_signal_type,
+):
+    first_connection, first_channel = RabbitMQTransport._get_producer_rmq_objects(
+        *PRODUCER_RMQ_ARGS,
+        signal_type=first_signal_type,
+    )
+    second_connection, second_channel = RabbitMQTransport._get_producer_rmq_objects(
+        *PRODUCER_RMQ_ARGS,
+        signal_type=second_signal_type,
+    )
+
+    assert blocking_connection.call_count == 1
+    assert first_connection is second_connection
+    assert first_channel is second_channel
+
+
+def test_producer_idle_connection_is_replaced_without_closing(blocking_connection, producer_clock):
+    stale_connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+
+    producer_clock(PRODUCER_IDLE_MAX_SECONDS + 1)
+    new_connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+
+    assert blocking_connection.call_count == 2
+    assert new_connection is not stale_connection
+    stale_connection.close.assert_not_called()
+
+
+def test_producer_idle_window_slides_on_every_use(blocking_connection, producer_clock):
+    for reading in (0, 20, 40):
+        producer_clock(reading)
+        RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+
+    assert blocking_connection.call_count == 1
+
+
+@pytest.mark.parametrize(
+    ('idle', 'expected_connections'),
+    (
+        (PRODUCER_IDLE_MAX_SECONDS, 1),
+        (PRODUCER_IDLE_MAX_SECONDS + 0.001, 2),
+    ),
+)
+def test_producer_idle_window_boundary(
+    blocking_connection,
+    producer_clock,
+    idle,
+    expected_connections,
+):
+    RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+
+    producer_clock(idle)
+    RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+
+    assert blocking_connection.call_count == expected_connections
+
+
+def test_producer_closed_connection_is_replaced(blocking_connection):
+    closed_connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+    closed_connection.is_open = False
+
+    new_connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+
+    assert blocking_connection.call_count == 2
+    assert new_connection is not closed_connection
+
+
+def test_producer_failed_connection_leaves_cache_empty(blocking_connection):
+    factory = blocking_connection.side_effect
+    blocking_connection.side_effect = AMQPConnectionError()
+
+    with pytest.raises(AMQPConnectionError):
+        RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+
+    assert RabbitMQTransport._producer_local.connection is None
+    assert RabbitMQTransport._producer_local.channel is None
+
+    RabbitMQTransport.clean_connection()
+
+    blocking_connection.side_effect = factory
+    connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+
+    assert blocking_connection.call_count == 2
+    assert connection is blocking_connection.connections[0]
+
+
+def test_clean_connection_closes_and_clears(blocking_connection):
+    connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+
+    RabbitMQTransport.clean_connection()
+
+    connection.close.assert_called_once_with()
+    assert RabbitMQTransport._producer_local.connection is None
+    assert RabbitMQTransport._producer_local.channel is None
+
+
+def test_clean_connection_skips_close_on_not_open_connection(blocking_connection):
+    connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+    connection.is_open = False
+
+    RabbitMQTransport.clean_connection()
+
+    connection.close.assert_not_called()
+    assert RabbitMQTransport._producer_local.connection is None
+    assert RabbitMQTransport._producer_local.channel is None
+
+
+def test_clean_connection_without_cached_connection_is_noop():
+    RabbitMQTransport.clean_connection()
+
+    assert RabbitMQTransport._producer_local.connection is None
+    assert RabbitMQTransport._producer_local.channel is None
+
+
+@pytest.mark.parametrize(
+    'exception',
+    (
+        StreamLostError(),
+        ConnectionClosed(320, 'x'),
+        AMQPHeartbeatTimeout(),
+        ConnectionWrongStateError(),
+    ),
+)
+def test_clean_connection_swallows_connection_errors(blocking_connection, caplog, exception):
+    connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+    connection.close.side_effect = exception
+
+    RabbitMQTransport.clean_connection()
+
+    assert 'Connection was closed or is closing. Skip it...' in caplog.text
+    assert RabbitMQTransport._producer_local.connection is None
+    assert RabbitMQTransport._producer_local.channel is None
+
+
+def test_produce_error_reconnects_in_same_thread(rabbit_transport, blocking_connection):
+    payload = TransportPayload(SignalType.SAVE, 'CQRS_ID', {'id': 1}, 1)
+    first_connection, first_channel = RabbitMQTransport._get_producer_rmq_objects(
+        *PRODUCER_RMQ_ARGS,
+    )
+    first_channel.basic_publish.side_effect = StreamLostError()
+
+    rabbit_transport.produce(payload)
+
+    second_connection = blocking_connection.connections[1]
+    assert blocking_connection.call_count == 2
+    # The mock still reports the failed connection as open, so clean_connection closes it as
+    # it would for any error that left the connection in a usable state.
+    first_connection.close.assert_called_once_with()
+    second_connection.channel.return_value.basic_publish.assert_called_once()
+    assert RabbitMQTransport._producer_local.connection is second_connection
+
+
+def test_producer_threads_get_distinct_connections(blocking_connection):
+    def _connect():
+        connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+        return connection
+
+    def _connect_and_clean():
+        connection = _connect()
+        RabbitMQTransport.clean_connection()
+        return connection
+
+    with ThreadPoolExecutor(max_workers=1) as keeper:
+        kept_connection = keeper.submit(_connect).result()
+
+        with ThreadPoolExecutor(max_workers=1) as cleaner:
+            cleaned_connection = cleaner.submit(_connect_and_clean).result()
+
+        assert kept_connection is not cleaned_connection
+        cleaned_connection.close.assert_called_once_with()
+        # The keeper thread still holds its own connection: cleaning in another thread did
+        # not touch it and no extra connection is opened for it.
+        assert keeper.submit(_connect).result() is kept_connection
+
+    assert blocking_connection.call_count == 2
