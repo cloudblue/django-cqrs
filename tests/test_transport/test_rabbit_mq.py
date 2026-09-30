@@ -895,6 +895,25 @@ def test_produce_error_reconnects_in_same_thread(rabbit_transport, blocking_conn
     assert RabbitMQTransport._producer_local.connection is second_connection
 
 
+def test_produce_stale_connection_not_closed_when_reconnect_fails(
+    rabbit_transport,
+    blocking_connection,
+    producer_clock,
+):
+    stale_connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+    producer_clock(PRODUCER_IDLE_MAX_SECONDS + 1)
+    factory = blocking_connection.side_effect
+    blocking_connection.side_effect = [AMQPConnectionError(), factory()]
+
+    rabbit_transport.produce(TransportPayload(SignalType.SAVE, 'CQRS_ID', {'id': 1}, 1))
+
+    # The reconnect failed after the idle check dropped the stale connection, so the retry's
+    # clean_connection() must not close() it: on a broker-side dead socket that close() raises
+    # the very ConnectionResetError this transport avoids.
+    stale_connection.close.assert_not_called()
+    assert RabbitMQTransport._producer_local.connection is blocking_connection.connections[1]
+
+
 def test_producer_threads_get_distinct_connections(blocking_connection):
     def _connect():
         connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
