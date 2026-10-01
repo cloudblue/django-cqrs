@@ -683,11 +683,12 @@ def clean_producer_local():
     """Give every test an empty per-thread producer cache.
 
     A connection cached by a previous test, possibly on the same worker thread, would
-    otherwise leak into the assertions.
+    otherwise leak into the assertions. The dict is cleared rather than the object replaced,
+    so the declared threading.local() is the one under test.
     """
-    RabbitMQTransport._producer_local = threading.local()
+    RabbitMQTransport._producer_local.__dict__.clear()
     yield
-    RabbitMQTransport._producer_local = threading.local()
+    RabbitMQTransport._producer_local.__dict__.clear()
 
 
 @pytest.fixture
