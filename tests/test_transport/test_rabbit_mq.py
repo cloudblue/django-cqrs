@@ -1,7 +1,7 @@
 #  Copyright © 2025 CloudBlue. All rights reserved.
 
 import logging
-import threading
+import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from importlib import import_module, reload
@@ -938,3 +938,21 @@ def test_producer_threads_get_distinct_connections(blocking_connection):
         assert keeper.submit(_connect).result() is kept_connection
 
     assert blocking_connection.call_count == 2
+
+
+@pytest.mark.skipif(not hasattr(os, 'register_at_fork'), reason='no fork()')
+def test_producer_forked_child_starts_with_empty_cache(blocking_connection):
+    parent_connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+    read_fd, write_fd = os.pipe()
+
+    pid = os.fork()
+    if pid == 0:  # pragma: no cover - runs in the child
+        cached = getattr(RabbitMQTransport._producer_local, 'connection', None)
+        os.write(write_fd, b'empty' if cached is None else b'inherited')
+        os._exit(0)
+
+    os.close(write_fd)
+    os.waitpid(pid, 0)
+    assert os.read(read_fd, 16) == b'empty'
+    assert RabbitMQTransport._producer_local.connection is parent_connection
+    parent_connection.close.assert_not_called()
