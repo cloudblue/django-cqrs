@@ -1,6 +1,8 @@
 #  Copyright © 2025 CloudBlue. All rights reserved.
 
 import logging
+import os
+import threading
 import time
 from datetime import timedelta
 from socket import gaierror
@@ -36,22 +38,25 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
 
     CONSUMER_RETRY_TIMEOUT = 5
     PRODUCER_RETRIES = 1
+    # Must stay well below the broker heartbeat (60 seconds by default):
+    # see _get_producer_rmq_objects.
+    PRODUCER_IDLE_MAX_SECONDS = 30
 
-    _producer_connection = None
-    _producer_channel = None
+    _producer_local = threading.local()
 
     @classmethod
     def clean_connection(cls):
-        """Clean the RabbitMQ connection."""
-        connection = cls._producer_connection
-        if connection and not connection.is_closed:
-            try:
+        """Close and drop the producer connection of the current thread."""
+        connection = getattr(cls._producer_local, 'connection', None)
+        try:
+            # BlockingConnection.close() raises ConnectionWrongStateError on a connection that
+            # is not open, so `is_open` is checked instead of `not is_closed`.
+            if connection is not None and connection.is_open:
                 connection.close()
-            except (exceptions.StreamLostError, exceptions.ConnectionClosed, ConnectionError):
-                logger.warning('Connection was closed or is closing. Skip it...')
-
-        cls._producer_connection = None
-        cls._producer_channel = None
+        except exceptions.AMQPConnectionError:
+            logger.warning('Connection was closed or is closing. Skip it...')
+        finally:
+            cls._producer_local.connection = cls._producer_local.channel = None
 
     @classmethod
     def consume(cls, cqrs_ids=None):
@@ -334,20 +339,51 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
 
     @classmethod
     def _get_producer_rmq_objects(cls, host, port, creds, exchange, signal_type=None):
-        """
-        Use shared connection in case of sync mode, otherwise create new connection for each
-        message
-        """
-        if signal_type == SignalType.SYNC:
-            if cls._producer_connection is None:
-                connection, channel = cls._create_connection(host, port, creds, exchange)
+        """Return the producer connection and channel of the current thread.
 
-                cls._producer_connection = connection
-                cls._producer_channel = channel
+        One connection is kept per thread and used for every signal type. A pika
+        `BlockingConnection` is not thread-safe, so it must never be shared between threads,
+        and opening a new connection per message costs a full handshake and leaves the broker
+        with one short-lived connection per published message.
 
-            return cls._producer_connection, cls._producer_channel
-        else:
-            return cls._create_connection(host, port, creds, exchange)
+        A cached connection is reused only while it reports itself open and was last used no
+        longer than `PRODUCER_IDLE_MAX_SECONDS` ago. A `BlockingConnection` only services
+        heartbeats while the application is inside a pika call, so the broker closes an idle
+        connection after about 2-3x the heartbeat (120-180 seconds with the 60 seconds default)
+        while pika still reports it as open. Publishing on it then fails, which is exactly what
+        the idle window avoids, and it requires the broker heartbeat to stay at 60 seconds or
+        more (`_create_connection` passes no `heartbeat`, so the broker value is negotiated).
+
+        An expired connection is dropped without calling `close()`: a graceful close on a
+        connection the broker already killed raises the very error being avoided here, and it
+        has no time bound either. The dropped connection lives on until the broker times out
+        its heartbeat and, on the client, until the cyclic garbage collector reclaims it,
+        because pika connection and channel objects reference each other. Both are expected.
+
+        Args:
+            host (str): RabbitMQ host.
+            port (int): RabbitMQ port.
+            creds (pika.credentials.PlainCredentials): RabbitMQ credentials.
+            exchange (str): RabbitMQ exchange name.
+            signal_type (str): Unused, kept for backward compatibility.
+
+        Returns:
+            (tuple): Connection and channel of the current thread.
+        """
+        connection = getattr(cls._producer_local, 'connection', None)
+        idle = time.monotonic() - getattr(cls._producer_local, 'last_used', 0)
+        if connection is None or not connection.is_open or idle > cls.PRODUCER_IDLE_MAX_SECONDS:
+            cls._producer_local.connection = cls._producer_local.channel = None
+            cls._producer_local.connection, cls._producer_local.channel = cls._create_connection(
+                host,
+                port,
+                creds,
+                exchange,
+            )
+
+        cls._producer_local.last_used = time.monotonic()
+
+        return cls._producer_local.connection, cls._producer_local.channel
 
     @classmethod
     def _create_connection(cls, host, port, creds, exchange):
@@ -437,3 +473,12 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         channel.basic_nack(delivery_tag, requeue=False)
         if payload is not None:
             cls.log_consumed_denied(payload)
+
+
+if hasattr(os, 'register_at_fork'):  # not available on Windows
+    # threading.local() survives fork(): the child inherits the connection of the thread that
+    # forked and would write frames on the parent's socket. Drop it without close(), the socket
+    # belongs to the parent. __dict__ is read inside the hook, not at registration: on a
+    # threading.local it is the dict of the calling thread, and the hook runs on the one that
+    # forked.
+    os.register_at_fork(after_in_child=lambda: RabbitMQTransport._producer_local.__dict__.clear())
