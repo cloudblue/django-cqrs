@@ -942,17 +942,27 @@ def test_producer_threads_get_distinct_connections(blocking_connection):
 
 @pytest.mark.skipif(not hasattr(os, 'register_at_fork'), reason='no fork()')
 def test_producer_forked_child_starts_with_empty_cache(blocking_connection):
-    parent_connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
-    read_fd, write_fd = os.pipe()
+    def _connect_then_fork():
+        parent_connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+        read_fd, write_fd = os.pipe()
 
-    pid = os.fork()
-    if pid == 0:  # pragma: no cover - runs in the child
-        cached = getattr(RabbitMQTransport._producer_local, 'connection', None)
-        os.write(write_fd, b'empty' if cached is None else b'inherited')
-        os._exit(0)
+        pid = os.fork()
+        if pid == 0:  # pragma: no cover - runs in the child
+            cached = getattr(RabbitMQTransport._producer_local, 'connection', None)
+            os.write(write_fd, b'empty' if cached is None else b'inherited')
+            os._exit(0)
 
-    os.close(write_fd)
-    os.waitpid(pid, 0)
-    assert os.read(read_fd, 16) == b'empty'
-    assert RabbitMQTransport._producer_local.connection is parent_connection
+        os.close(write_fd)
+        os.waitpid(pid, 0)
+        child_saw = os.read(read_fd, 16)
+        os.close(read_fd)
+        return parent_connection, child_saw, RabbitMQTransport._producer_local.connection
+
+    # Fork from a thread other than the one that imported the module: the hook has to clear the
+    # dict of the forking thread, not one captured when the hook was registered.
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        parent_connection, child_saw, kept = executor.submit(_connect_then_fork).result()
+
+    assert child_saw == b'empty'
+    assert kept is parent_connection
     parent_connection.close.assert_not_called()

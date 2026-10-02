@@ -478,5 +478,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
 if hasattr(os, 'register_at_fork'):  # not available on Windows
     # threading.local() survives fork(): the child inherits the connection of the thread that
     # forked and would write frames on the parent's socket. Drop it without close(), the socket
-    # belongs to the parent.
-    os.register_at_fork(after_in_child=RabbitMQTransport._producer_local.__dict__.clear)
+    # belongs to the parent. __dict__ is read inside the hook, not at registration: on a
+    # threading.local it is the dict of the calling thread, and the hook runs on the one that
+    # forked.
+    os.register_at_fork(after_in_child=lambda: RabbitMQTransport._producer_local.__dict__.clear())
