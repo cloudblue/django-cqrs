@@ -74,7 +74,8 @@ def test_default_settings():
     s = PublicRabbitMQTransport.get_common_settings()
     assert s[0] == 'localhost'
     assert s[1] == 5672
-    assert s[2].username == 'guest' and s[2].password == 'guest'
+    assert s[2].username == 'guest'
+    assert s[2].password == 'guest'
     assert s[3] == 'cqrs'
 
 
@@ -91,7 +92,8 @@ def test_non_default_settings(settings, caplog):
     s = PublicRabbitMQTransport.get_common_settings()
     assert s[0] == 'rabbit'
     assert s[1] == 8000
-    assert s[2].username == 'usr' and s[2].password == 'pswd'
+    assert s[2].username == 'usr'
+    assert s[2].password == 'pswd'
     assert s[3] == 'exchange'
 
 
@@ -103,7 +105,8 @@ def test_default_url_settings(settings):
     s = PublicRabbitMQTransport.get_common_settings()
     assert s[0] == 'localhost'
     assert s[1] == 5672
-    assert s[2].username == 'guest' and s[2].password == 'guest'
+    assert s[2].username == 'guest'
+    assert s[2].password == 'guest'
     assert s[3] == 'cqrs'
 
 
@@ -116,7 +119,8 @@ def test_non_default_url_settings(settings):
     s = PublicRabbitMQTransport.get_common_settings()
     assert s[0] == 'rabbit'
     assert s[1] == 8000
-    assert s[2].username == 'usr' and s[2].password == 'pswd'
+    assert s[2].username == 'usr'
+    assert s[2].password == 'pswd'
     assert s[3] == 'exchange'
 
 
@@ -176,7 +180,7 @@ def rabbit_transport(settings):
         },
     }
     module = reload(import_module('dj_cqrs.transport'))
-    yield module.current_transport
+    return module.current_transport
 
 
 @pytest.mark.parametrize(
