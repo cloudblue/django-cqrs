@@ -40,10 +40,11 @@ request sends none, and the broker closes it after 2-3x the heartbeat while pika
 it as open.
 
 Outside requests (consumer requeues, management commands) the connection is reused while it
-was last used no longer than `RabbitMQTransport.PRODUCER_ASSUMED_ALIVE_SECONDS` (90 seconds)
-ago, 30 seconds below the earliest moment the broker may close a silent connection with the
-default heartbeat. This **requires the broker heartbeat to be 60 seconds or more** (the
-RabbitMQ default); lower it only together with `PRODUCER_ASSUMED_ALIVE_SECONDS`.
+was idle for no longer than `RabbitMQTransport.PRODUCER_ASSUMED_ALIVE_HEARTBEATS` (1.5) times
+the heartbeat negotiated with the broker: 90 seconds with the RabbitMQ default of 60, and
+always below the 2 heartbeats after which the broker may close a silent connection. The
+transport does not set a heartbeat of its own, so the broker's configured value applies. With
+heartbeats disabled on the broker the connection is never dropped for being idle.
 
 A connection idle for longer is not closed gracefully: closing a connection the broker may
 already have killed makes pika log the very error this avoids. It is simply discarded, and the

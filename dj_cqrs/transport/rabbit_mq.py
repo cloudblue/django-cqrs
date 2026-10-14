@@ -1,6 +1,7 @@
 #  Copyright © 2025 CloudBlue. All rights reserved.
 
 import logging
+import math
 import os
 import threading
 import time
@@ -42,9 +43,10 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
 
     CONSUMER_RETRY_TIMEOUT = 5
     PRODUCER_RETRIES = 1
-    # 30 seconds below 2x the broker heartbeat (60 seconds by default), the earliest the broker
-    # kills a connection that sends no heartbeats: see _get_producer_rmq_objects.
-    PRODUCER_ASSUMED_ALIVE_SECONDS = 90
+    # Idle time, in negotiated heartbeats, a silent producer connection is assumed alive on the
+    # broker side: RabbitMQ kills it after 2 heartbeats at the earliest, see
+    # _assumed_alive_seconds. 90 seconds with the RabbitMQ default heartbeat of 60.
+    PRODUCER_ASSUMED_ALIVE_HEARTBEATS = 1.5
 
     _producer_local = threading.local()
 
@@ -53,11 +55,11 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         """Drop the producer connection of the current thread.
 
         The connection is closed in order only while the broker is guaranteed to still hold
-        it: it reports itself open and was last used no longer than
-        `PRODUCER_ASSUMED_ALIVE_SECONDS` ago. Beyond that it may already be dead on the broker
-        side and is dropped without `close()` (see `_get_producer_rmq_objects`). A failing
-        close is logged and never raised: this runs from the `request_finished` receiver after
-        the response was sent, and from the error handler of a publish before its retry.
+        it: it reports itself open and was idle for no longer than `_assumed_alive_seconds`.
+        Beyond that it may already be dead on the broker side and is dropped without
+        `close()` (see `_get_producer_rmq_objects`). A failing close is logged and never
+        raised: this runs from the `request_finished` receiver after the response was sent,
+        and from the error handler of a publish before its retry.
         """
         connection = getattr(cls._producer_local, 'connection', None)
         idle = time.monotonic() - getattr(cls._producer_local, 'last_used', 0)
@@ -66,7 +68,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         # not open. `is_open` only flips when pika's ioloop runs, so it says nothing about the
         # broker side: the idle bound is the real liveness guard.
         reports_open = connection is not None and connection.is_open
-        if not reports_open or idle > cls.PRODUCER_ASSUMED_ALIVE_SECONDS:
+        if not reports_open or idle > cls._assumed_alive_seconds(connection):
             return
 
         try:
@@ -371,16 +373,14 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         the 60 seconds default) while pika still reports it as open.
 
         Outside requests (consumer requeues, management commands) a cached connection is
-        reused while it reports itself open and was last used no longer than
-        `PRODUCER_ASSUMED_ALIVE_SECONDS` ago, 30 seconds below the earliest broker kill. That
-        requires the broker heartbeat to stay at 60 seconds or more (`_create_connection`
-        passes no `heartbeat`, so the broker value is negotiated). Idle for longer, the
-        connection is dropped without calling `close()`: a graceful close on a connection the
-        broker already killed makes pika log the very error being avoided here before raising,
-        and it has no time bound either. The dropped connection lives on until the broker
-        times out its heartbeat and, on the client, until the cyclic garbage collector reclaims
-        it, because pika connection and channel objects reference each other. Both are
-        expected.
+        reused while it reports itself open and was idle for no longer than
+        `_assumed_alive_seconds`, 1.5x the heartbeat negotiated on connect (90 seconds with
+        the RabbitMQ default of 60). Idle for longer, the connection is dropped without
+        calling `close()`: a graceful close on a connection the broker already killed makes
+        pika log the very error being avoided here before raising, and it has no time bound
+        either. The dropped connection lives on until the broker times out its heartbeat and,
+        on the client, until the cyclic garbage collector reclaims it, because pika connection
+        and channel objects reference each other. Both are expected.
 
         Args:
             host (str): RabbitMQ host.
@@ -397,7 +397,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         if (
             connection is None
             or not connection.is_open
-            or idle > cls.PRODUCER_ASSUMED_ALIVE_SECONDS
+            or idle > cls._assumed_alive_seconds(connection)
         ):
             cls._producer_local.connection = cls._producer_local.channel = None
             cls._producer_local.connection, cls._producer_local.channel = cls._create_connection(
@@ -410,6 +410,22 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         cls._producer_local.last_used = time.monotonic()
 
         return cls._producer_local.connection, cls._producer_local.channel
+
+    @classmethod
+    def _assumed_alive_seconds(cls, connection):
+        """Return how long `connection` may stay idle before the broker may have killed it.
+
+        A `BlockingConnection` only services heartbeats inside pika calls, so a silent one is
+        killed by RabbitMQ after 2-3x the heartbeat. The heartbeat is the one negotiated on
+        connect: `_create_connection` passes none, so pika accepts the broker's value and
+        stores it on the parameters of the underlying connection. With heartbeats disabled
+        (0) the broker never kills an idle connection, so there is no window.
+        """
+        # pika exposes the negotiated parameters only on the wrapped SelectConnection.
+        heartbeat = connection._impl.params.heartbeat
+        if not heartbeat:
+            return math.inf
+        return cls.PRODUCER_ASSUMED_ALIVE_HEARTBEATS * heartbeat
 
     @classmethod
     def _create_connection(cls, host, port, creds, exchange):

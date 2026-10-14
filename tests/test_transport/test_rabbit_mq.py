@@ -684,7 +684,10 @@ def test_delay_message_with_requeue(mocker, caplog):
 
 
 PRODUCER_RMQ_ARGS = ('rabbit', 5672, PlainCredentials('user', 'password'), 'exchange')
-PRODUCER_ASSUMED_ALIVE_SECONDS = RabbitMQTransport.PRODUCER_ASSUMED_ALIVE_SECONDS
+PRODUCER_HEARTBEAT_SECONDS = 60  # the RabbitMQ default
+PRODUCER_ASSUMED_ALIVE_SECONDS = (
+    RabbitMQTransport.PRODUCER_ASSUMED_ALIVE_HEARTBEATS * PRODUCER_HEARTBEAT_SECONDS
+)
 
 
 @pytest.fixture(autouse=True)
@@ -723,7 +726,8 @@ def blocking_connection(mocker):
     """Replace BlockingConnection with a factory building a new open connection on every call.
 
     Every connection gets its own channel mock and is appended to the `connections` list of
-    the returned mock, so tests can count opened connections and tell them apart.
+    the returned mock, so tests can count opened connections and tell them apart. It reports
+    the heartbeat set on `heartbeat` of the returned mock as the one negotiated on connect.
     """
     connections = []
 
@@ -731,6 +735,7 @@ def blocking_connection(mocker):
         connection = mocker.MagicMock()
         connection.is_open = True
         connection.channel.return_value = mocker.MagicMock()
+        connection._impl.params.heartbeat = factory.heartbeat
         connections.append(connection)
         return connection
 
@@ -739,6 +744,7 @@ def blocking_connection(mocker):
         side_effect=_factory,
     )
     factory.connections = connections
+    factory.heartbeat = PRODUCER_HEARTBEAT_SECONDS
 
     return factory
 
@@ -808,6 +814,37 @@ def test_producer_idle_window_boundary(
     RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
 
     assert blocking_connection.call_count == expected_connections
+
+
+def test_producer_window_follows_negotiated_heartbeat(blocking_connection, producer_clock):
+    blocking_connection.heartbeat = 20
+    RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+
+    producer_clock(30)
+    RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+
+    assert blocking_connection.call_count == 1
+
+    producer_clock(60.001)
+    RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+
+    assert blocking_connection.call_count == 2
+
+
+def test_producer_without_heartbeat_never_expires(blocking_connection, producer_clock):
+    blocking_connection.heartbeat = 0
+    connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+
+    producer_clock(24 * 3600)
+    RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+
+    assert blocking_connection.call_count == 1
+
+    # With heartbeats disabled the broker never kills an idle connection, so it is still
+    # closed in order.
+    RabbitMQTransport.clean_connection()
+
+    connection.close.assert_called_once_with()
 
 
 def test_producer_closed_connection_is_replaced(blocking_connection):
