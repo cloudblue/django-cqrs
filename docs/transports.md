@@ -50,9 +50,12 @@ A connection idle for longer is not closed gracefully: closing a connection the 
 already have killed makes pika log the very error this avoids. It is simply discarded, and the
 broker releases it when its heartbeat times out.
 
-Closing in order waits for the broker's reply. If the broker vanishes without closing the
-socket, pika's heartbeat checker ends the wait after about two heartbeat intervals, so a
-thread may stall after its response was sent, only while the broker is down.
+Closing in order waits for the broker's reply, with no time bound of its own. A broker that
+vanished without closing the socket keeps the thread waiting until pika's heartbeat checker
+gives up, about two heartbeat intervals. A broker in a memory or disk alarm stops reading from
+a connection that published during the alarm, so the close is abandoned only after pika's
+`blocked_connection_timeout` (10 seconds) and logged as failed. Both stall a thread after its
+response was sent, and only while the broker is in trouble.
 
 # Kombu transport
 

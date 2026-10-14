@@ -60,6 +60,15 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         `close()` (see `_get_producer_rmq_objects`). A failing close is logged and never
         raised: this runs from the `request_finished` receiver after the response was sent,
         and from the error handler of a publish before its retry.
+
+        `close()` waits for the broker's CloseOk with no time bound of its own, so two broker
+        states hold the thread after the response was sent: a broker that vanished without
+        closing the socket, where pika's heartbeat checker ends the wait after about two
+        heartbeat intervals, and a broker in a memory or disk alarm, which stops reading from
+        a connection that published during the alarm and never answers the Close, where pika
+        gives up after `blocked_connection_timeout` (10 seconds) and the close is logged as
+        failed. Both last only while the broker is in trouble and are accepted: the
+        alternative is the dropped-connection noise this method avoids.
         """
         connection = getattr(cls._producer_local, 'connection', None)
         idle = time.monotonic() - getattr(cls._producer_local, 'last_used', 0)
