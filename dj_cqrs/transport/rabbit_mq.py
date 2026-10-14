@@ -10,6 +10,8 @@ from urllib.parse import unquote, urlparse
 
 import ujson
 from django.conf import settings
+from django.core.signals import request_finished
+from django.dispatch import receiver
 from django.utils import timezone
 from pika import (
     BasicProperties,
@@ -32,31 +34,45 @@ from dj_cqrs.utils import get_delay_queue_max_size, get_messages_prefetch_count_
 
 logger = logging.getLogger('django-cqrs')
 
+RELEASE_PRODUCER_CONNECTION_UID = 'dj_cqrs.transport.rabbit_mq.release_producer_connection'
+
 
 class RabbitMQTransport(LoggingMixin, BaseTransport):
     """Transport class for RabbitMQ."""
 
     CONSUMER_RETRY_TIMEOUT = 5
     PRODUCER_RETRIES = 1
-    # Must stay well below the broker heartbeat (60 seconds by default):
-    # see _get_producer_rmq_objects.
-    PRODUCER_IDLE_MAX_SECONDS = 30
+    # 30 seconds below 2x the broker heartbeat (60 seconds by default), the earliest the broker
+    # kills a connection that sends no heartbeats: see _get_producer_rmq_objects.
+    PRODUCER_ASSUMED_ALIVE_SECONDS = 90
 
     _producer_local = threading.local()
 
     @classmethod
     def clean_connection(cls):
-        """Close and drop the producer connection of the current thread."""
+        """Drop the producer connection of the current thread.
+
+        The connection is closed in order only while the broker is guaranteed to still hold
+        it: it reports itself open and was last used no longer than
+        `PRODUCER_ASSUMED_ALIVE_SECONDS` ago. Beyond that it may already be dead on the broker
+        side and is dropped without `close()` (see `_get_producer_rmq_objects`). A failing
+        close is logged and never raised: this runs from the `request_finished` receiver after
+        the response was sent, and from the error handler of a publish before its retry.
+        """
         connection = getattr(cls._producer_local, 'connection', None)
+        idle = time.monotonic() - getattr(cls._producer_local, 'last_used', 0)
+        cls._producer_local.connection = cls._producer_local.channel = None
+        # BlockingConnection.close() raises ConnectionWrongStateError on a connection that is
+        # not open. `is_open` only flips when pika's ioloop runs, so it says nothing about the
+        # broker side: the idle bound is the real liveness guard.
+        reports_open = connection is not None and connection.is_open
+        if not reports_open or idle > cls.PRODUCER_ASSUMED_ALIVE_SECONDS:
+            return
+
         try:
-            # BlockingConnection.close() raises ConnectionWrongStateError on a connection that
-            # is not open, so `is_open` is checked instead of `not is_closed`.
-            if connection is not None and connection.is_open:
-                connection.close()
-        except exceptions.AMQPConnectionError:
-            logger.warning('Connection was closed or is closing. Skip it...')
-        finally:
-            cls._producer_local.connection = cls._producer_local.channel = None
+            connection.close()
+        except Exception:
+            logger.warning('CQRS producer connection could not be closed in order.', exc_info=True)
 
     @classmethod
     def consume(cls, cqrs_ids=None):
@@ -346,19 +362,25 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         and opening a new connection per message costs a full handshake and leaves the broker
         with one short-lived connection per published message.
 
-        A cached connection is reused only while it reports itself open and was last used no
-        longer than `PRODUCER_IDLE_MAX_SECONDS` ago. A `BlockingConnection` only services
-        heartbeats while the application is inside a pika call, so the broker closes an idle
-        connection after about 2-3x the heartbeat (120-180 seconds with the 60 seconds default)
-        while pika still reports it as open. Publishing on it then fails, which is exactly what
-        the idle window avoids, and it requires the broker heartbeat to stay at 60 seconds or
-        more (`_create_connection` passes no `heartbeat`, so the broker value is negotiated).
+        Inside a request the connection follows the model Django applies to the database
+        connection with `CONN_MAX_AGE=0`: opened on first use, reused for the rest of the
+        request and closed in order by `clean_connection` when `request_finished` fires. A
+        `BlockingConnection` only services heartbeats while the application is inside a pika
+        call, so a connection kept by a thread waiting for its next request sends none, and
+        the broker kills a silent connection after 2-3x the heartbeat (120-180 seconds with
+        the 60 seconds default) while pika still reports it as open.
 
-        An expired connection is dropped without calling `close()`: a graceful close on a
-        connection the broker already killed raises the very error being avoided here, and it
-        has no time bound either. The dropped connection lives on until the broker times out
-        its heartbeat and, on the client, until the cyclic garbage collector reclaims it,
-        because pika connection and channel objects reference each other. Both are expected.
+        Outside requests (consumer requeues, management commands) a cached connection is
+        reused while it reports itself open and was last used no longer than
+        `PRODUCER_ASSUMED_ALIVE_SECONDS` ago, 30 seconds below the earliest broker kill. That
+        requires the broker heartbeat to stay at 60 seconds or more (`_create_connection`
+        passes no `heartbeat`, so the broker value is negotiated). Idle for longer, the
+        connection is dropped without calling `close()`: a graceful close on a connection the
+        broker already killed makes pika log the very error being avoided here before raising,
+        and it has no time bound either. The dropped connection lives on until the broker
+        times out its heartbeat and, on the client, until the cyclic garbage collector reclaims
+        it, because pika connection and channel objects reference each other. Both are
+        expected.
 
         Args:
             host (str): RabbitMQ host.
@@ -372,7 +394,11 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         """
         connection = getattr(cls._producer_local, 'connection', None)
         idle = time.monotonic() - getattr(cls._producer_local, 'last_used', 0)
-        if connection is None or not connection.is_open or idle > cls.PRODUCER_IDLE_MAX_SECONDS:
+        if (
+            connection is None
+            or not connection.is_open
+            or idle > cls.PRODUCER_ASSUMED_ALIVE_SECONDS
+        ):
             cls._producer_local.connection = cls._producer_local.channel = None
             cls._producer_local.connection, cls._producer_local.channel = cls._create_connection(
                 host,
@@ -473,6 +499,13 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         channel.basic_nack(delivery_tag, requeue=False)
         if payload is not None:
             cls.log_consumed_denied(payload)
+
+
+@receiver(request_finished, dispatch_uid=RELEASE_PRODUCER_CONNECTION_UID)
+def release_producer_connection(**kwargs):
+    """Release the producer connection of the request thread once the response is done, as
+    Django's `close_old_connections` does for the database connection."""
+    RabbitMQTransport.clean_connection()
 
 
 if hasattr(os, 'register_at_fork'):  # not available on Windows
