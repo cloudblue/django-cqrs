@@ -28,20 +28,34 @@ CQRS = {
 
 ## Producer connections
 
-The transport keeps **one producer connection per thread** and reuses it for every signal
-type, as long as it is still open and was last used no longer than
-`RabbitMQTransport.PRODUCER_IDLE_MAX_SECONDS` (30 seconds) ago. A pika `BlockingConnection`
-is not thread-safe, so it is never shared between threads.
+The transport keeps **one producer connection per thread** and uses it for every signal
+type. A pika `BlockingConnection` is not thread-safe, so it is never shared between threads.
 
-A `BlockingConnection` only services heartbeats while the application is inside a pika call,
-so the broker closes a connection that stayed idle for about 2-3x the heartbeat while pika
-still reports it as open. The idle window keeps connections well below that limit and
-therefore **requires the broker heartbeat to be 60 seconds or more** (the RabbitMQ default);
-lower it only together with `PRODUCER_IDLE_MAX_SECONDS`.
+Inside a request the connection is handled the way Django handles a database connection with
+`CONN_MAX_AGE=0`: opened on the first publish, reused for the rest of the request and closed
+in order when the response is done (a `request_finished` receiver calls
+`RabbitMQTransport.clean_connection()`). A `BlockingConnection` only services heartbeats while
+the application is inside a pika call, so a connection kept by a thread waiting for its next
+request sends none, and the broker closes it after 2-3x the heartbeat while pika still reports
+it as open.
 
-A connection dropped because it exceeded the idle window is not closed gracefully: closing a
-connection the broker may already have killed raises the very error this avoids. It is simply
-discarded, and the broker releases it when its heartbeat times out.
+Outside requests (consumer requeues, management commands) the connection is reused while it
+was idle for no longer than `RabbitMQTransport.PRODUCER_ASSUMED_ALIVE_HEARTBEATS` (1.5) times
+the heartbeat negotiated with the broker: 90 seconds with the RabbitMQ default of 60, and
+always below the 2 heartbeats after which the broker may close a silent connection. The
+transport does not set a heartbeat of its own, so the broker's configured value applies. With
+heartbeats disabled on the broker the connection is never dropped for being idle.
+
+A connection idle for longer is not closed gracefully: closing a connection the broker may
+already have killed makes pika log the very error this avoids. It is simply discarded, and the
+broker releases it when its heartbeat times out.
+
+Closing in order waits for the broker's reply, with no time bound of its own. A broker that
+vanished without closing the socket keeps the thread waiting until pika's heartbeat checker
+gives up, about two heartbeat intervals. A broker in a memory or disk alarm stops reading from
+a connection that published during the alarm, so the close is abandoned only after pika's
+`blocked_connection_timeout` (10 seconds) and logged as failed. Both stall a thread after its
+response was sent, and only while the broker is in trouble.
 
 # Kombu transport
 
