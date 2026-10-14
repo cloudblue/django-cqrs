@@ -8,6 +8,7 @@ from importlib import import_module, reload
 
 import pytest
 import ujson
+from django.core.signals import request_finished
 from django.db import DatabaseError
 from pika import PlainCredentials
 from pika.adapters.utils.connection_workflow import AMQPConnectorException
@@ -32,7 +33,11 @@ from dj_cqrs.constants import (
 )
 from dj_cqrs.dataclasses import TransportPayload
 from dj_cqrs.delay import DelayMessage, DelayQueue
-from dj_cqrs.transport.rabbit_mq import RabbitMQTransport
+from dj_cqrs.transport.rabbit_mq import (
+    RELEASE_PRODUCER_CONNECTION_UID,
+    RabbitMQTransport,
+    release_producer_connection,
+)
 from tests.utils import db_error
 
 
@@ -679,7 +684,7 @@ def test_delay_message_with_requeue(mocker, caplog):
 
 
 PRODUCER_RMQ_ARGS = ('rabbit', 5672, PlainCredentials('user', 'password'), 'exchange')
-PRODUCER_IDLE_MAX_SECONDS = RabbitMQTransport.PRODUCER_IDLE_MAX_SECONDS
+PRODUCER_ASSUMED_ALIVE_SECONDS = RabbitMQTransport.PRODUCER_ASSUMED_ALIVE_SECONDS
 
 
 @pytest.fixture(autouse=True)
@@ -768,7 +773,7 @@ def test_producer_same_thread_reuses_connection(
 def test_producer_idle_connection_is_replaced_without_closing(blocking_connection, producer_clock):
     stale_connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
 
-    producer_clock(PRODUCER_IDLE_MAX_SECONDS + 1)
+    producer_clock(PRODUCER_ASSUMED_ALIVE_SECONDS + 1)
     new_connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
 
     assert blocking_connection.call_count == 2
@@ -777,7 +782,7 @@ def test_producer_idle_connection_is_replaced_without_closing(blocking_connectio
 
 
 def test_producer_idle_window_slides_on_every_use(blocking_connection, producer_clock):
-    for reading in (0, 20, 40):
+    for reading in (0, 60, 120):
         producer_clock(reading)
         RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
 
@@ -787,8 +792,8 @@ def test_producer_idle_window_slides_on_every_use(blocking_connection, producer_
 @pytest.mark.parametrize(
     ('idle', 'expected_connections'),
     (
-        (PRODUCER_IDLE_MAX_SECONDS, 1),
-        (PRODUCER_IDLE_MAX_SECONDS + 0.001, 2),
+        (PRODUCER_ASSUMED_ALIVE_SECONDS, 1),
+        (PRODUCER_ASSUMED_ALIVE_SECONDS + 0.001, 2),
     ),
 )
 def test_producer_idle_window_boundary(
@@ -855,6 +860,26 @@ def test_clean_connection_skips_close_on_not_open_connection(blocking_connection
     assert RabbitMQTransport._producer_local.channel is None
 
 
+@pytest.mark.parametrize(
+    ('idle', 'close_calls'),
+    (
+        (PRODUCER_ASSUMED_ALIVE_SECONDS, 1),
+        (PRODUCER_ASSUMED_ALIVE_SECONDS + 0.001, 0),
+    ),
+)
+def test_clean_connection_boundary(blocking_connection, producer_clock, idle, close_calls):
+    connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+
+    producer_clock(idle)
+    RabbitMQTransport.clean_connection()
+
+    # Beyond the window the broker may already have killed the connection: it is dropped, not
+    # closed, and the cache is emptied either way.
+    assert connection.close.call_count == close_calls
+    assert RabbitMQTransport._producer_local.connection is None
+    assert RabbitMQTransport._producer_local.channel is None
+
+
 def test_clean_connection_without_cached_connection_is_noop():
     RabbitMQTransport.clean_connection()
 
@@ -869,17 +894,54 @@ def test_clean_connection_without_cached_connection_is_noop():
         ConnectionClosed(320, 'x'),
         AMQPHeartbeatTimeout(),
         ConnectionWrongStateError(),
+        AssertionError('pika internal invariant'),
     ),
 )
-def test_clean_connection_swallows_connection_errors(blocking_connection, caplog, exception):
+def test_clean_connection_swallows_close_errors(blocking_connection, caplog, exception):
     connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
     connection.close.side_effect = exception
 
     RabbitMQTransport.clean_connection()
 
-    assert 'Connection was closed or is closing. Skip it...' in caplog.text
+    assert 'CQRS producer connection could not be closed in order.' in caplog.text
     assert RabbitMQTransport._producer_local.connection is None
     assert RabbitMQTransport._producer_local.channel is None
+
+
+def test_release_receiver_is_connected_to_request_finished():
+    # disconnect() only succeeds for a registered receiver. The signal itself is not sent:
+    # Django's own close_old_connections receiver would touch the test database connection.
+    assert request_finished.disconnect(dispatch_uid=RELEASE_PRODUCER_CONNECTION_UID)
+
+    request_finished.connect(
+        release_producer_connection,
+        dispatch_uid=RELEASE_PRODUCER_CONNECTION_UID,
+    )
+
+
+def test_request_finished_releases_thread_connection(blocking_connection):
+    connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+
+    release_producer_connection(sender=None)
+
+    connection.close.assert_called_once_with()
+    assert RabbitMQTransport._producer_local.connection is None
+
+    new_connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+
+    assert blocking_connection.call_count == 2
+    assert new_connection is not connection
+
+
+def test_request_finished_survives_close_error(blocking_connection, caplog):
+    connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+    connection.close.side_effect = AssertionError('pika internal invariant')
+
+    # Signal.send propagates a receiver error into the WSGI server after the response was sent.
+    release_producer_connection(sender=None)
+
+    assert RabbitMQTransport._producer_local.connection is None
+    assert 'could not be closed in order' in caplog.text
 
 
 def test_produce_error_reconnects_in_same_thread(rabbit_transport, blocking_connection):
@@ -906,7 +968,7 @@ def test_produce_stale_connection_not_closed_when_reconnect_fails(
     producer_clock,
 ):
     stale_connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
-    producer_clock(PRODUCER_IDLE_MAX_SECONDS + 1)
+    producer_clock(PRODUCER_ASSUMED_ALIVE_SECONDS + 1)
     factory = blocking_connection.side_effect
     blocking_connection.side_effect = [AMQPConnectionError(), factory()]
 
