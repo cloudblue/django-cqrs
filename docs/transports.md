@@ -39,6 +39,15 @@ the application is inside a pika call, so a connection kept by a thread waiting 
 request sends none, and the broker closes it after 2-3x the heartbeat while pika still reports
 it as open.
 
+The release can be turned off with `PRODUCER_RELEASE_ON_REQUEST_FINISHED = False` on the
+configured transport class (`RabbitMQTransport` or a subclass). The connection then stays
+cached in the thread between requests, as in 3.1.0: reused while idle for at most the window
+below, dropped beyond, and killed by the broker when the thread stays silent, which it logs as
+`missed heartbeats from client` at error level, one line per connection. In exchange a
+request that publishes pays no connection setup: with the release on, its first publish opens
+a connection (connect, channel, `basic_qos` and `exchange_declare`, about seven round trips to
+the broker) and the release closes it (two more) after the response was sent.
+
 Outside requests (consumer requeues, management commands) the connection is reused while it
 was idle for no longer than `RabbitMQTransport.PRODUCER_ASSUMED_ALIVE_HEARTBEATS` (1.5) times
 the heartbeat negotiated with the broker: 90 seconds with the RabbitMQ default of 60, and

@@ -1028,7 +1028,7 @@ def test_release_receiver_is_connected_to_request_finished():
     )
 
 
-def test_request_finished_releases_thread_connection(blocking_connection):
+def test_request_finished_releases_thread_connection(rabbit_transport, blocking_connection):
     connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
 
     release_producer_connection(sender=None)
@@ -1042,7 +1042,7 @@ def test_request_finished_releases_thread_connection(blocking_connection):
     assert new_connection is not connection
 
 
-def test_request_finished_survives_close_error(blocking_connection, caplog):
+def test_request_finished_survives_close_error(rabbit_transport, blocking_connection, caplog):
     connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
     connection.close.side_effect = AssertionError('pika internal invariant')
 
@@ -1051,6 +1051,34 @@ def test_request_finished_survives_close_error(blocking_connection, caplog):
 
     assert RabbitMQTransport._producer_local.connection is None
     assert 'could not be closed in order' in caplog.text
+
+
+def test_request_finished_keeps_connection_when_release_is_off(
+    rabbit_transport,
+    blocking_connection,
+    mocker,
+):
+    mocker.patch.object(RabbitMQTransport, 'PRODUCER_RELEASE_ON_REQUEST_FINISHED', False)
+    connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+
+    release_producer_connection(sender=None)
+
+    # 3.1.0 behaviour: the connection stays cached in the thread for the next request.
+    connection.close.assert_not_called()
+    assert RabbitMQTransport._producer_local.connection is connection
+
+
+def test_request_finished_reads_the_configured_transport(blocking_connection, mocker):
+    class KeepingTransport(RabbitMQTransport):
+        PRODUCER_RELEASE_ON_REQUEST_FINISHED = False
+
+    mocker.patch('dj_cqrs.transport.current_transport', KeepingTransport)
+    connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+
+    release_producer_connection(sender=None)
+
+    connection.close.assert_not_called()
+    assert RabbitMQTransport._producer_local.connection is connection
 
 
 def test_produce_error_reconnects_in_same_thread(rabbit_transport, blocking_connection):

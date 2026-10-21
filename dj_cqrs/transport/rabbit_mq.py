@@ -47,6 +47,11 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
     # broker side: RabbitMQ kills it after 2 heartbeats at the earliest, see
     # _assumed_alive_seconds. 90 seconds with the RabbitMQ default heartbeat of 60.
     PRODUCER_ASSUMED_ALIVE_HEARTBEATS = 1.5
+    # Release the producer connection of a request thread when the request finishes. Off, the
+    # connection stays cached in the thread between requests as in 3.1.0: reused within the
+    # window above, dropped beyond, and timed out by the broker with an error line when the
+    # thread stays silent.
+    PRODUCER_RELEASE_ON_REQUEST_FINISHED = True
 
     _producer_local = threading.local()
 
@@ -547,8 +552,15 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
 @receiver(request_finished, dispatch_uid=RELEASE_PRODUCER_CONNECTION_UID)
 def release_producer_connection(**kwargs):
     """Release the producer connection of the request thread once the response is done, as
-    Django's `close_old_connections` does for the database connection."""
-    RabbitMQTransport.clean_connection()
+    Django's `close_old_connections` does for the database connection.
+
+    `PRODUCER_RELEASE_ON_REQUEST_FINISHED` is read from the configured transport, so a
+    subclass can turn the release off and another transport is left alone.
+    """
+    from dj_cqrs.transport import current_transport
+
+    if getattr(current_transport, 'PRODUCER_RELEASE_ON_REQUEST_FINISHED', False):
+        current_transport.clean_connection()
 
 
 if hasattr(os, 'register_at_fork'):  # not available on Windows
