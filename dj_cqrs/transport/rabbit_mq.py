@@ -55,21 +55,27 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         """Drop the producer connection of the current thread.
 
         The connection is closed in order only while the broker is guaranteed to still hold
-        it: it reports itself open and was idle for no longer than the window computed on
-        connect (see `_assumed_alive_seconds`). Beyond that it may already be dead on the
-        broker side and is dropped without `close()` (see `_get_producer_rmq_objects`). A
-        failing close is logged and never raised: this runs from the `request_finished`
+        it and to answer: it reports itself open, was idle for no longer than the window
+        computed on connect (see `_assumed_alive_seconds`) and is not blocked by the broker.
+        Beyond the window it may already be dead on the broker side (see
+        `_get_producer_rmq_objects`). Blocked, the broker is in a memory or disk alarm: it
+        stops reading from a connection on its first publish during the alarm and sends
+        `Connection.Blocked` then, so it would not answer the Close before the alarm clears
+        and pika would hold the thread for `blocked_connection_timeout` (10 seconds). Both
+        are dropped without `close()`. The broker's pending frames are drained first: the
+        notification follows the publish by about a round trip and waits in the socket
+        buffer until a pika call reads it. A request that finishes within that round trip
+        of its last publish still pays the timeout.
+
+        A failing close is logged and never raised: this runs from the `request_finished`
         receiver after the response was sent, and from the error handler of a publish before
         its retry.
 
-        `close()` waits for the broker's CloseOk with no time bound of its own, so two broker
-        states hold the thread after the response was sent: a broker that vanished without
-        closing the socket, where pika's heartbeat checker ends the wait after about two
-        heartbeat intervals, and a broker in a memory or disk alarm, which stops reading from
-        a connection that published during the alarm and never answers the Close, where pika
-        gives up after `blocked_connection_timeout` (10 seconds) and the close is logged as
-        failed. Both last only while the broker is in trouble and are accepted: the
-        alternative is the dropped-connection noise this method avoids.
+        `close()` waits for the broker's CloseOk with no time bound of its own, so a broker
+        that vanished without closing the socket holds the thread after the response was
+        sent until pika's heartbeat checker gives up, about two heartbeat intervals. That
+        lasts only while the broker is down and is accepted: the alternative is the
+        dropped-connection noise this method avoids.
         """
         local = cls._producer_local
         connection = getattr(local, 'connection', None)
@@ -83,7 +89,10 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
             return
 
         try:
-            connection.close()
+            # Dispatches a Connection.Blocked or Unblocked the broker sent since the last call.
+            connection.process_data_events(time_limit=0)
+            if not local.blocked:
+                connection.close()
         except Exception:
             logger.warning('CQRS producer connection could not be closed in order.', exc_info=True)
 
@@ -436,7 +445,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
 
     @classmethod
     def _create_connection(cls, host, port, creds, exchange):
-        """Open a producer connection for the current thread and cache it with its window."""
+        """Open a producer connection for the current thread and cache it with its state."""
         connection = BlockingConnection(
             ConnectionParameters(
                 host=host,
@@ -445,11 +454,19 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
                 blocked_connection_timeout=10,
             ),
         )
+        # RabbitMQ sends Connection.Blocked to a connection that publishes during a memory or
+        # disk alarm and Connection.Unblocked when the alarm clears. pika dispatches both inside
+        # its calls on the thread driving the connection, the thread owning this cache.
+        local = cls._producer_local
+        local.blocked = False
+        connection.add_on_connection_blocked_callback(lambda *_: setattr(local, 'blocked', True))
+        connection.add_on_connection_unblocked_callback(
+            lambda *_: setattr(local, 'blocked', False),
+        )
         channel = connection.channel()
         channel.basic_qos(prefetch_count=get_messages_prefetch_count_per_worker())
         cls._declare_exchange(channel, exchange)
 
-        local = cls._producer_local
         local.assumed_alive_seconds = cls._assumed_alive_seconds(connection)
         local.connection, local.channel = connection, channel
 

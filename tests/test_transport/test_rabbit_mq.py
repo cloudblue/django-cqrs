@@ -949,6 +949,74 @@ def test_clean_connection_swallows_close_errors(blocking_connection, caplog, exc
     assert RabbitMQTransport._producer_local.channel is None
 
 
+def _broker_sends(connection, frame):
+    """Dispatch a Connection.Blocked or Connection.Unblocked frame to the callback the
+    transport registered on the mock, as pika does inside a pika call on the owning thread."""
+    register = getattr(connection, 'add_on_connection_{0}_callback'.format(frame))
+    register.call_args[0][0](connection, None)
+
+
+def test_clean_connection_drops_blocked_connection_without_close(blocking_connection):
+    connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+    _broker_sends(connection, 'blocked')
+
+    RabbitMQTransport.clean_connection()
+
+    # The broker would not answer the Close before the alarm clears: dropped like an idle one.
+    connection.close.assert_not_called()
+    assert RabbitMQTransport._producer_local.connection is None
+    assert RabbitMQTransport._producer_local.channel is None
+
+
+def test_clean_connection_closes_unblocked_connection_in_order(blocking_connection):
+    connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+    _broker_sends(connection, 'blocked')
+    _broker_sends(connection, 'unblocked')
+
+    RabbitMQTransport.clean_connection()
+
+    connection.close.assert_called_once_with()
+
+
+def test_clean_connection_drains_pending_blocked_frame(blocking_connection):
+    connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+    # A frame the broker sent after the last publish waits in the socket buffer until a pika
+    # call reads it: the release-time drain is that call.
+    connection.process_data_events.side_effect = lambda time_limit: _broker_sends(
+        connection,
+        'blocked',
+    )
+
+    RabbitMQTransport.clean_connection()
+
+    connection.process_data_events.assert_called_once_with(time_limit=0)
+    connection.close.assert_not_called()
+
+
+def test_clean_connection_logs_drain_error_and_drops(blocking_connection, caplog):
+    connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+    connection.process_data_events.side_effect = StreamLostError()
+
+    RabbitMQTransport.clean_connection()
+
+    connection.close.assert_not_called()
+    assert 'CQRS producer connection could not be closed in order.' in caplog.text
+    assert RabbitMQTransport._producer_local.connection is None
+
+
+def test_producer_new_connection_starts_unblocked(blocking_connection):
+    blocked_connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+    _broker_sends(blocked_connection, 'blocked')
+    blocked_connection.is_open = False
+
+    new_connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+    RabbitMQTransport.clean_connection()
+
+    # The flag belongs to the connection that received the frame, not to the thread for good.
+    assert new_connection is not blocked_connection
+    new_connection.close.assert_called_once_with()
+
+
 def test_release_receiver_is_connected_to_request_finished():
     # disconnect() only succeeds for a registered receiver. The signal itself is not sent:
     # Django's own close_old_connections receiver would touch the test database connection.
