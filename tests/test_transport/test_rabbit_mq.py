@@ -818,7 +818,10 @@ def test_producer_idle_window_boundary(
 
 def test_producer_window_follows_negotiated_heartbeat(blocking_connection, producer_clock):
     blocking_connection.heartbeat = 20
-    RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+    connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+    # The negotiated heartbeat sits on a private pika attribute: it is read once, on connect,
+    # and the window is kept on the cache. Nothing touches the connection for it afterwards.
+    del connection._impl
 
     producer_clock(30)
     RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
@@ -834,6 +837,7 @@ def test_producer_window_follows_negotiated_heartbeat(blocking_connection, produ
 def test_producer_without_heartbeat_never_expires(blocking_connection, producer_clock):
     blocking_connection.heartbeat = 0
     connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+    del connection._impl
 
     producer_clock(24 * 3600)
     RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)

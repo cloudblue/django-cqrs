@@ -55,11 +55,12 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         """Drop the producer connection of the current thread.
 
         The connection is closed in order only while the broker is guaranteed to still hold
-        it: it reports itself open and was idle for no longer than `_assumed_alive_seconds`.
-        Beyond that it may already be dead on the broker side and is dropped without
-        `close()` (see `_get_producer_rmq_objects`). A failing close is logged and never
-        raised: this runs from the `request_finished` receiver after the response was sent,
-        and from the error handler of a publish before its retry.
+        it: it reports itself open and was idle for no longer than the window computed on
+        connect (see `_assumed_alive_seconds`). Beyond that it may already be dead on the
+        broker side and is dropped without `close()` (see `_get_producer_rmq_objects`). A
+        failing close is logged and never raised: this runs from the `request_finished`
+        receiver after the response was sent, and from the error handler of a publish before
+        its retry.
 
         `close()` waits for the broker's CloseOk with no time bound of its own, so two broker
         states hold the thread after the response was sent: a broker that vanished without
@@ -70,14 +71,15 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         failed. Both last only while the broker is in trouble and are accepted: the
         alternative is the dropped-connection noise this method avoids.
         """
-        connection = getattr(cls._producer_local, 'connection', None)
-        idle = time.monotonic() - getattr(cls._producer_local, 'last_used', 0)
-        cls._producer_local.connection = cls._producer_local.channel = None
+        local = cls._producer_local
+        connection = getattr(local, 'connection', None)
+        local.connection = local.channel = None
         # BlockingConnection.close() raises ConnectionWrongStateError on a connection that is
         # not open. `is_open` only flips when pika's ioloop runs, so it says nothing about the
         # broker side: the idle bound is the real liveness guard.
-        reports_open = connection is not None and connection.is_open
-        if not reports_open or idle > cls._assumed_alive_seconds(connection):
+        if connection is None or not connection.is_open:
+            return
+        if time.monotonic() - local.last_used > local.assumed_alive_seconds:
             return
 
         try:
@@ -382,9 +384,9 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         the 60 seconds default) while pika still reports it as open.
 
         Outside requests (consumer requeues, management commands) a cached connection is
-        reused while it reports itself open and was idle for no longer than
-        `_assumed_alive_seconds`, 1.5x the heartbeat negotiated on connect (90 seconds with
-        the RabbitMQ default of 60). Idle for longer, the connection is dropped without
+        reused while it reports itself open and was idle for no longer than the window
+        computed on connect by `_assumed_alive_seconds`, 1.5x the negotiated heartbeat (90
+        seconds with the RabbitMQ default of 60). Idle for longer, it is dropped without
         calling `close()`: a graceful close on a connection the broker already killed makes
         pika log the very error being avoided here before raising, and it has no time bound
         either. The dropped connection lives on until the broker times out its heartbeat and,
@@ -401,24 +403,19 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         Returns:
             (tuple): Connection and channel of the current thread.
         """
-        connection = getattr(cls._producer_local, 'connection', None)
-        idle = time.monotonic() - getattr(cls._producer_local, 'last_used', 0)
+        local = cls._producer_local
+        connection = getattr(local, 'connection', None)
         if (
             connection is None
             or not connection.is_open
-            or idle > cls._assumed_alive_seconds(connection)
+            or time.monotonic() - local.last_used > local.assumed_alive_seconds
         ):
-            cls._producer_local.connection = cls._producer_local.channel = None
-            cls._producer_local.connection, cls._producer_local.channel = cls._create_connection(
-                host,
-                port,
-                creds,
-                exchange,
-            )
+            local.connection = local.channel = None
+            cls._create_connection(host, port, creds, exchange)
 
-        cls._producer_local.last_used = time.monotonic()
+        local.last_used = time.monotonic()
 
-        return cls._producer_local.connection, cls._producer_local.channel
+        return local.connection, local.channel
 
     @classmethod
     def _assumed_alive_seconds(cls, connection):
@@ -428,7 +425,8 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         killed by RabbitMQ after 2-3x the heartbeat. The heartbeat is the one negotiated on
         connect: `_create_connection` passes none, so pika accepts the broker's value and
         stores it on the parameters of the underlying connection. With heartbeats disabled
-        (0) the broker never kills an idle connection, so there is no window.
+        (0) the broker never kills an idle connection, so there is no window. Read once, on
+        connect: the window is kept on the thread's cache next to the connection.
         """
         # pika exposes the negotiated parameters only on the wrapped SelectConnection.
         heartbeat = connection._impl.params.heartbeat
@@ -438,6 +436,7 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
 
     @classmethod
     def _create_connection(cls, host, port, creds, exchange):
+        """Open a producer connection for the current thread and cache it with its window."""
         connection = BlockingConnection(
             ConnectionParameters(
                 host=host,
@@ -450,7 +449,9 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
         channel.basic_qos(prefetch_count=get_messages_prefetch_count_per_worker())
         cls._declare_exchange(channel, exchange)
 
-        return connection, channel
+        local = cls._producer_local
+        local.assumed_alive_seconds = cls._assumed_alive_seconds(connection)
+        local.connection, local.channel = connection, channel
 
     @staticmethod
     def _declare_exchange(channel, exchange):
