@@ -8,6 +8,7 @@ from importlib import import_module, reload
 
 import pytest
 import ujson
+from django.core.signals import request_finished
 from django.db import DatabaseError
 from pika import PlainCredentials
 from pika.adapters.utils.connection_workflow import AMQPConnectorException
@@ -32,7 +33,11 @@ from dj_cqrs.constants import (
 )
 from dj_cqrs.dataclasses import TransportPayload
 from dj_cqrs.delay import DelayMessage, DelayQueue
-from dj_cqrs.transport.rabbit_mq import RabbitMQTransport
+from dj_cqrs.transport.rabbit_mq import (
+    RELEASE_PRODUCER_CONNECTION_UID,
+    RabbitMQTransport,
+    release_producer_connection,
+)
 from tests.utils import db_error
 
 
@@ -679,7 +684,10 @@ def test_delay_message_with_requeue(mocker, caplog):
 
 
 PRODUCER_RMQ_ARGS = ('rabbit', 5672, PlainCredentials('user', 'password'), 'exchange')
-PRODUCER_IDLE_MAX_SECONDS = RabbitMQTransport.PRODUCER_IDLE_MAX_SECONDS
+PRODUCER_HEARTBEAT_SECONDS = 60  # the RabbitMQ default
+PRODUCER_ASSUMED_ALIVE_SECONDS = (
+    RabbitMQTransport.PRODUCER_ASSUMED_ALIVE_HEARTBEATS * PRODUCER_HEARTBEAT_SECONDS
+)
 
 
 @pytest.fixture(autouse=True)
@@ -718,7 +726,8 @@ def blocking_connection(mocker):
     """Replace BlockingConnection with a factory building a new open connection on every call.
 
     Every connection gets its own channel mock and is appended to the `connections` list of
-    the returned mock, so tests can count opened connections and tell them apart.
+    the returned mock, so tests can count opened connections and tell them apart. It reports
+    the heartbeat set on `heartbeat` of the returned mock as the one negotiated on connect.
     """
     connections = []
 
@@ -726,6 +735,7 @@ def blocking_connection(mocker):
         connection = mocker.MagicMock()
         connection.is_open = True
         connection.channel.return_value = mocker.MagicMock()
+        connection._impl.params.heartbeat = factory.heartbeat
         connections.append(connection)
         return connection
 
@@ -734,6 +744,7 @@ def blocking_connection(mocker):
         side_effect=_factory,
     )
     factory.connections = connections
+    factory.heartbeat = PRODUCER_HEARTBEAT_SECONDS
 
     return factory
 
@@ -768,7 +779,7 @@ def test_producer_same_thread_reuses_connection(
 def test_producer_idle_connection_is_replaced_without_closing(blocking_connection, producer_clock):
     stale_connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
 
-    producer_clock(PRODUCER_IDLE_MAX_SECONDS + 1)
+    producer_clock(PRODUCER_ASSUMED_ALIVE_SECONDS + 1)
     new_connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
 
     assert blocking_connection.call_count == 2
@@ -777,7 +788,7 @@ def test_producer_idle_connection_is_replaced_without_closing(blocking_connectio
 
 
 def test_producer_idle_window_slides_on_every_use(blocking_connection, producer_clock):
-    for reading in (0, 20, 40):
+    for reading in (0, 60, 120):
         producer_clock(reading)
         RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
 
@@ -787,8 +798,8 @@ def test_producer_idle_window_slides_on_every_use(blocking_connection, producer_
 @pytest.mark.parametrize(
     ('idle', 'expected_connections'),
     (
-        (PRODUCER_IDLE_MAX_SECONDS, 1),
-        (PRODUCER_IDLE_MAX_SECONDS + 0.001, 2),
+        (PRODUCER_ASSUMED_ALIVE_SECONDS, 1),
+        (PRODUCER_ASSUMED_ALIVE_SECONDS + 0.001, 2),
     ),
 )
 def test_producer_idle_window_boundary(
@@ -803,6 +814,41 @@ def test_producer_idle_window_boundary(
     RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
 
     assert blocking_connection.call_count == expected_connections
+
+
+def test_producer_window_follows_negotiated_heartbeat(blocking_connection, producer_clock):
+    blocking_connection.heartbeat = 20
+    connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+    # The negotiated heartbeat sits on a private pika attribute: it is read once, on connect,
+    # and the window is kept on the cache. Nothing touches the connection for it afterwards.
+    del connection._impl
+
+    producer_clock(30)
+    RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+
+    assert blocking_connection.call_count == 1
+
+    producer_clock(60.001)
+    RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+
+    assert blocking_connection.call_count == 2
+
+
+def test_producer_without_heartbeat_never_expires(blocking_connection, producer_clock):
+    blocking_connection.heartbeat = 0
+    connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+    del connection._impl
+
+    producer_clock(24 * 3600)
+    RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+
+    assert blocking_connection.call_count == 1
+
+    # With heartbeats disabled the broker never kills an idle connection, so it is still
+    # closed in order.
+    RabbitMQTransport.clean_connection()
+
+    connection.close.assert_called_once_with()
 
 
 def test_producer_closed_connection_is_replaced(blocking_connection):
@@ -855,6 +901,26 @@ def test_clean_connection_skips_close_on_not_open_connection(blocking_connection
     assert RabbitMQTransport._producer_local.channel is None
 
 
+@pytest.mark.parametrize(
+    ('idle', 'close_calls'),
+    (
+        (PRODUCER_ASSUMED_ALIVE_SECONDS, 1),
+        (PRODUCER_ASSUMED_ALIVE_SECONDS + 0.001, 0),
+    ),
+)
+def test_clean_connection_boundary(blocking_connection, producer_clock, idle, close_calls):
+    connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+
+    producer_clock(idle)
+    RabbitMQTransport.clean_connection()
+
+    # Beyond the window the broker may already have killed the connection: it is dropped, not
+    # closed, and the cache is emptied either way.
+    assert connection.close.call_count == close_calls
+    assert RabbitMQTransport._producer_local.connection is None
+    assert RabbitMQTransport._producer_local.channel is None
+
+
 def test_clean_connection_without_cached_connection_is_noop():
     RabbitMQTransport.clean_connection()
 
@@ -869,17 +935,150 @@ def test_clean_connection_without_cached_connection_is_noop():
         ConnectionClosed(320, 'x'),
         AMQPHeartbeatTimeout(),
         ConnectionWrongStateError(),
+        AssertionError('pika internal invariant'),
     ),
 )
-def test_clean_connection_swallows_connection_errors(blocking_connection, caplog, exception):
+def test_clean_connection_swallows_close_errors(blocking_connection, caplog, exception):
     connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
     connection.close.side_effect = exception
 
     RabbitMQTransport.clean_connection()
 
-    assert 'Connection was closed or is closing. Skip it...' in caplog.text
+    assert 'CQRS producer connection could not be closed in order.' in caplog.text
     assert RabbitMQTransport._producer_local.connection is None
     assert RabbitMQTransport._producer_local.channel is None
+
+
+def _broker_sends(connection, frame):
+    """Dispatch a Connection.Blocked or Connection.Unblocked frame to the callback the
+    transport registered on the mock, as pika does inside a pika call on the owning thread."""
+    register = getattr(connection, 'add_on_connection_{0}_callback'.format(frame))
+    register.call_args[0][0](connection, None)
+
+
+def test_clean_connection_drops_blocked_connection_without_close(blocking_connection):
+    connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+    _broker_sends(connection, 'blocked')
+
+    RabbitMQTransport.clean_connection()
+
+    # The broker would not answer the Close before the alarm clears: dropped like an idle one.
+    connection.close.assert_not_called()
+    assert RabbitMQTransport._producer_local.connection is None
+    assert RabbitMQTransport._producer_local.channel is None
+
+
+def test_clean_connection_closes_unblocked_connection_in_order(blocking_connection):
+    connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+    _broker_sends(connection, 'blocked')
+    _broker_sends(connection, 'unblocked')
+
+    RabbitMQTransport.clean_connection()
+
+    connection.close.assert_called_once_with()
+
+
+def test_clean_connection_drains_pending_blocked_frame(blocking_connection):
+    connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+    # A frame the broker sent after the last publish waits in the socket buffer until a pika
+    # call reads it: the release-time drain is that call.
+    connection.process_data_events.side_effect = lambda time_limit: _broker_sends(
+        connection,
+        'blocked',
+    )
+
+    RabbitMQTransport.clean_connection()
+
+    connection.process_data_events.assert_called_once_with(time_limit=0)
+    connection.close.assert_not_called()
+
+
+def test_clean_connection_logs_drain_error_and_drops(blocking_connection, caplog):
+    connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+    connection.process_data_events.side_effect = StreamLostError()
+
+    RabbitMQTransport.clean_connection()
+
+    connection.close.assert_not_called()
+    assert 'CQRS producer connection could not be closed in order.' in caplog.text
+    assert RabbitMQTransport._producer_local.connection is None
+
+
+def test_producer_new_connection_starts_unblocked(blocking_connection):
+    blocked_connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+    _broker_sends(blocked_connection, 'blocked')
+    blocked_connection.is_open = False
+
+    new_connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+    RabbitMQTransport.clean_connection()
+
+    # The flag belongs to the connection that received the frame, not to the thread for good.
+    assert new_connection is not blocked_connection
+    new_connection.close.assert_called_once_with()
+
+
+def test_release_receiver_is_connected_to_request_finished():
+    # disconnect() only succeeds for a registered receiver. The signal itself is not sent:
+    # Django's own close_old_connections receiver would touch the test database connection.
+    assert request_finished.disconnect(dispatch_uid=RELEASE_PRODUCER_CONNECTION_UID)
+
+    request_finished.connect(
+        release_producer_connection,
+        dispatch_uid=RELEASE_PRODUCER_CONNECTION_UID,
+    )
+
+
+def test_request_finished_releases_thread_connection(rabbit_transport, blocking_connection):
+    connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+
+    release_producer_connection(sender=None)
+
+    connection.close.assert_called_once_with()
+    assert RabbitMQTransport._producer_local.connection is None
+
+    new_connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+
+    assert blocking_connection.call_count == 2
+    assert new_connection is not connection
+
+
+def test_request_finished_survives_close_error(rabbit_transport, blocking_connection, caplog):
+    connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+    connection.close.side_effect = AssertionError('pika internal invariant')
+
+    # Signal.send propagates a receiver error into the WSGI server after the response was sent.
+    release_producer_connection(sender=None)
+
+    assert RabbitMQTransport._producer_local.connection is None
+    assert 'could not be closed in order' in caplog.text
+
+
+def test_request_finished_keeps_connection_when_release_is_off(
+    rabbit_transport,
+    blocking_connection,
+    mocker,
+):
+    mocker.patch.object(RabbitMQTransport, 'PRODUCER_RELEASE_ON_REQUEST_FINISHED', False)
+    connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+
+    release_producer_connection(sender=None)
+
+    # 3.1.0 behaviour: the connection stays cached in the thread for the next request.
+    connection.close.assert_not_called()
+    assert RabbitMQTransport._producer_local.connection is connection
+
+
+def test_request_finished_reads_the_configured_transport(blocking_connection, mocker):
+    class KeepingTransport(RabbitMQTransport):
+        PRODUCER_RELEASE_ON_REQUEST_FINISHED = False
+
+    mocker.patch('dj_cqrs.transport.current_transport', KeepingTransport)
+    connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
+
+    release_producer_connection(sender=None)
+
+    connection.close.assert_not_called()
+    assert RabbitMQTransport._producer_local.connection is connection
 
 
 def test_produce_error_reconnects_in_same_thread(rabbit_transport, blocking_connection):
@@ -906,7 +1105,7 @@ def test_produce_stale_connection_not_closed_when_reconnect_fails(
     producer_clock,
 ):
     stale_connection, _ = RabbitMQTransport._get_producer_rmq_objects(*PRODUCER_RMQ_ARGS)
-    producer_clock(PRODUCER_IDLE_MAX_SECONDS + 1)
+    producer_clock(PRODUCER_ASSUMED_ALIVE_SECONDS + 1)
     factory = blocking_connection.side_effect
     blocking_connection.side_effect = [AMQPConnectionError(), factory()]
 
