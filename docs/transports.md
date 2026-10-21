@@ -59,6 +59,11 @@ A connection idle for longer is not closed gracefully: closing a connection the 
 already have killed makes pika log the very error this avoids. It is simply discarded, and the
 broker releases it when its heartbeat times out.
 
+Threads that do not serve HTTP requests (Celery workers, custom threads) are not covered by the
+`request_finished` receiver: they should call `RabbitMQTransport.clean_connection()` at the end
+of each unit of work, for example from Celery's `task_postrun` signal, so the connection is
+closed in order instead of left for the broker to time out.
+
 A broker in a memory or disk alarm stops reading from a connection on its first publish during
 the alarm and sends it `Connection.Blocked`, so it would not answer a close until the alarm
 clears. The transport tracks that notification and drains the broker's pending frames before
