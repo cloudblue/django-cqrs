@@ -425,7 +425,19 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
             or time.monotonic() - local.last_used > local.assumed_alive_seconds
         ):
             local.connection = local.channel = None
-            cls._create_connection(host, port, creds, exchange)
+            connection, channel = cls._create_connection(host, port, creds, exchange)
+            # RabbitMQ sends Connection.Blocked to a connection that publishes during a memory
+            # or disk alarm and Connection.Unblocked when the alarm clears. pika dispatches both
+            # inside its calls on the thread driving the connection, the thread owning this cache.
+            local.blocked = False
+            connection.add_on_connection_blocked_callback(
+                lambda *_: setattr(local, 'blocked', True),
+            )
+            connection.add_on_connection_unblocked_callback(
+                lambda *_: setattr(local, 'blocked', False),
+            )
+            local.assumed_alive_seconds = cls._assumed_alive_seconds(connection)
+            local.connection, local.channel = connection, channel
 
         local.last_used = time.monotonic()
 
@@ -450,7 +462,6 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
 
     @classmethod
     def _create_connection(cls, host, port, creds, exchange):
-        """Open a producer connection for the current thread and cache it with its state."""
         connection = BlockingConnection(
             ConnectionParameters(
                 host=host,
@@ -459,21 +470,11 @@ class RabbitMQTransport(LoggingMixin, BaseTransport):
                 blocked_connection_timeout=10,
             ),
         )
-        # RabbitMQ sends Connection.Blocked to a connection that publishes during a memory or
-        # disk alarm and Connection.Unblocked when the alarm clears. pika dispatches both inside
-        # its calls on the thread driving the connection, the thread owning this cache.
-        local = cls._producer_local
-        local.blocked = False
-        connection.add_on_connection_blocked_callback(lambda *_: setattr(local, 'blocked', True))
-        connection.add_on_connection_unblocked_callback(
-            lambda *_: setattr(local, 'blocked', False),
-        )
         channel = connection.channel()
         channel.basic_qos(prefetch_count=get_messages_prefetch_count_per_worker())
         cls._declare_exchange(channel, exchange)
 
-        local.assumed_alive_seconds = cls._assumed_alive_seconds(connection)
-        local.connection, local.channel = connection, channel
+        return connection, channel
 
     @staticmethod
     def _declare_exchange(channel, exchange):
