@@ -52,6 +52,21 @@ def test_bad_kwargs_filter():
     assert 'Bad filter kwargs! Cannot resolve keyword' in str(e)
 
 
+def test_bad_batch_size():
+    with pytest.raises(CommandError) as e:
+        call_command(COMMAND_NAME, '--cqrs-id=author', '--batch=0')
+
+    assert 'Bad batch size!' in str(e)
+
+
+@pytest.mark.parametrize('delay', ['-1', 'nan', 'inf'])
+def test_bad_delay(delay):
+    with pytest.raises(CommandError) as e:
+        call_command(COMMAND_NAME, '--cqrs-id=author', '--delay=' + delay)
+
+    assert 'Bad delay!' in str(e)
+
+
 @pytest.mark.django_db
 def test_empty_filter(capsys):
     call_command(COMMAND_NAME, '--cqrs-id=author', '-f={"id": 1}')

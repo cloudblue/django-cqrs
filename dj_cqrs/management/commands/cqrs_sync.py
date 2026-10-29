@@ -1,6 +1,7 @@
 #  Copyright © 2025 CloudBlue. All rights reserved.
 
 import datetime
+import math
 import sys
 import time
 
@@ -68,6 +69,10 @@ class Command(BaseCommand):
         progress = self._get_progress(options)
         batch_size = self._get_batch_size(options)
         delay = options['delay']
+        if batch_size < 1:
+            raise CommandError('Bad batch size!')
+        if delay < 0 or not math.isfinite(delay):
+            raise CommandError('Bad delay!')
 
         qs = self._prepare_qs(model, options)
         db_count = qs.count()
