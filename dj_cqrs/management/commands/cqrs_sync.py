@@ -1,6 +1,7 @@
 #  Copyright © 2025 CloudBlue. All rights reserved.
 
 import datetime
+import math
 import sys
 import time
 
@@ -55,11 +56,23 @@ class Command(BaseCommand):
             help='Display progress',
             action='store_true',
         )
+        parser.add_argument(
+            '--delay',
+            '-d',
+            help='Seconds to sleep between batches, to throttle publishing to the transport',
+            type=float,
+            default=0,
+        )
 
     def handle(self, *args, **options):
         model = self._get_model(options)
         progress = self._get_progress(options)
         batch_size = self._get_batch_size(options)
+        delay = options['delay']
+        if batch_size < 1:
+            raise CommandError('Bad batch size!')
+        if delay < 0 or not math.isfinite(delay):
+            raise CommandError('Bad delay!')
 
         qs = self._prepare_qs(model, options)
         db_count = qs.count()
@@ -74,6 +87,8 @@ class Command(BaseCommand):
         for qs_ in batch_qs(model.relate_cqrs_serialization(qs), batch_size=batch_size):
             ts = time.time()
             cs = counter
+            if delay and counter:  # pause before every batch but the first
+                time.sleep(delay)
 
             # check if must reconnect
             if not connections[qs_.db].is_usable():

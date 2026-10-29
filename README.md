@@ -191,6 +191,7 @@ Bulk synchronizer without transport (usage example: it may be used for initial c
 Filter synchronizer over transport (usage example: sync some specific records to a given replica). Can be used dynamically.
 * To sync all replicas: `python manage.py cqrs_sync --cqrs-id=author -f={"id__in": [1, 2]}`
 * To sync all instances only with one replica: `python manage.py cqrs_sync --cqrs-id=author -f={} -q=replica`
+* To throttle publishing (pause between batches): `python manage.py cqrs_sync --cqrs-id=author -f={} -b=500 -d=2`
 
 Set of diff synchronization tools:
 * To get diff and synchronize master service with replica service in K8S: 

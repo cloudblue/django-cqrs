@@ -52,6 +52,21 @@ def test_bad_kwargs_filter():
     assert 'Bad filter kwargs! Cannot resolve keyword' in str(e)
 
 
+def test_bad_batch_size():
+    with pytest.raises(CommandError) as e:
+        call_command(COMMAND_NAME, '--cqrs-id=author', '--batch=0')
+
+    assert 'Bad batch size!' in str(e)
+
+
+@pytest.mark.parametrize('delay', ['-1', 'nan', 'inf'])
+def test_bad_delay(delay):
+    with pytest.raises(CommandError) as e:
+        call_command(COMMAND_NAME, '--cqrs-id=author', '--delay=' + delay)
+
+    assert 'Bad delay!' in str(e)
+
+
 @pytest.mark.django_db
 def test_empty_filter(capsys):
     call_command(COMMAND_NAME, '--cqrs-id=author', '-f={"id": 1}')
@@ -171,3 +186,28 @@ def test_reconnect_on_unusable_connection(capsys, mocker):
     assert is_usable_mock.call_count == 2
     captured = capsys.readouterr()
     assert 'Done!\n10 instance(s) synced.\n10 instance(s) processed.' in captured.out
+
+
+@pytest.mark.django_db
+def test_delay_between_batches(capsys, mocker):
+    for i in range(1, 6):
+        Author.objects.create(id=i, name='author')
+
+    sleep_mock = mocker.patch('dj_cqrs.management.commands.cqrs_sync.time.sleep')
+    call_command(COMMAND_NAME, '--cqrs-id=author', '-f={}', '-b=2', '-d=0.5')  # noqa: P103
+
+    # 3 batches -> 2 pauses, never before the first batch
+    assert sleep_mock.call_args_list == [mocker.call(0.5)] * 2
+    captured = capsys.readouterr()
+    assert 'Done!\n5 instance(s) synced.\n5 instance(s) processed.' in captured.out
+
+
+@pytest.mark.django_db
+def test_no_delay_by_default(mocker):
+    for i in range(1, 6):
+        Author.objects.create(id=i, name='author')
+
+    sleep_mock = mocker.patch('dj_cqrs.management.commands.cqrs_sync.time.sleep')
+    call_command(COMMAND_NAME, '--cqrs-id=author', '-f={}', '--batch=2')  # noqa: P103
+
+    sleep_mock.assert_not_called()

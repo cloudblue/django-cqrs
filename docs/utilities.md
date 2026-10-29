@@ -34,3 +34,10 @@ To sync all instances only with one replica:
 ``` shell
 $ python manage.py cqrs_sync --cqrs-id=author --filter="{}" --queue=replica
 ```
+
+To throttle publishing and avoid flooding the transport, pause between
+batches (here 500 instances every 2 seconds):
+
+``` shell
+$ python manage.py cqrs_sync --cqrs-id=author --filter="{}" --batch=500 --delay=2
+```
