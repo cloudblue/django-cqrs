@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import pytest
 import ujson
 from django.core.management import CommandError, call_command
+from pika import PlainCredentials
 
 from dj_cqrs.constants import SignalType
 from dj_cqrs.management.commands.cqrs_dead_letters import Command, RabbitMQTransport
@@ -44,6 +45,36 @@ def test_dump(capsys, mocker):
 
     captured = capsys.readouterr()
     assert captured.out.strip() == message_body.decode('utf-8')
+
+
+@pytest.fixture
+def broker_connection(mocker):
+    """Run init_broker() through the real _create_connection, on a mocked BlockingConnection."""
+    mocker.patch.object(
+        RabbitMQTransport,
+        '_get_consumer_settings',
+        return_value=('queue', 'dead_letters_queue', 0),
+    )
+    mocker.patch.object(
+        RabbitMQTransport,
+        '_get_common_settings',
+        return_value=('rabbit', 5672, PlainCredentials('user', 'password'), 'exchange'),
+    )
+    RabbitMQTransport._producer_local.__dict__.clear()
+    yield mocker.patch('dj_cqrs.transport.rabbit_mq.BlockingConnection').return_value
+    RabbitMQTransport._producer_local.__dict__.clear()
+
+
+def test_init_broker_opens_its_own_connection(broker_connection):
+    channel_and_connection = Command().init_broker()
+
+    assert channel_and_connection == (broker_connection.channel.return_value, broker_connection)
+
+
+def test_init_broker_leaves_producer_cache_alone(broker_connection):
+    Command().init_broker()
+
+    assert vars(RabbitMQTransport._producer_local) == {}
 
 
 def test_handle_retry(settings, capsys, mocker):
