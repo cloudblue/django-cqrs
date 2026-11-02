@@ -11,7 +11,6 @@ from watchfiles.run import start_process
 
 from dj_cqrs.registries import ReplicaRegistry
 
-
 logger = logging.getLogger('django-cqrs')
 
 

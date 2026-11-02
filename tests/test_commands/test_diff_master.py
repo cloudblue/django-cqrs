@@ -6,7 +6,6 @@ from django.core.management import CommandError, call_command
 
 from tests.dj_master.models import Author
 
-
 COMMAND_NAME = 'cqrs_diff_master'
 
 

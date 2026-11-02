@@ -10,7 +10,6 @@ from pika import PlainCredentials
 from dj_cqrs.constants import SignalType
 from dj_cqrs.management.commands.cqrs_dead_letters import Command, RabbitMQTransport
 
-
 COMMAND_NAME = 'cqrs_dead_letters'
 
 

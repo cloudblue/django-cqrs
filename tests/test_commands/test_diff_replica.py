@@ -11,7 +11,6 @@ from django.utils.timezone import now
 from tests.dj_master.models import Author
 from tests.dj_replica.models import AuthorRef
 
-
 COMMAND_NAME = 'cqrs_diff_replica'
 
 

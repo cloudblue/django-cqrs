@@ -22,7 +22,6 @@ from dj_cqrs.metas import MasterMeta, ReplicaMeta
 from dj_cqrs.signals import MasterSignals, post_bulk_create, post_update
 from dj_cqrs.state import cqrs_state
 
-
 logger = logging.getLogger('django-cqrs')
 
 

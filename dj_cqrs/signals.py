@@ -12,7 +12,6 @@ from dj_cqrs.dataclasses import TransportPayload
 from dj_cqrs.state import cqrs_state
 from dj_cqrs.utils import get_message_expiration_dt
 
-
 logger = logging.getLogger('django-cqrs')
 
 post_bulk_create = Signal()

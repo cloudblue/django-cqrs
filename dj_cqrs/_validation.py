@@ -15,7 +15,6 @@ from dj_cqrs.constants import (
 from dj_cqrs.registries import MasterRegistry, ReplicaRegistry
 from dj_cqrs.transport import BaseTransport
 
-
 logger = logging.getLogger('django-cqrs')
 
 

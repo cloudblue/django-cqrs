@@ -8,7 +8,6 @@ from django.utils.timezone import now
 from tests.dj_replica.models import AuthorRef
 from tests.utils import db_error
 
-
 COMMAND_NAME = 'cqrs_bulk_load'
 DUMPS_PATH = 'tests/test_commands/dumps/'
 
