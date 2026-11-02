@@ -1,4 +1,4 @@
-django==3.2.20
+django==5.2.18
 psycopg2==2.9.1
-djangorestframework==3.12.4
+djangorestframework==3.18.3
 django-cqrs
