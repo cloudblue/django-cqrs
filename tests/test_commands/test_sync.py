@@ -8,7 +8,6 @@ from dj_cqrs.constants import SignalType
 from tests.dj_master.models import Author
 from tests.utils import db_error
 
-
 COMMAND_NAME = 'cqrs_sync'
 
 

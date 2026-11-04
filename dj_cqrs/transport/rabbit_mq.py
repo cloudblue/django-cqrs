@@ -32,7 +32,6 @@ from dj_cqrs.transport import BaseTransport
 from dj_cqrs.transport.mixins import LoggingMixin
 from dj_cqrs.utils import get_delay_queue_max_size, get_messages_prefetch_count_per_worker
 
-
 logger = logging.getLogger('django-cqrs')
 
 RELEASE_PRODUCER_CONNECTION_UID = 'dj_cqrs.transport.rabbit_mq.release_producer_connection'

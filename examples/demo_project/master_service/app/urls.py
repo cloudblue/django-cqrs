@@ -12,7 +12,6 @@ from app.views import (
     user_update_view,
 )
 
-
 urlpatterns = [
     path('', main_view),
     path('users/', user_create_view),

@@ -4,7 +4,7 @@ version: "3"
 services:
   # database for master
   db_pgsql:
-    image: postgres:12
+    image: postgres:16
     environment:
       POSTGRES_USER: master_service
       POSTGRES_PASSWORD: password

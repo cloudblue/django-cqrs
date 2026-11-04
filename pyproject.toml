@@ -44,7 +44,7 @@ python-dateutil = ">=2.4,<3"
 watchfiles = ">=0.18,<2"
 
 [tool.poetry.group.test.dependencies]
-black = "23.*"
+black = "26.*"
 coverage = {extras = ["toml"], version = "7.*"}
 django-mptt = "0.*"
 djangorestframework = "3.*"
@@ -62,8 +62,8 @@ flake8-isort = "7.*"
 flake8-string-format = "0.*"
 flake8-pyproject = "1.*"
 isort = "5.*"
-pytest = "7.*"
-pytest-cov = "3.*"
+pytest = ">=9"
+pytest-cov = "7.*"
 pytest-deadfixtures = "2.*"
 pytest-django = "4.*"
 pytest-mock = "3.*"
@@ -73,9 +73,13 @@ pytest-randomly = "3.*"
 mkdocs = ">=1.4"
 mkdocs-material = ">=9"
 mkdocs-glightbox = "^0.3.1"
-mkdocs-macros-plugin = "^0.7.0"
+mkdocs-macros-plugin = ">=1.0"
 mkdocstrings = ">=0.19.1"
-mkdocstrings-python = "^0.8.3"
+mkdocstrings-python = ">=1.11"
+# pymdown-extensions 12.2 changed Highlight in a way that mkdocstrings 1.0.6 cannot
+# cope with, and the releases of mkdocstrings that can need Python 3.11, which this
+# project still supports. Drop this once Python 3.10 is.
+pymdown-extensions = "<12.2"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -100,7 +104,6 @@ combine_as_imports = true
 use_parentheses = true
 include_trailing_comma = true
 line_length = 100
-lines_after_imports = 2
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

@@ -2,7 +2,6 @@
 
 import time
 
-
 REPLICA_BASIC_TABLE = 'dj_replica_basicfieldsmodelref'
 REPLICA_EVENT_TABLE = 'dj_replica_event'
 

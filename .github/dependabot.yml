@@ -1,0 +1,27 @@
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    # A library: keep the version ranges it supports, and raise one only when an update needs it.
+    versioning-strategy: increase-if-necessary
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 2
+    groups:
+      python-dependencies:
+        applies-to: version-updates
+        patterns: ["*"]
+      python-security:
+        applies-to: security-updates
+        patterns: ["*"]
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 7
+    groups:
+      github-actions:
+        patterns: ["*"]
