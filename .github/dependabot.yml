@@ -2,6 +2,8 @@ version: 2
 updates:
   - package-ecosystem: "pip"
     directory: "/"
+    # A library: keep the version ranges it supports, and raise one only when an update needs it.
+    versioning-strategy: increase-if-necessary
     schedule:
       interval: "monthly"
     cooldown:
