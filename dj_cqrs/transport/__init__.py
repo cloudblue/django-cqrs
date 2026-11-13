@@ -7,7 +7,6 @@ from dj_cqrs.transport.base import BaseTransport
 from dj_cqrs.transport.kombu import KombuTransport
 from dj_cqrs.transport.rabbit_mq import RabbitMQTransport
 
-
 try:
     current_transport = import_string(settings.CQRS['transport'])
 except (AttributeError, ImportError, KeyError):

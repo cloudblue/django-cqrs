@@ -9,7 +9,6 @@ from tests.dj_master.models import Author, Publisher
 from tests.test_commands.utils import remove_file
 from tests.utils import db_error
 
-
 COMMAND_NAME = 'cqrs_bulk_dump'
 
 

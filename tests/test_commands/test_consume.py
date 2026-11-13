@@ -9,7 +9,6 @@ from django.core.management import CommandError, call_command
 
 from dj_cqrs.management.commands.cqrs_consume import WorkersManager, consume
 
-
 COMMAND_NAME = 'cqrs_consume'
 
 

@@ -12,7 +12,6 @@ from dj_cqrs.management.commands import cqrs_sync
 from tests.dj_master.models import Author
 from tests.dj_replica.models import AuthorRef
 
-
 COMMAND_NAME = 'cqrs_diff_sync'
 
 

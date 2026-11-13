@@ -20,7 +20,6 @@ from dj_cqrs.registries import ReplicaRegistry
 from dj_cqrs.transport import BaseTransport
 from dj_cqrs.transport.mixins import LoggingMixin
 
-
 logger = logging.getLogger('django-cqrs')
 
 

@@ -12,7 +12,6 @@ from dj_cqrs.logger import log_timed_out_queries
 from dj_cqrs.registries import ReplicaRegistry
 from dj_cqrs.utils import apply_query_timeouts
 
-
 logger = logging.getLogger('django-cqrs')
 
 

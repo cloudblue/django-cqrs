@@ -30,6 +30,27 @@ jobs:
       - name: Linting
         run: |
           poetry run flake8
+  docs:
+    name: Docs
+    needs: [lint]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry
+          poetry install --only main,docs
+      - name: Build docs
+        run: |
+          poetry run mkdocs build --strict
   test:
     name: Test Python ${{ matrix.python-version }} / Django ${{ matrix.django-version }}
     needs: [lint]

@@ -9,7 +9,6 @@ from django.utils import timezone
 
 from dj_cqrs.constants import FIELDS_TRACKER_FIELD_NAME, TRACKED_FIELDS_ATTR_NAME
 
-
 logger = logging.getLogger('django-cqrs')
 
 

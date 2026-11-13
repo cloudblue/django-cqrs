@@ -13,7 +13,6 @@ from django.db import close_old_connections, connections
 from dj_cqrs.management.utils import batch_qs
 from dj_cqrs.registries import MasterRegistry
 
-
 DEFAULT_BATCH = 10000
 DEFAULT_PROGRESS = False
 

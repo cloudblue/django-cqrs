@@ -14,7 +14,6 @@ from dj_cqrs.constants import DB_VENDOR_PG, SUPPORTED_TIMEOUT_DB_VENDORS
 from dj_cqrs.logger import install_last_query_capturer
 from dj_cqrs.state import cqrs_state
 
-
 logger = logging.getLogger('django-cqrs')
 
 
